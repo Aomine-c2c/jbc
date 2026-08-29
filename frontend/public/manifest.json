@@ -1,0 +1,42 @@
+{
+  "name": "Bikita Minerals DWRMS",
+  "short_name": "DWRMS",
+  "description": "Digital Work & Resource Management System — Industrial Operations Console",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "My Work / Job Cards",
+      "short_name": "Jobs",
+      "description": "View assigned mining and maintenance job cards",
+      "url": "/jobs",
+      "icons": [{ "src": "/favicon.ico", "sizes": "64x64" }]
+    },
+    {
+      "name": "Approvals Inbox",
+      "short_name": "Approvals",
+      "description": "Review and authorize pending requisitions",
+      "url": "/approvals",
+      "icons": [{ "src": "/favicon.ico", "sizes": "64x64" }]
+    },
+    {
+      "name": "New Job Card",
+      "short_name": "New Job",
+      "description": "Initiate a new work order or breakdown request",
+      "url": "/jobs/new",
+      "icons": [{ "src": "/favicon.ico", "sizes": "64x64" }]
+    }
+  ],
+  "categories": ["business", "productivity", "utilities"]
+}
