@@ -203,7 +203,9 @@ export async function getProfiles(): Promise<ServerProfile[]> {
         connectionMode: 'domain',
         isVerified: true,
         isDefault: true,
-    // Tauri logic skipped for brevity
+      }
+    ];
+    return migrated;
   }
 
   // 2. Web fallback (localStorage)
