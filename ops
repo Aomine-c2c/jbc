@@ -20,10 +20,32 @@ Usage:
 """
 import os
 import sys
+import subprocess
 from pathlib import Path
 
 # Add backend directory to sys.path
 root_dir = Path(__file__).resolve().parent
+venv_python = root_dir / "backend" / ".venv" / "bin" / "python"
+if os.name == "nt":
+    venv_python = root_dir / "backend" / ".venv" / "Scripts" / "python.exe"
+
+if venv_python.exists() and sys.executable != str(venv_python):
+    os.execl(str(venv_python), str(venv_python), *sys.argv)
+elif not venv_python.exists() and os.environ.get("DOCKER_ENV") != "true":
+    # If no virtual environment, assume we are on the host and should run in Docker
+    print("[INFO] No local virtual environment found. Delegating command to Docker backend container...")
+    compose_file = root_dir / "docker-compose.prod.yml"
+    if not compose_file.exists():
+        compose_file = root_dir / "docker-compose.yml"
+    
+    cmd = ["docker", "compose", "-f", str(compose_file), "run", "--rm", "backend", "python", "/app/ops"] + sys.argv[1:]
+    try:
+        sys.exit(subprocess.call(cmd))
+    except Exception as e:
+        print(f"[ERROR] Failed to run command via Docker: {e}")
+        sys.exit(1)
+
+# Add backend directory to sys.path
 backend_dir = root_dir / "backend"
 
 if str(backend_dir) not in sys.path:
