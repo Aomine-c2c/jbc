@@ -621,6 +621,13 @@ class JobCardService:
         job.action_taken = data.action_taken
         job.downtime_hours = data.downtime_hours
         job.actual_end_time = data.actual_end_time or datetime.utcnow()
+        if data.actual_start_time:
+            job.actual_start_time = data.actual_start_time
+        
+        job.equipment_used = data.equipment_used
+        job.observations = data.observations
+        job.problems_encountered = data.problems_encountered
+        job.recommendations = data.recommendations
 
         if data.labour_details:
             job.labour_details = data.labour_details

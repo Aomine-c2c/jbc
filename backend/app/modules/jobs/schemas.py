@@ -110,9 +110,14 @@ class JobCardLabourCreate(BaseModel):
 
 class JobCardComplete(BaseModel):
     comments: Optional[str] = None
+    actual_start_time: Optional[datetime] = None
     actual_end_time: Optional[datetime] = None
     completion_notes: Optional[str] = None
     action_taken: str = Field(..., description="Details of the work performed")
+    equipment_used: Optional[str] = Field(None, description="Tools or equipment used")
+    observations: Optional[str] = Field(None, description="Observations made during work")
+    problems_encountered: Optional[str] = Field(None, description="Problems encountered during execution")
+    recommendations: Optional[str] = Field(None, description="Recommendations for future maintenance")
     downtime_hours: float = Field(0.0, description="Total downtime of equipment in hours")
     parts_used: Optional[list[JobCardPartCreate]] = None
     labour_entries: Optional[list[JobCardLabourCreate]] = None
@@ -384,6 +389,11 @@ class JobCardResponse(BaseModel):
     action_taken: Optional[str] = None
     labour_details: Optional[str] = None
     completion_notes: Optional[str] = None
+    
+    equipment_used: Optional[str] = None
+    observations: Optional[str] = None
+    problems_encountered: Optional[str] = None
+    recommendations: Optional[str] = None
 
     requester_confirmed: bool = False
     requester_notes: Optional[str] = None

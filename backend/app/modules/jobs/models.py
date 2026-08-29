@@ -190,6 +190,12 @@ class JobCard(Base, TimestampMixin, SoftDeleteMixin):
     labour_details: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     completion_notes: Mapped[str | None] = mapped_column(String(4000), nullable=True)
     
+    # Extended Completion Data (v1.2)
+    equipment_used: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    observations: Mapped[str | None] = mapped_column(String(4000), nullable=True)
+    problems_encountered: Mapped[str | None] = mapped_column(String(4000), nullable=True)
+    recommendations: Mapped[str | None] = mapped_column(String(4000), nullable=True)
+    
     # Requester Confirmation & Sign-off
     requester_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
     requester_notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
