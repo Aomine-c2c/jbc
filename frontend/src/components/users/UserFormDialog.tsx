@@ -15,22 +15,27 @@ interface Department {
   name: string;
 }
 
-interface UserFormDialogProps {
-  user?: {
-    id: string;
-    email?: string;
-    first_name?: string;
-    last_name?: string;
-    department_id?: string;
-    is_active?: boolean;
-  };
-  departments: Department[];
-  roles: Role[];
+export function UserFormDialog({ 
+  user, 
+  users,
+  departments, 
+  sections,
+  teams,
+  positions,
+  roles, 
+  onClose, 
+  onSaved 
+}: { 
+  user?: any;
+  users: any[];
+  departments: any[]; 
+  sections: any[];
+  teams: any[];
+  positions: any[];
+  roles: {id: string, name: string}[];
   onClose: () => void;
   onSaved: () => void;
-}
-
-export function UserFormDialog({ user, departments, roles, onClose, onSaved }: UserFormDialogProps) {
+}) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: user?.email || '',
@@ -38,6 +43,12 @@ export function UserFormDialog({ user, departments, roles, onClose, onSaved }: U
     last_name: user?.last_name || '',
     password: '',
     department_id: user?.department_id || '',
+    section_id: user?.section_id || '',
+    team_id: user?.team_id || '',
+    position_id: user?.position_id || '',
+    supervisor_id: user?.supervisor_id || '',
+    employee_number: user?.employee_number || '',
+    shift_pattern: user?.shift_pattern || '',
     is_active: user !== undefined ? user.is_active : true,
   });
 
@@ -79,6 +90,12 @@ export function UserFormDialog({ user, departments, roles, onClose, onSaved }: U
           first_name: formData.first_name,
           last_name: formData.last_name,
           department_id: formData.department_id || null,
+          section_id: formData.section_id || null,
+          team_id: formData.team_id || null,
+          position_id: formData.position_id || null,
+          supervisor_id: formData.supervisor_id || null,
+          employee_number: formData.employee_number || null,
+          shift_pattern: formData.shift_pattern || null,
           is_active: formData.is_active
         };
         savedUser = await apiFetch(`/api/v1/iam/users/${user.id}`, {
@@ -94,6 +111,12 @@ export function UserFormDialog({ user, departments, roles, onClose, onSaved }: U
           last_name: formData.last_name,
           password: formData.password,
           department_id: formData.department_id || null,
+          section_id: formData.section_id || null,
+          team_id: formData.team_id || null,
+          position_id: formData.position_id || null,
+          supervisor_id: formData.supervisor_id || null,
+          employee_number: formData.employee_number || null,
+          shift_pattern: formData.shift_pattern || null,
         };
         savedUser = await apiFetch(`/api/v1/iam/users`, {
           method: "POST",
@@ -176,17 +199,102 @@ export function UserFormDialog({ user, departments, roles, onClose, onSaved }: U
               </div>
             )}
 
-            <div className="space-y-1">
-              <label className="text-sm font-medium">Department</label>
-              <select 
-                className="w-full p-2 border border-input rounded-md bg-background text-foreground"
-                value={formData.department_id} onChange={e => setFormData({...formData, department_id: e.target.value})}
-              >
-                <option value="">-- None --</option>
-                {departments.map(d => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-              </select>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Department</label>
+                <select 
+                  className="w-full p-2 border border-input rounded-md bg-background text-foreground"
+                  value={formData.department_id} onChange={e => setFormData({...formData, department_id: e.target.value})}
+                >
+                  <option value="">-- None --</option>
+                  {departments.map(d => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Section</label>
+                <select 
+                  className="w-full p-2 border border-input rounded-md bg-background text-foreground"
+                  value={formData.section_id} 
+                  onChange={e => setFormData({...formData, section_id: e.target.value})}
+                  disabled={!formData.department_id}
+                >
+                  <option value="">-- None --</option>
+                  {sections.filter(s => s.department_id === formData.department_id).map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Team</label>
+                <select 
+                  className="w-full p-2 border border-input rounded-md bg-background text-foreground"
+                  value={formData.team_id} 
+                  onChange={e => setFormData({...formData, team_id: e.target.value})}
+                  disabled={!formData.section_id}
+                >
+                  <option value="">-- None --</option>
+                  {teams.filter(t => t.section_id === formData.section_id).map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Position / Role</label>
+                <select 
+                  className="w-full p-2 border border-input rounded-md bg-background text-foreground"
+                  value={formData.position_id} 
+                  onChange={e => setFormData({...formData, position_id: e.target.value})}
+                >
+                  <option value="">-- None --</option>
+                  {positions.filter(p => p.department_id === formData.department_id || !p.department_id).map(p => (
+                    <option key={p.id} value={p.id}>{p.title}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Supervisor</label>
+                <select 
+                  className="w-full p-2 border border-input rounded-md bg-background text-foreground"
+                  value={formData.supervisor_id} 
+                  onChange={e => setFormData({...formData, supervisor_id: e.target.value})}
+                >
+                  <option value="">-- None --</option>
+                  {users.filter(u => u.id !== user?.id).map(u => (
+                    <option key={u.id} value={u.id}>{u.first_name} {u.last_name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Employee Number</label>
+                <input 
+                  type="text" 
+                  className="w-full p-2 border border-input rounded-md bg-background text-foreground"
+                  value={formData.employee_number} 
+                  onChange={e => setFormData({...formData, employee_number: e.target.value})}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Shift Pattern</label>
+                <select 
+                  className="w-full p-2 border border-input rounded-md bg-background text-foreground"
+                  value={formData.shift_pattern} 
+                  onChange={e => setFormData({...formData, shift_pattern: e.target.value})}
+                >
+                  <option value="">-- None --</option>
+                  <option value="MORNING">Morning</option>
+                  <option value="AFTERNOON">Afternoon</option>
+                  <option value="NIGHT">Night</option>
+                  <option value="ROTATING">Rotating</option>
+                </select>
+              </div>
             </div>
 
             {isEditing && (

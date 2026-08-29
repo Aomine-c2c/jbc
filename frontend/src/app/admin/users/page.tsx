@@ -29,6 +29,9 @@ type User = {
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+  const [sections, setSections] = useState<{ id: string; name: string; department_id: string }[]>([]);
+  const [teams, setTeams] = useState<{ id: string; name: string; section_id: string }[]>([]);
+  const [positions, setPositions] = useState<{ id: string; title: string; department_id: string }[]>([]);
   const [roles, setRoles] = useState<{ id: string; name: string }[]>([]);
   
   const [loading, setLoading] = useState(true);
@@ -42,6 +45,18 @@ export default function UsersPage() {
 
     apiFetch("/api/v1/iam/departments").then((data) => {
       if (data) setDepartments(data);
+    }).catch(console.error);
+
+    apiFetch("/api/v1/iam/org/sections").then((data) => {
+      if (data) setSections(data);
+    }).catch(console.error);
+
+    apiFetch("/api/v1/iam/org/teams").then((data) => {
+      if (data) setTeams(data);
+    }).catch(console.error);
+
+    apiFetch("/api/v1/iam/org/positions").then((data) => {
+      if (data) setPositions(data);
     }).catch(console.error);
 
     apiFetch("/api/v1/iam/roles").then((data) => {
@@ -190,7 +205,11 @@ export default function UsersPage() {
         {isDialogOpen && (
           <UserFormDialog 
             user={editingUser}
+            users={users}
             departments={departments}
+            sections={sections}
+            teams={teams}
+            positions={positions}
             roles={roles}
             onClose={() => setIsDialogOpen(false)}
             onSaved={handleDialogSaved}

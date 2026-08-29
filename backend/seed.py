@@ -1,11 +1,11 @@
 import asyncio
+import uuid
 from sqlalchemy import select
 from app.db.session import SessionLocal
-import app.modules.iam.models  # noqa: F401
-import app.modules.fleet.models  # noqa: F401
-import app.modules.jobs.models  # noqa: F401
-from app.modules.iam.models import Role, Permission, User, Department, RolePermission, UserRole, Scope
-from app.modules.fleet.models import MachineType, Machine
+from app.modules.iam.models import (
+    Role, Permission, User, Department, RolePermission, UserRole, Scope,
+    Organization, Site, Section, Team, Position, EmployeeProfile
+)
 from app.core.security import get_password_hash
 
 async def seed():
@@ -16,21 +16,109 @@ async def seed():
             print("Database already seeded. Skipping.")
             return
 
-        # Departments
-        dept_maintenance = Department(name="Maintenance", description="Maintenance and repairs")
-        dept_operations = Department(name="Operations", description="Mine operations")
-        dept_finance = Department(name="Finance", description="Finance and Administration")
-        session.add_all([dept_maintenance, dept_operations, dept_finance])
-        await session.commit()
-        await session.refresh(dept_maintenance)
+        print("Seeding Industrial Operations Core Architecture (v1.0)...")
 
-        # Core Resource Permissions
+        # 1. Organization & Site
+        org = Organization(
+            id=uuid.uuid4(),
+            code="BIK",
+            name="Bikita Minerals Ltd",
+            description="Leading producer of lithium and rare earth minerals",
+            industry_type="Mining & Mineral Processing",
+            country="Zimbabwe",
+            currency="USD"
+        )
+        session.add(org)
+        await session.commit()
+        await session.refresh(org)
+
+        site = Site(
+            id=uuid.uuid4(),
+            organization_id=org.id,
+            code="MSV-1",
+            name="Masvingo Main Plant",
+            site_type="MINE_SITE",
+            address="Masvingo Province, Zimbabwe"
+        )
+        session.add(site)
+        await session.commit()
+        await session.refresh(site)
+
+        # 2. Departments
+        depts_data = {
+            "IT": "Information Technology",
+            "Instrumentation": "Instrumentation and Control",
+            "Mechanical": "Mechanical Engineering & Maintenance",
+            "Electrical": "Electrical Engineering"
+        }
+        departments = {}
+        for code, name in depts_data.items():
+            dept = Department(
+                id=uuid.uuid4(),
+                site_id=site.id,
+                code=code,
+                name=name,
+                description=f"{name} Department"
+            )
+            session.add(dept)
+            departments[code] = dept
+        
+        await session.commit()
+        for dept in departments.values():
+            await session.refresh(dept)
+
+        # 3. Sections & Teams
+        # For Mechanical
+        mech_section = Section(id=uuid.uuid4(), department_id=departments["Mechanical"].id, code="CRUSHING", name="Crushing & Screening")
+        session.add(mech_section)
+        await session.commit()
+        await session.refresh(mech_section)
+
+        mech_team_alpha = Team(id=uuid.uuid4(), section_id=mech_section.id, code="SHIFT-A", name="Shift Alpha")
+        session.add(mech_team_alpha)
+
+        # For Electrical
+        elec_section = Section(id=uuid.uuid4(), department_id=departments["Electrical"].id, code="HV-PLANT", name="High Voltage Plant")
+        session.add(elec_section)
+        await session.commit()
+        await session.refresh(elec_section)
+
+        elec_team_callout = Team(id=uuid.uuid4(), section_id=elec_section.id, code="CALLOUT", name="Emergency Callout Team")
+        session.add(elec_team_callout)
+
+        # For Instrumentation
+        inst_section = Section(id=uuid.uuid4(), department_id=departments["Instrumentation"].id, code="SCADA", name="SCADA & Automation")
+        session.add(inst_section)
+        await session.commit()
+        await session.refresh(inst_section)
+        
+        # 4. Positions (Operational Titles)
+        positions_data = [
+            (departments["Mechanical"].id, "S-MECH", "Senior Mechanical Fitter", "MASTER"),
+            (departments["Mechanical"].id, "J-MECH", "Mechanical Artisan", "JOURNEYMAN"),
+            (departments["Electrical"].id, "S-ELEC", "HV Electrician", "MASTER"),
+            (departments["Instrumentation"].id, "ENG-INST", "Automation Engineer", "MASTER"),
+            (departments["IT"].id, "IT-ADMIN", "Systems Administrator", "MASTER"),
+            (None, "MGR", "Plant Manager", "EXECUTIVE"),
+        ]
+        positions = {}
+        for dept_id, code, title, skill in positions_data:
+            pos = Position(id=uuid.uuid4(), code=code, title=title, department_id=dept_id, skill_level=skill)
+            session.add(pos)
+            positions[code] = pos
+            
+        await session.commit()
+        for pos in positions.values():
+            await session.refresh(pos)
+
+        # 5. Core Resource Permissions
         permissions = [
             "job_card:read", "job_card:create", "job_card:update", "job_card:delete", "job_card:approve", "job_card:verify",
             "job_request:read", "job_request:create", "job_request:update", "job_request:delete", "job_request:approve",
             "machine_requisition:read", "machine_requisition:create", "machine_requisition:update", "machine_requisition:approve",
             "users:read", "users:manage",
             "departments:read", "departments:manage",
+            "settings:manage",
             "system:configure", "audit_logs:read"
         ]
         
@@ -44,7 +132,7 @@ async def seed():
         for p in perm_objs.values():
             await session.refresh(p)
 
-        # Roles Definition
+        # 6. Roles Definition (System RBAC)
         role_definitions = {
             "System Administrator": {
                 "perms": [(p, Scope.GLOBAL) for p in permissions],
@@ -76,7 +164,8 @@ async def seed():
                     ("job_card:approve", Scope.DEPARTMENT),
                     ("job_card:verify", Scope.DEPARTMENT),
                     ("job_request:read", Scope.DEPARTMENT),
-                    ("job_request:approve", Scope.DEPARTMENT)
+                    ("job_request:approve", Scope.DEPARTMENT),
+                    ("users:read", Scope.DEPARTMENT)
                 ]
             },
             "Department Manager": {
@@ -86,20 +175,13 @@ async def seed():
                     ("job_request:read", Scope.DEPARTMENT),
                     ("job_request:approve", Scope.DEPARTMENT),
                     ("machine_requisition:read", Scope.DEPARTMENT),
-                    ("machine_requisition:approve", Scope.DEPARTMENT)
+                    ("machine_requisition:approve", Scope.DEPARTMENT),
+                    ("users:read", Scope.DEPARTMENT),
+                    ("users:manage", Scope.DEPARTMENT),
+                    ("departments:read", Scope.DEPARTMENT)
                 ]
             }
         }
-        
-        # Add remaining roles simply
-        other_roles = [
-            "Maintenance Planner", "Workshop Manager", "Equipment Controller", 
-            "Stores Officer", "Procurement Officer", "HSE Officer", "Finance Officer"
-        ]
-        for role_name in other_roles:
-            role_definitions[role_name] = {
-                "perms": [("job_card:read", Scope.DEPARTMENT)] # Minimal placeholder permissions
-            }
             
         role_objs = {}
         for r_name, r_data in role_definitions.items():
@@ -119,47 +201,103 @@ async def seed():
                 session.add(rp)
         await session.commit()
 
-        # Users
+        # 7. Users
+        # IT Admin
         admin_user = User(
+            id=uuid.uuid4(),
             email="admin@bikita.com",
             first_name="Admin",
             last_name="User",
             hashed_password=get_password_hash("password123"),
-            department_id=dept_maintenance.id,
+            department_id=departments["IT"].id,
+            position_id=positions["IT-ADMIN"].id,
+            employee_number="EMP-0001",
             is_active=True,
             is_superuser=True
         )
-        tech_user = User(
-            email="tech@bikita.com",
-            first_name="Tech",
-            last_name="User",
+        
+        # Mechanical Manager
+        mech_mgr = User(
+            id=uuid.uuid4(),
+            email="mechmgr@bikita.com",
+            first_name="John",
+            last_name="Manager",
             hashed_password=get_password_hash("password123"),
-            department_id=dept_maintenance.id,
+            department_id=departments["Mechanical"].id,
+            position_id=positions["MGR"].id,
+            employee_number="EMP-1000",
             is_active=True,
             is_superuser=False
         )
-        sup_user = User(
+        
+        # Mechanical Supervisor
+        mech_sup = User(
+            id=uuid.uuid4(),
             email="supervisor@bikita.com",
             first_name="Super",
             last_name="Visor",
             hashed_password=get_password_hash("password123"),
-            department_id=dept_maintenance.id,
+            department_id=departments["Mechanical"].id,
+            section_id=mech_section.id,
+            position_id=positions["S-MECH"].id,
+            supervisor_id=mech_mgr.id,
+            employee_number="EMP-1050",
             is_active=True,
             is_superuser=False
         )
-        session.add_all([admin_user, tech_user, sup_user])
+        
+        # Mechanical Technician
+        mech_tech = User(
+            id=uuid.uuid4(),
+            email="tech@bikita.com",
+            first_name="Tech",
+            last_name="User",
+            hashed_password=get_password_hash("password123"),
+            department_id=departments["Mechanical"].id,
+            section_id=mech_section.id,
+            team_id=mech_team_alpha.id,
+            position_id=positions["J-MECH"].id,
+            supervisor_id=mech_sup.id,
+            employee_number="EMP-1051",
+            is_active=True,
+            is_superuser=False
+        )
+
+        session.add_all([admin_user, mech_mgr, mech_sup, mech_tech])
         await session.commit()
         await session.refresh(admin_user)
-        await session.refresh(tech_user)
-        await session.refresh(sup_user)
+        await session.refresh(mech_mgr)
+        await session.refresh(mech_sup)
+        await session.refresh(mech_tech)
 
-        # User Roles
-        session.add(UserRole(user_id=admin_user.id, role_id=role_objs["System Administrator"]["obj"].id))
-        session.add(UserRole(user_id=tech_user.id, role_id=role_objs["Technician"]["obj"].id))
-        session.add(UserRole(user_id=sup_user.id, role_id=role_objs["Supervisor"]["obj"].id))
+        # Set section supervisors / team leads now that users exist
+        mech_section.supervisor_id = mech_sup.id
+        mech_team_alpha.team_lead_id = mech_sup.id
+        departments["Mechanical"].hod_id = mech_mgr.id
         await session.commit()
 
-        print("Database seeded successfully!")
+        # 8. User Roles
+        session.add(UserRole(user_id=admin_user.id, role_id=role_objs["System Administrator"]["obj"].id))
+        
+        session.add(UserRole(user_id=mech_mgr.id, role_id=role_objs["Department Manager"]["obj"].id))
+        
+        session.add(UserRole(user_id=mech_sup.id, role_id=role_objs["Supervisor"]["obj"].id))
+        
+        session.add(UserRole(user_id=mech_tech.id, role_id=role_objs["Technician"]["obj"].id))
+        session.add(UserRole(user_id=mech_tech.id, role_id=role_objs["Employee/Requester"]["obj"].id))
+        await session.commit()
+
+        # 9. Employee Profiles
+        session.add(EmployeeProfile(
+            user_id=mech_tech.id,
+            national_id="63-1234567X89",
+            emergency_contact_name="Jane Doe",
+            emergency_contact_phone="+263772123456",
+            skills_and_certifications=[{"skill": "Hydraulics", "level": "Advanced"}, {"skill": "Welding", "level": "Intermediate"}]
+        ))
+        await session.commit()
+
+        print("Database seeded successfully with Industrial Operations Core!")
 
 if __name__ == "__main__":
     asyncio.run(seed())

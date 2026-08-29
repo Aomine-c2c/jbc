@@ -96,7 +96,8 @@ async def get_current_user(
                 selectinload(User.roles)
                 .selectinload(UserRole.role)
                 .selectinload(Role.role_permissions)
-                .selectinload(RolePermission.permission)
+                .selectinload(RolePermission.permission),
+                selectinload(User.profile)
             )
             .where(User.id == uuid.UUID(subject))
         )
@@ -272,8 +273,9 @@ from app.api.v1.setup import setup_router
 from app.api.v1.platform import platform_router
 from app.api.v1.events import events_router
 from app.api.v1.export import export_router
-from app.api.v1.org import org_router
+from app.api.v1.org import org_router as v1_org_router
 from app.modules.iam.api import iam_router
+from app.modules.iam.org_api import org_router
 from app.modules.jobs.api import job_router, wp_router
 from app.modules.fleet.api import fleet_router
 from app.modules.dashboard.api import dashboard_router

@@ -147,6 +147,13 @@ async def create_user(
         last_name=data.last_name,
         hashed_password=get_password_hash(data.password),
         department_id=data.department_id,
+        section_id=data.section_id,
+        team_id=data.team_id,
+        position_id=data.position_id,
+        supervisor_id=data.supervisor_id,
+        employee_number=data.employee_number,
+        phone_number=data.phone_number,
+        shift_pattern=data.shift_pattern,
     )
     db.add(new_user)
     await db.commit()
@@ -184,6 +191,8 @@ async def list_users(
             last_name=u.last_name,
             department_id=u.department_id,
             department_name=u.department.name if u.department else None,
+            position_id=u.position_id,
+            employee_number=u.employee_number,
             roles=[ur.role.name for ur in u.roles if ur.role],
             is_active=u.is_active,
             created_at=u.created_at
@@ -197,7 +206,12 @@ async def get_user(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_get_current_user()),
 ):
-    result = await db.execute(select(User).where(User.id == user_id))
+    from sqlalchemy.orm import selectinload
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.profile))
+        .where(User.id == user_id)
+    )
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -218,7 +232,6 @@ async def update_user(
     if not existing:
         raise HTTPException(status_code=404, detail="User not found")
         
-    # Check if user can manage users in the existing user's department, and the new department if changing
     if not AuthzGuard.check_permission(current_user, "users:manage", user_perms, resource_dept_id=existing.department_id):
         raise HTTPException(status_code=403, detail="Not enough privileges to edit this user")
     
@@ -239,6 +252,22 @@ async def update_user(
         existing.last_name = data.last_name
     if data.department_id is not None:
         existing.department_id = data.department_id
+    if data.section_id is not None:
+        existing.section_id = data.section_id
+    if data.team_id is not None:
+        existing.team_id = data.team_id
+    if data.position_id is not None:
+        existing.position_id = data.position_id
+    if data.supervisor_id is not None:
+        if data.supervisor_id == user_id:
+            raise HTTPException(status_code=400, detail="User cannot be their own supervisor")
+        existing.supervisor_id = data.supervisor_id
+    if data.employee_number is not None:
+        existing.employee_number = data.employee_number
+    if data.phone_number is not None:
+        existing.phone_number = data.phone_number
+    if data.shift_pattern is not None:
+        existing.shift_pattern = data.shift_pattern
     if data.is_active is not None:
         existing.is_active = data.is_active
 
@@ -252,12 +281,7 @@ async def update_user(
         resource_id=str(existing.id),
         user=current_user,
         previous_value=previous_value,
-        new_value={
-            "first_name": existing.first_name,
-            "last_name": existing.last_name,
-            "department_id": str(existing.department_id) if existing.department_id else None,
-            "is_active": existing.is_active
-        }
+        new_value={"is_active": existing.is_active}
     )
     
     return existing
