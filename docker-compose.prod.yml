@@ -144,6 +144,26 @@ services:
     networks:
       - dwrms_prod
 
+  webhook:
+    build:
+      context: ./infrastructure/webhooks
+    restart: always
+    command: -verbose -hooks=/etc/webhook/hooks.json -hotreload
+    volumes:
+      - .:/var/dwrms/repo
+      - ./infrastructure/webhooks/hooks.json:/etc/webhook/hooks.json:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    working_dir: /var/dwrms/repo
+    environment:
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - dwrms_prod
+
   frontend:
     build:
       context: ./frontend
