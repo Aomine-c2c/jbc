@@ -38,7 +38,7 @@ elif not venv_python.exists() and os.environ.get("DOCKER_ENV") != "true":
     if not compose_file.exists():
         compose_file = root_dir / "docker-compose.yml"
     
-    cmd = ["docker", "compose", "-f", str(compose_file), "run", "--rm", "backend", "python", "/app/ops"] + sys.argv[1:]
+    cmd = ["docker", "compose", "-f", str(compose_file), "run", "--rm", "backend", "python", "-m", "app.cli.main"] + sys.argv[1:]
     try:
         sys.exit(subprocess.call(cmd))
     except Exception as e:
