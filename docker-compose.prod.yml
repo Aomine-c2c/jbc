@@ -154,8 +154,6 @@ services:
       - ./infrastructure/webhooks/hooks.json:/etc/webhook/hooks.json:ro
       - /var/run/docker.sock:/var/run/docker.sock
     working_dir: /var/dwrms/repo
-    environment:
-      - WEBHOOK_SECRET=${WEBHOOK_SECRET}
     logging:
       driver: "json-file"
       options:
