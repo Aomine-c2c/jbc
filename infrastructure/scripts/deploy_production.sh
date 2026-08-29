@@ -40,6 +40,13 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
+# ── STAGE 0: AUTO-UPDATE ─────────────────────────────────────────────────────
+echo -e "\n${CYAN}==> [0/8] STAGE: AUTO-UPDATE (Pulling latest code)...${NC}"
+cd "${INSTALL_DIR}"
+git fetch origin main || true
+git reset --hard origin/main || true
+echo -e "${GREEN}[OK] STAGE 0 (AUTO-UPDATE) COMPLETE: Source code is up to date.${NC}"
+
 # ── STAGE 1: INSTALL ─────────────────────────────────────────────────────────
 echo -e "\n${CYAN}==> [1/8] STAGE: INSTALL (Prerequisites & Dependencies)...${NC}"
 
