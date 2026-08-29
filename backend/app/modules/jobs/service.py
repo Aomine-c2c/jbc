@@ -276,6 +276,17 @@ class JobCardService:
             db, job.id, current_user.id, "submit", state_from=old_state, state_to=job.status, details="Submitted for authorization"
         )
         from app.modules.notifications.engine import NotificationEngine
+        from app.modules.approvals.engine import ApprovalEngine, ApprovalContext
+        
+        ctx = ApprovalContext(
+            resource_type="JOB_CARD",
+            resource_id=job.id,
+            resource_owner_id=job.creator_id,
+            department_id=job.department_id,
+            current_status=old_state,
+        )
+        await ApprovalEngine.open_request(db, ctx, current_user)
+        
         await NotificationEngine.dispatch_to_role(
             db=db,
             role_name="SUPERVISOR",
