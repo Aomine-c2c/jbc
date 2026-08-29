@@ -1,0 +1,10 @@
+[Unit]
+Description=Run DWRMS readiness probe every 5 minutes
+Requires=dwrms-healthcheck.service
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+
+[Install]
+Timers.target

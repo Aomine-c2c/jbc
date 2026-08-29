@@ -1,0 +1,32 @@
+# Secrets and environment-specific configuration
+.env
+.env.*
+!.env.example
+!.env.production.example
+!.env.staging.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+backend/.venv/
+.pytest_cache/
+
+# Node / Next.js / Tauri
+node_modules/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/coverage/
+
+# Local data, logs, and generated operational archives
+*.db
+*.sqlite*
+logs/
+backend/logs/
+backups/
+backend/backups/
+storage/
+backend/storage/
+*.tar.gz
+*.tar.gz.sha256

@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: always
+    volumes:
+      - postgres_data_staging:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-dwrms_staging}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-staging_db_password_123}
+      - POSTGRES_DB=${POSTGRES_DB:-dwrms_staging}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dwrms_staging} -d ${POSTGRES_DB:-dwrms_staging}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dwrms_staging
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data_staging:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - dwrms_staging
+
+  backend:
+    image: ${DOCKER_REGISTRY:-dwrms}/dwrms-backend:${IMAGE_TAG:-staging-latest}
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - dwrms_storage_staging:/var/dwrms/storage
+      - dwrms_logs_staging:/var/dwrms/logs
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-dwrms_staging}:${POSTGRES_PASSWORD:-staging_db_password_123}@db:5432/${POSTGRES_DB:-dwrms_staging}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-staging_secret_key_123456789}
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://staging-dwrms.bikita.com,tauri://localhost}
+      - FRONTEND_URL=${FRONTEND_URL:-https://staging-dwrms.bikita.com}
+      - STORAGE_PATH=/var/dwrms/storage
+      - LOG_DIR=/var/dwrms/logs
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=DEBUG
+      - LOG_FORMAT=json
+    networks:
+      - dwrms_staging
+
+  worker:
+    image: ${DOCKER_REGISTRY:-dwrms}/dwrms-backend:${IMAGE_TAG:-staging-latest}
+    restart: always
+    command: celery -A app.core.celery_app.celery_app worker --loglevel=debug -c 2
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - dwrms_storage_staging:/var/dwrms/storage
+      - dwrms_logs_staging:/var/dwrms/logs
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-dwrms_staging}:${POSTGRES_PASSWORD:-staging_db_password_123}@db:5432/${POSTGRES_DB:-dwrms_staging}
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-staging_secret_key_123456789}
+      - ENVIRONMENT=staging
+    networks:
+      - dwrms_staging
+
+  frontend:
+    image: ${DOCKER_REGISTRY:-dwrms}/dwrms-frontend:${IMAGE_TAG:-staging-latest}
+    restart: always
+    environment:
+      - NEXT_PUBLIC_API_URL=https://staging-dwrms.bikita.com/api/v1
+    networks:
+      - dwrms_staging
+
+  nginx:
+    image: nginx:1.25-alpine
+    restart: always
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infrastructure/certs:/etc/nginx/certs:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - dwrms_staging
+
+networks:
+  dwrms_staging:
+    driver: bridge
+
+volumes:
+  postgres_data_staging:
+  redis_data_staging:
+  dwrms_storage_staging:
+  dwrms_logs_staging:

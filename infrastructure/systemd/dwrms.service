@@ -1,0 +1,20 @@
+[Unit]
+Description=Bikita Minerals DWRMS Industrial Platform Stack (Production)
+Documentation=https://github.com/bikita-minerals/dwrms
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/dwrms
+Environment=COMPOSE_FILE=docker-compose.prod.yml
+ExecStart=/usr/bin/docker compose -f docker-compose.prod.yml up -d --remove-orphans
+ExecStop=/usr/bin/docker compose -f docker-compose.prod.yml down
+ExecReload=/usr/bin/docker compose -f docker-compose.prod.yml up -d --remove-orphans
+TimeoutStartSec=300
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

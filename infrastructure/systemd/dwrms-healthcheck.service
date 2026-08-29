@@ -1,0 +1,11 @@
+[Unit]
+Description=DWRMS Watchdog Automated Health Probe
+After=network.target dwrms.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/curl -k -fsS -o /dev/null --max-time 10 https://localhost/api/v1/readiness
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=Trigger daily DWRMS snapshot backup at 02:00 CAT
+Requires=dwrms-backup.service
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+Timers.target

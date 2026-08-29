@@ -1,0 +1,16 @@
+# ==============================================================================
+# BIKITA MINERALS DWRMS — FAIL2BAN SSH JAIL CONFIGURATION
+# Location on Ubuntu Server: /etc/fail2ban/jail.d/dwrms-sshd.local
+# Target OS: Ubuntu Server 22.04 LTS / 24.04 LTS
+# ==============================================================================
+
+[sshd]
+enabled = true
+port = 22
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = 4
+findtime = 600
+bantime = 3600
+action = iptables-multiport[name=SSH, port="22", protocol=tcp]
+ignoreip = 127.0.0.1/8 ::1 10.0.0.0/8 192.168.0.0/16

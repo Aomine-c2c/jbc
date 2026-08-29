@@ -1,0 +1,13 @@
+[Unit]
+Description=Bikita Minerals DWRMS Automated Database & Storage Snapshot Backup
+After=docker.service dwrms.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/dwrms
+ExecStart=/bin/bash /opt/dwrms/infrastructure/scripts/backup.sh
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
