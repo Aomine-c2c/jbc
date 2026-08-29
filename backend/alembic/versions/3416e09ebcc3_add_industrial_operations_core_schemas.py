@@ -127,22 +127,6 @@ def upgrade() -> None:
                existing_type=sa.NUMERIC(),
                type_=sa.UUID(),
                existing_nullable=False)
-    op.alter_column('job_card_collaborators', 'id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=False)
-    op.alter_column('job_card_collaborators', 'job_card_id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=False)
-    op.alter_column('job_card_collaborators', 'department_id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=False)
-    op.alter_column('job_card_collaborators', 'added_by_id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=False)
     op.alter_column('job_card_collaborators', 'created_at',
                existing_type=sa.DATETIME(),
                nullable=False)
@@ -199,14 +183,6 @@ def upgrade() -> None:
                existing_type=sa.NUMERIC(),
                type_=sa.UUID(),
                existing_nullable=False)
-    op.alter_column('job_cards', 'requesting_department_id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=True)
-    op.alter_column('job_cards', 'responsible_department_id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=True)
     op.alter_column('job_cards', 'machine_id',
                existing_type=sa.NUMERIC(),
                type_=sa.UUID(),
@@ -238,10 +214,6 @@ def upgrade() -> None:
                existing_type=sa.NUMERIC(),
                type_=sa.UUID(),
                existing_nullable=False)
-    op.alter_column('machine_requisitions', 'collaborating_department_id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=True)
     op.alter_column('machine_requisitions', 'requester_id',
                existing_type=sa.NUMERIC(),
                type_=sa.UUID(),
@@ -249,18 +221,10 @@ def upgrade() -> None:
     op.alter_column('machine_requisitions', 'purpose',
                existing_type=sa.VARCHAR(length=2000),
                nullable=False)
-    op.alter_column('machine_requisitions', 'job_card_id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=True)
     op.alter_column('machine_requisitions', 'machine_type_id',
                existing_type=sa.NUMERIC(),
                type_=sa.UUID(),
                existing_nullable=False)
-    op.alter_column('machine_requisitions', 'machine_id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=True)
     op.alter_column('machine_requisitions', 'quantity',
                existing_type=sa.INTEGER(),
                nullable=False)
@@ -279,28 +243,8 @@ def upgrade() -> None:
     op.alter_column('machine_requisitions', 'estimated_cost',
                existing_type=sa.FLOAT(),
                nullable=False)
-    op.alter_column('machine_requisitions', 'dept_approver_id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=True)
-    op.alter_column('machine_requisitions', 'equipment_checker_id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=True)
     op.alter_column('machine_requisitions', 'approver_id',
                existing_type=sa.NUMERIC(),
-               type_=sa.UUID(),
-               existing_nullable=True)
-    op.alter_column('machine_requisitions', 'scheduler_id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=True)
-    op.alter_column('machine_requisitions', 'dispatcher_id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=True)
-    op.alter_column('machine_requisitions', 'inspector_id',
-               existing_type=sa.VARCHAR(length=36),
                type_=sa.UUID(),
                existing_nullable=True)
     op.create_unique_constraint(None, 'machine_requisitions', ['requisition_number'])
@@ -370,18 +314,6 @@ def upgrade() -> None:
                type_=sa.UUID(),
                existing_nullable=True)
     op.create_index(op.f('ix_positions_department_id'), 'positions', ['department_id'], unique=False)
-    op.alter_column('requisition_action_logs', 'id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=False)
-    op.alter_column('requisition_action_logs', 'requisition_id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=False)
-    op.alter_column('requisition_action_logs', 'user_id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=False)
     op.alter_column('role_permissions', 'id',
                existing_type=sa.NUMERIC(),
                type_=sa.UUID(),
@@ -483,42 +415,6 @@ def upgrade() -> None:
     op.create_index(op.f('ix_users_section_id'), 'users', ['section_id'], unique=False)
     op.create_index(op.f('ix_users_supervisor_id'), 'users', ['supervisor_id'], unique=False)
     op.create_index(op.f('ix_users_team_id'), 'users', ['team_id'], unique=False)
-    op.alter_column('work_package_action_logs', 'id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=False)
-    op.alter_column('work_package_action_logs', 'work_package_id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=False)
-    op.alter_column('work_package_action_logs', 'user_id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=False)
-    op.alter_column('work_packages', 'id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=False)
-    op.alter_column('work_packages', 'job_card_id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=False)
-    op.alter_column('work_packages', 'owning_department_id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=False)
-    op.alter_column('work_packages', 'responsible_supervisor_id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=True)
-    op.alter_column('work_packages', 'verified_by_id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=True)
-    op.alter_column('work_packages', 'prerequisite_wp_id',
-               existing_type=sa.VARCHAR(length=36),
-               type_=sa.UUID(),
-               existing_nullable=True)
     op.alter_column('work_packages', 'created_at',
                existing_type=sa.DATETIME(),
                nullable=False)
@@ -536,42 +432,6 @@ def downgrade() -> None:
     op.alter_column('work_packages', 'created_at',
                existing_type=sa.DATETIME(),
                nullable=True)
-    op.alter_column('work_packages', 'prerequisite_wp_id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=True)
-    op.alter_column('work_packages', 'verified_by_id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=True)
-    op.alter_column('work_packages', 'responsible_supervisor_id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=True)
-    op.alter_column('work_packages', 'owning_department_id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=False)
-    op.alter_column('work_packages', 'job_card_id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=False)
-    op.alter_column('work_packages', 'id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=False)
-    op.alter_column('work_package_action_logs', 'user_id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=False)
-    op.alter_column('work_package_action_logs', 'work_package_id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=False)
-    op.alter_column('work_package_action_logs', 'id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=False)
     op.drop_index(op.f('ix_users_team_id'), table_name='users')
     op.drop_index(op.f('ix_users_supervisor_id'), table_name='users')
     op.drop_index(op.f('ix_users_section_id'), table_name='users')
@@ -673,18 +533,6 @@ def downgrade() -> None:
                existing_type=sa.UUID(),
                type_=sa.NUMERIC(),
                existing_nullable=False)
-    op.alter_column('requisition_action_logs', 'user_id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=False)
-    op.alter_column('requisition_action_logs', 'requisition_id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=False)
-    op.alter_column('requisition_action_logs', 'id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=False)
     op.drop_index(op.f('ix_positions_department_id'), table_name='positions')
     op.alter_column('positions', 'department_id',
                existing_type=sa.UUID(),
@@ -752,29 +600,9 @@ def downgrade() -> None:
     op.drop_constraint(None, 'machine_requisitions', type_='foreignkey')
     op.drop_constraint(None, 'machine_requisitions', type_='foreignkey')
     op.drop_constraint(None, 'machine_requisitions', type_='unique')
-    op.alter_column('machine_requisitions', 'inspector_id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=True)
-    op.alter_column('machine_requisitions', 'dispatcher_id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=True)
-    op.alter_column('machine_requisitions', 'scheduler_id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=True)
     op.alter_column('machine_requisitions', 'approver_id',
                existing_type=sa.UUID(),
                type_=sa.NUMERIC(),
-               existing_nullable=True)
-    op.alter_column('machine_requisitions', 'equipment_checker_id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=True)
-    op.alter_column('machine_requisitions', 'dept_approver_id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
                existing_nullable=True)
     op.alter_column('machine_requisitions', 'estimated_cost',
                existing_type=sa.FLOAT(),
@@ -794,18 +622,10 @@ def downgrade() -> None:
     op.alter_column('machine_requisitions', 'quantity',
                existing_type=sa.INTEGER(),
                nullable=True)
-    op.alter_column('machine_requisitions', 'machine_id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=True)
     op.alter_column('machine_requisitions', 'machine_type_id',
                existing_type=sa.UUID(),
                type_=sa.NUMERIC(),
                existing_nullable=False)
-    op.alter_column('machine_requisitions', 'job_card_id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=True)
     op.alter_column('machine_requisitions', 'purpose',
                existing_type=sa.VARCHAR(length=2000),
                nullable=True)
@@ -813,10 +633,6 @@ def downgrade() -> None:
                existing_type=sa.UUID(),
                type_=sa.NUMERIC(),
                existing_nullable=False)
-    op.alter_column('machine_requisitions', 'collaborating_department_id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=True)
     op.alter_column('machine_requisitions', 'department_id',
                existing_type=sa.UUID(),
                type_=sa.NUMERIC(),
@@ -847,14 +663,6 @@ def downgrade() -> None:
     op.alter_column('job_cards', 'machine_id',
                existing_type=sa.UUID(),
                type_=sa.NUMERIC(),
-               existing_nullable=True)
-    op.alter_column('job_cards', 'responsible_department_id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=True)
-    op.alter_column('job_cards', 'requesting_department_id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
                existing_nullable=True)
     op.alter_column('job_cards', 'department_id',
                existing_type=sa.UUID(),
@@ -912,22 +720,6 @@ def downgrade() -> None:
     op.alter_column('job_card_collaborators', 'created_at',
                existing_type=sa.DATETIME(),
                nullable=True)
-    op.alter_column('job_card_collaborators', 'added_by_id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=False)
-    op.alter_column('job_card_collaborators', 'department_id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=False)
-    op.alter_column('job_card_collaborators', 'job_card_id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=False)
-    op.alter_column('job_card_collaborators', 'id',
-               existing_type=sa.UUID(),
-               type_=sa.VARCHAR(length=36),
-               existing_nullable=False)
     op.alter_column('job_card_attachments', 'job_card_id',
                existing_type=sa.UUID(),
                type_=sa.NUMERIC(),
