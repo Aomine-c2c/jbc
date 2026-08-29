@@ -57,11 +57,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [showServerConfig, setShowServerConfig] = useState(false);
   const [showMobileDrawer, setShowMobileDrawer] = useState(false);
   const { isOnline } = useConnection();
-  useSyncManager(); // Mount sync manager globally
-  useLiveEvents(); // Mount real-time SSE stream globally
-
   const isAuthPage = pathname === "/login" || pathname?.startsWith("/login");
   const isSetupPage = pathname === "/setup" || pathname?.startsWith("/setup");
+
+  useSyncManager(); // Mount sync manager globally
+  useLiveEvents({ enabled: !isAuthPage && !isSetupPage }); // Mount real-time SSE stream globally conditionally
 
   useEffect(() => {
     // Client-side auth fallback (useful for Tauri/PWA when middleware might be bypassed)

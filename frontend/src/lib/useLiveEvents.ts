@@ -13,7 +13,7 @@ export interface LiveEventMessage {
   channel?: string;
 }
 
-export function useLiveEvents() {
+export function useLiveEvents(options: { enabled?: boolean } = { enabled: true }) {
   const [isConnected, setIsConnected] = useState(false);
   const [lastEvent, setLastEvent] = useState<LiveEventMessage | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -43,7 +43,7 @@ export function useLiveEvents() {
         // Exponential reconnect retry after 5s
         if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = setTimeout(() => {
-          connect();
+          if (options.enabled) connect();
         }, 5000);
       };
 
@@ -79,9 +79,18 @@ export function useLiveEvents() {
       console.warn('[SSE] Connection error:', err);
       setIsConnected(false);
     }
-  }, []);
+  }, [options.enabled]);
 
   useEffect(() => {
+    if (!options.enabled) {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      setIsConnected(false);
+      return;
+    }
+
     connect();
 
     const handleAuthChange = () => connect();
@@ -98,7 +107,7 @@ export function useLiveEvents() {
       window.removeEventListener('storage', handleAuthChange);
       window.removeEventListener('server-config-changed', handleAuthChange);
     };
-  }, [connect]);
+  }, [connect, options.enabled]);
 
   return { isConnected, lastEvent };
 }
