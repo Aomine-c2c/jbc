@@ -52,7 +52,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [timeStr, setTimeStr] = useState<string>("");
   const [userInfo, setUserInfo] = useState<UserProfile>(DEFAULT_PROFILE);
-  const [isConfigured, setIsConfigured] = useState(false);
+  const [isConfigured, setIsConfigured] = useState(true);
   const [showSyncPanel, setShowSyncPanel] = useState(false);
   const [showServerConfig, setShowServerConfig] = useState(false);
   const [showMobileDrawer, setShowMobileDrawer] = useState(false);
@@ -64,6 +64,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   useLiveEvents({ enabled: !isAuthPage && !isSetupPage }); // Mount real-time SSE stream globally conditionally
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__) {
+      if (!localStorage.getItem('dwrms_active_profile_id')) {
+        setIsConfigured(false);
+      }
+    }
+
     // Client-side auth fallback (useful for Tauri/PWA when middleware might be bypassed)
     if (!isAuthPage && !isSetupPage) {
       const email = localStorage.getItem("user_email");
