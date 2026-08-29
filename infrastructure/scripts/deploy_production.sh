@@ -199,7 +199,7 @@ systemctl enable --now dwrms.service
 systemctl enable --now dwrms-backup.timer
 systemctl enable --now dwrms-healthcheck.timer
 
-docker compose -f "${COMPOSE_FILE}" up -d --remove-orphans
+docker compose -f "${COMPOSE_FILE}" up -d --build --remove-orphans
 echo -e "${GREEN}[OK] STAGE 7 (START SERVICES) COMPLETE: All containers & Systemd units active.${NC}"
 
 # ── STAGE 8: VERIFY HEALTH ───────────────────────────────────────────────────

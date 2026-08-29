@@ -43,6 +43,9 @@ services:
       - dwrms_prod
 
   backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     image: ${DOCKER_REGISTRY:-dwrms}/dwrms-backend:${IMAGE_TAG:-latest}
     restart: always
     depends_on:
@@ -81,6 +84,9 @@ services:
       - dwrms_prod
 
   worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     image: ${DOCKER_REGISTRY:-dwrms}/dwrms-backend:${IMAGE_TAG:-latest}
     restart: always
     command: celery -A app.core.celery_app.celery_app worker --loglevel=info -c 4
@@ -110,6 +116,9 @@ services:
       - dwrms_prod
 
   beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     image: ${DOCKER_REGISTRY:-dwrms}/dwrms-backend:${IMAGE_TAG:-latest}
     restart: always
     command: celery -A app.core.celery_app.celery_app beat --loglevel=info
@@ -136,6 +145,9 @@ services:
       - dwrms_prod
 
   frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     image: ${DOCKER_REGISTRY:-dwrms}/dwrms-frontend:${IMAGE_TAG:-latest}
     restart: always
     environment:
