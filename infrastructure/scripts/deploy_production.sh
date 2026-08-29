@@ -120,10 +120,14 @@ CERT_FILE="${INSTALL_DIR}/infrastructure/certs/dwrms.crt"
 KEY_FILE="${INSTALL_DIR}/infrastructure/certs/dwrms.key"
 if [[ ! -f "$CERT_FILE" || ! -f "$KEY_FILE" ]]; then
     echo "Generating TLS certificate for initial deployment..."
+    DOMAIN="${FRONTEND_URL:-dwrms.bikita.com}"
+    DOMAIN="${DOMAIN#*://}" # Remove http:// or https://
+    DOMAIN="${DOMAIN%%/*}"  # Remove any trailing paths
+    
     openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
         -keyout "$KEY_FILE" \
         -out "$CERT_FILE" \
-        -subj "/C=ZW/ST=Masvingo/L=Bikita/O=Bikita Minerals/OU=Operations/CN=${FRONTEND_URL:-dwrms.bikita.com}"
+        -subj "/C=ZW/ST=Masvingo/L=Bikita/O=Bikita Minerals/OU=Operations/CN=${DOMAIN}"
     chmod 600 "$KEY_FILE"
     chmod 644 "$CERT_FILE"
 fi
