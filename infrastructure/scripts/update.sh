@@ -29,7 +29,7 @@ if [ "$LOCAL_HASH" != "$REMOTE_HASH" ] && [ "$REMOTE_HASH" != "UNKNOWN" ]; then
     git clean -fd
     
     # Rebuild and restart the application containers
-    docker compose -f docker-compose.prod.yml up -d --build backend frontend worker beat
+    docker compose -f docker-compose.prod.yml up -d --build backend frontend worker beat nginx
     
     echo "[$(date)] Auto-update complete."
 fi
