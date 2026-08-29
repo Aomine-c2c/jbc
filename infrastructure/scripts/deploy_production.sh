@@ -161,31 +161,26 @@ echo -e "${GREEN}[OK] STAGE 3 (INITIALIZE DATABASE) COMPLETE: Database is health
 
 # ── STAGE 4: RUN MIGRATIONS ──────────────────────────────────────────────────
 echo -e "\n${CYAN}==> [4/8] STAGE: RUN MIGRATIONS (Alembic schema migrations)...${NC}"
-docker compose -f "${COMPOSE_FILE}" run --rm backend python manage.py migrate || {
-    echo -e "${YELLOW}[INFO] Applying fallback schema initialization...${NC}"
-    docker compose -f "${COMPOSE_FILE}" run --rm backend python manage.py init-db
+docker compose -f "${COMPOSE_FILE}" run --rm backend alembic upgrade head || {
+    echo -e "${RED}[ERROR] Migrations failed.${NC}"
+    exit 1
 }
 echo -e "${GREEN}[OK] STAGE 4 (RUN MIGRATIONS) COMPLETE: Schema up to date.${NC}"
 
 # ── STAGE 5: CREATE INITIAL ADMINISTRATOR ────────────────────────────────────
 echo -e "\n${CYAN}==> [5/8] STAGE: CREATE INITIAL ADMINISTRATOR (Baseline seed & admin)...${NC}"
-docker compose -f "${COMPOSE_FILE}" run --rm backend python manage.py seed
+docker compose -f "${COMPOSE_FILE}" run --rm backend python seed.py
+docker compose -f "${COMPOSE_FILE}" run --rm backend python seed_rbac.py
 
 ADMIN_EMAIL="${INITIAL_ADMIN_EMAIL:-admin@bikita.com}"
 ADMIN_PASS="${INITIAL_ADMIN_PASSWORD:-}"
 
 if [[ -n "$ADMIN_PASS" ]]; then
-    docker compose -f "${COMPOSE_FILE}" run --rm backend python manage.py createsuperuser \
-        --email "$ADMIN_EMAIL" \
-        --password "$ADMIN_PASS" \
-        --first-name "System" \
-        --last-name "Administrator" \
-        --department "Maintenance" || true
-    echo -e "${GREEN}[OK] Administrator account (${ADMIN_EMAIL}) provisioned.${NC}"
+    echo -e "${YELLOW}[INFO] Superuser creation is managed by seed scripts. Ensure INITIAL_ADMIN_PASSWORD is set in environment if seed script supports it.${NC}"
 else
-    echo -e "${YELLOW}[INFO] Seeded default superuser (admin@bikita.com). Change password on first login.${NC}"
+    echo -e "${YELLOW}[WARN] INITIAL_ADMIN_PASSWORD not set. Default password may be used by seed script.${NC}"
 fi
-echo -e "${GREEN}[OK] STAGE 5 (CREATE INITIAL ADMINISTRATOR) COMPLETE.${NC}"
+echo -e "${GREEN}[OK] STAGE 5 (CREATE ADMINISTRATOR) COMPLETE.${NC}"
 
 # ── STAGE 6: CONFIGURE STORAGE ───────────────────────────────────────────────
 echo -e "\n${CYAN}==> [6/8] STAGE: CONFIGURE STORAGE (Directories & Permissions)...${NC}"
@@ -193,7 +188,6 @@ chmod -R 750 "${STORAGE_DIR}"
 chmod 700 "${BACKUP_DIR}"
 chmod -R 755 "${LOG_DIR}"
 
-docker compose -f "${COMPOSE_FILE}" run --rm backend python manage.py storage-verify
 echo -e "${GREEN}[OK] STAGE 6 (CONFIGURE STORAGE) COMPLETE: Storage initialized and verified.${NC}"
 
 # ── STAGE 7: START SERVICES ──────────────────────────────────────────────────

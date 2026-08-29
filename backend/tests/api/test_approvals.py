@@ -67,7 +67,7 @@ async def test_approval_flow_integration(
     pending = res.json()
     
     # Verify the job card is in the pending list
-    found = next((p for p in pending if p["resource_id"] == job_id), None)
+    found = next((p for p in pending if p["approval_request"]["resource_id"] == job_id), None)
     assert found is not None
-    assert found["resource"] == "JOB_CARD"
-    assert found["required_capability"] == "job_card:approve"
+    assert found["approval_request"]["resource_type"] == "JOB_CARD"
+    assert found["pending_step"]["required_permission"] == "job_card:approve"
