@@ -30,3 +30,4 @@ storage/
 backend/storage/
 *.tar.gz
 *.tar.gz.sha256
+infrastructure/certs/
