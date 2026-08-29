@@ -44,7 +44,7 @@ export const DEFAULT_PROFILES: ServerProfile[] = [
   {
     id: 'prod-default',
     name: 'Bikita Minerals Production',
-    primaryUrl: process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '').replace(/\/api\/v1$/, '') || 'https://dwrms.bikita.com',
+    primaryUrl: typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '').replace(/\/api\/v1$/, '') || 'https://dwrms.bikita.com'),
     fallbackUrl: 'http://192.168.1.100:8000',
     connectionMode: 'domain',
     isVerified: false,
@@ -316,7 +316,7 @@ export async function deleteProfile(profileId: string): Promise<void> {
 export async function getActiveApiUrl(): Promise<string> {
   const active = await getActiveProfile();
   if (!active) {
-    return process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '').replace(/\/api\/v1$/, '') || 'https://dwrms.bikita.com';
+    return typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '').replace(/\/api\/v1$/, '') || 'https://dwrms.bikita.com');
   }
   return normalizeServerUrl(active.primaryUrl);
 }
