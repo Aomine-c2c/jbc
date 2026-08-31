@@ -28,6 +28,7 @@ class MachineCreate(BaseModel):
     identifier: str = Field(..., min_length=1)
     serial_number: Optional[str] = None
     location: Optional[str] = "Central Equipment Yard"
+    location_id: Optional[UUID] = None
     capacity_rating: Optional[str] = None
     current_hour_meter: Optional[float] = 0.0
 
@@ -35,6 +36,7 @@ class MachineCreate(BaseModel):
 class MachineUpdate(BaseModel):
     status: Optional[str] = None
     location: Optional[str] = None
+    location_id: Optional[UUID] = None
     current_hour_meter: Optional[float] = None
     last_maintenance_date: Optional[datetime] = None
 
@@ -46,6 +48,8 @@ class MachineResponse(BaseModel):
     serial_number: Optional[str] = None
     status: str
     location: Optional[str] = None
+    location_id: Optional[UUID] = None
+    location_breadcrumb: Optional[str] = None
     capacity_rating: Optional[str] = None
     current_hour_meter: float = 0.0
     last_maintenance_date: Optional[datetime] = None
@@ -66,6 +70,7 @@ class RequisitionCreate(BaseModel):
     machine_id: Optional[UUID] = None
     quantity: int = Field(1, ge=1)
     location: str = Field(..., min_length=2, description="Location of work execution")
+    location_id: Optional[UUID] = None
     required_date: Optional[datetime] = None
     start_time: datetime
     end_time: datetime
@@ -83,23 +88,35 @@ class RequisitionSubmit(BaseModel):
     comments: Optional[str] = None
 
 
-class RequisitionDeptApprove(BaseModel):
-    comments: Optional[str] = "Department authorization granted"
+class RequisitionReview(BaseModel):
+    comments: Optional[str] = "Review complete"
 
 
-class RequisitionEquipmentCheck(BaseModel):
-    machine_id: Optional[UUID] = None
-    comments: Optional[str] = "Equipment availability checked and validated"
+class RequisitionReturnForCorrection(BaseModel):
+    comments: str = Field(..., description="Reason for correction")
 
 
 class RequisitionApprove(BaseModel):
     comments: str = Field(..., description="Approval justification")
 
 
-class RequisitionSchedule(BaseModel):
+class RequisitionAllocate(BaseModel):
     machine_id: UUID = Field(..., description="Allocated specific equipment unit")
+    start_hour_meter: Optional[float] = 0.0
+    start_hours: Optional[int] = 0  # backwards compatibility
     operator_name: Optional[str] = None
     comments: Optional[str] = None
+
+
+class RequisitionAllocatePartial(BaseModel):
+    machine_id: UUID = Field(..., description="Allocated specific equipment unit")
+    start_hour_meter: Optional[float] = 0.0
+    operator_name: Optional[str] = None
+    comments: Optional[str] = None
+
+
+class RequisitionMarkUnavailable(BaseModel):
+    comments: str = Field(..., description="Reason for unavailability")
 
 
 class RequisitionReserve(BaseModel):
@@ -107,41 +124,34 @@ class RequisitionReserve(BaseModel):
     start_hours: Optional[float] = 0.0
 
 
+# Alias used by tests
+MachineDispatchStart = RequisitionAllocate
+
+
+class RequisitionConfirm(BaseModel):
+    comments: Optional[str] = "Requisition confirmed"
+
+
 class RequisitionDispatch(BaseModel):
-    start_hour_meter: Optional[float] = 0.0
-    start_hours: Optional[int] = 0  # backwards compatibility
+    machine_id: Optional[UUID] = None
+    start_hour_meter: Optional[float] = None
+    start_hours: Optional[float] = None
     operator_name: Optional[str] = None
     comments: Optional[str] = None
 
 
-# Alias used by tests
-MachineDispatchStart = RequisitionDispatch
-
-
-class RequisitionConfirm(BaseModel):
-    comments: Optional[str] = None
+class RequisitionFinish(BaseModel):
+    comments: Optional[str] = "Requisition usage finished"
 
 
 class RequisitionStartUse(BaseModel):
     comments: Optional[str] = None
 
 
-class RequisitionFinish(BaseModel):
-    comments: Optional[str] = None
-
-
-class RequisitionRequestReturn(BaseModel):
-    comments: Optional[str] = None
-
-
 class RequisitionReturn(BaseModel):
     end_hour_meter: Optional[float] = None
     end_hours: Optional[int] = None  # backwards compatibility
-    comments: Optional[str] = None
-
-
-class RequisitionInspect(BaseModel):
-    inspection_notes: str = Field(..., description="Post-operation inspection notes")
+    damage_or_issues: Optional[str] = None
     comments: Optional[str] = None
 
 
@@ -172,10 +182,13 @@ class RequisitionActionLogResponse(BaseModel):
 
 class ReservationResponse(BaseModel):
     id: UUID
-    requisition_id: UUID
+    requisition_id: Optional[UUID] = None
     machine_id: UUID
+    reservation_type: str
     start_time: datetime
     end_time: datetime
+    actual_start_time: Optional[datetime] = None
+    actual_end_time: Optional[datetime] = None
     reservation_status: str
     start_hours: float
     end_hours: Optional[float] = None
@@ -196,6 +209,8 @@ class RequisitionResponse(BaseModel):
     machine_id: Optional[UUID] = None
     quantity: int = 1
     location: str
+    location_id: Optional[UUID] = None
+    location_breadcrumb: Optional[str] = None
     
     required_date: Optional[datetime] = None
     start_time: datetime
@@ -265,13 +280,19 @@ class RequisitionListResponse(BaseModel):
 
 
 class ScheduledSlot(BaseModel):
-    requisition_id: UUID
+    requisition_id: Optional[UUID] = None
     requisition_number: Optional[str] = None
     purpose: str
     department_name: Optional[str] = None
     start_time: datetime
     end_time: datetime
     status: str
+    reservation_type: str
+
+class MaintenanceScheduleCreate(BaseModel):
+    start_time: datetime
+    end_time: datetime
+    comments: Optional[str] = None
 
 
 class MachineAvailabilityItem(BaseModel):

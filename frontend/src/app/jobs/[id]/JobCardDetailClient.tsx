@@ -23,6 +23,22 @@ import { NotificationBanner } from "@/components/ui/notification";
 import { TelemetrySpinner } from "@/components/ui/loading-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { useConnection } from "@/lib/providers/ConnectionProvider";
+import {
+  JobReport,
+  JobReportProgressUpdate,
+  JobReportMaterial,
+  JobReportAttachment,
+  JobReportAmendment,
+  DeptFieldMeta,
+  getJobReport,
+  updateJobReport,
+  addProgressUpdate,
+  addMaterial,
+  deleteMaterial,
+  addAttachment,
+  createAmendment,
+  getDeptSchema,
+} from "@/lib/jobReport";
 
 // Icons
 import {
@@ -46,6 +62,16 @@ import {
   ShieldCheck,
   Ban,
   FileText,
+  ClipboardList,
+  Lock,
+  Wrench,
+  AlertTriangle,
+  CheckCheck,
+  Upload,
+  Paperclip,
+  BarChart3,
+  FlaskConical,
+  PenLine,
 } from "lucide-react";
 
 interface JobCardPart {
@@ -122,6 +148,9 @@ interface JobCard {
   parts: JobCardPart[];
   comments: JobCardComment[];
   action_logs: JobCardActionLog[];
+
+  // V1.3 — Job Execution Report (1:1)
+  job_report?: JobReport;
 }
 
 export default function JobCardDetailClient({ params }: { params: Promise<{ id: string }> }) {
@@ -132,6 +161,55 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [activeStageKey, setActiveStageKey] = useState<WorkflowStageKey>("identity");
+
+  // ── V1.3 Job Report State ─────────────────────────────────────
+  const [report, setReport] = useState<JobReport | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportSaving, setReportSaving] = useState(false);
+  const [deptFields, setDeptFields] = useState<DeptFieldMeta[]>([]);
+
+  // Report core field edit draft
+  const [reportDraft, setReportDraft] = useState<Partial<JobReport>>({});
+
+  // Progress update modal
+  const [showProgressModal, setShowProgressModal] = useState(false);
+  const [progressForm, setProgressForm] = useState({
+    update_type: "PROGRESS" as string,
+    notes: "",
+    hold_reason: "",
+    percentage_complete: 50,
+  });
+
+  // Material modal
+  const [showMaterialModal, setShowMaterialModal] = useState(false);
+  const [materialForm, setMaterialForm] = useState({
+    category: "SPARE_PART" as string,
+    item_name: "",
+    item_code: "",
+    quantity: 1,
+    unit: "pcs",
+    unit_cost: 0,
+    notes: "",
+  });
+
+  // Attachment modal
+  const [showAttachmentModal, setShowAttachmentModal] = useState(false);
+  const [attachmentForm, setAttachmentForm] = useState({
+    category: "PHOTO" as string,
+    filename: "",
+    file_url: "",
+    file_type: "",
+    file_size_kb: 0,
+    caption: "",
+  });
+
+  // Amendment modal
+  const [showAmendmentModal, setShowAmendmentModal] = useState(false);
+  const [amendmentForm, setAmendmentForm] = useState({
+    field_name: "corrective_action",
+    new_value: "",
+    amendment_reason: "",
+  });
 
   // Modals state
   const [showSubmitModal, setShowSubmitModal] = useState(false);
@@ -188,6 +266,41 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
   // Close Signature state
   const closeComment = "Work order formally signed off and archived into DWRMS records.";
 
+  // ── Fetch Report ──────────────────────────────────────────────
+  const fetchReport = useCallback(async (jobStatus: string) => {
+    const activeStatuses = ["IN_PROGRESS", "ON_HOLD", "COMPLETED", "PENDING_REVIEW", "VERIFIED", "CLOSED"];
+    if (!activeStatuses.includes(jobStatus?.toUpperCase())) return;
+    setReportLoading(true);
+    try {
+      const r = await getJobReport(id);
+      if (r) {
+        setReport(r);
+        setReportDraft({
+          fault_found: r.fault_found ?? "",
+          fault_code: r.fault_code ?? "",
+          corrective_action: r.corrective_action ?? "",
+          technical_notes: r.technical_notes ?? "",
+          observations: r.observations ?? "",
+          recommendations: r.recommendations ?? "",
+          follow_up_required: r.follow_up_required,
+          follow_up_notes: r.follow_up_notes ?? "",
+          actual_labour_hours: r.actual_labour_hours,
+          actual_cost: r.actual_cost,
+          dept_schema_type: r.dept_schema_type ?? "GENERIC",
+          dept_specific_data: r.dept_specific_data ?? {},
+        });
+        if (r.dept_schema_type && r.dept_schema_type !== "GENERIC") {
+          const fields = await getDeptSchema(r.dept_schema_type);
+          setDeptFields(fields);
+        }
+      }
+    } catch {
+      // Report may not exist yet (job just started) — silently ignore 404
+    } finally {
+      setReportLoading(false);
+    }
+  }, [id]);
+
   const fetchJob = useCallback(async () => {
     try {
       const res = await apiFetch(`/api/v1/job-cards/${id}`);
@@ -209,6 +322,8 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
             job_instruction: res.job_instruction || "",
           }));
         }
+        // Fetch report for active execution statuses
+        await fetchReport(res.status);
       }
       const approvals = await getApprovalHistory('job_card', id);
       if (approvals && approvals.length > 0) {
@@ -220,11 +335,86 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, fetchReport]);
 
   useEffect(() => {
     fetchJob();
   }, [fetchJob]);
+
+  // ── Report save handler ───────────────────────────────────────
+  const saveReport = async () => {
+    if (!report) return;
+    setReportSaving(true);
+    try {
+      const updated = await updateJobReport(id, reportDraft);
+      if (updated) setReport(updated);
+      setSuccessMessage("Job Report saved.");
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      setErrorMessage(e.message || "Failed to save report.");
+    } finally {
+      setReportSaving(false);
+    }
+  };
+
+  const handleAddProgress = async () => {
+    try {
+      await addProgressUpdate(id, progressForm);
+      await fetchReport(job?.status || "");
+      setShowProgressModal(false);
+      setProgressForm({ update_type: "PROGRESS", notes: "", hold_reason: "", percentage_complete: 50 });
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      setErrorMessage(e.message || "Failed to log progress update.");
+    }
+  };
+
+  const handleAddMaterial = async () => {
+    try {
+      await addMaterial(id, materialForm as Omit<JobReportMaterial, "id">);
+      await fetchReport(job?.status || "");
+      setShowMaterialModal(false);
+      setMaterialForm({ category: "SPARE_PART", item_name: "", item_code: "", quantity: 1, unit: "pcs", unit_cost: 0, notes: "" });
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      setErrorMessage(e.message || "Failed to add material.");
+    }
+  };
+
+  const handleDeleteMaterial = async (materialId: string) => {
+    try {
+      await deleteMaterial(id, materialId);
+      await fetchReport(job?.status || "");
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      setErrorMessage(e.message || "Failed to remove material.");
+    }
+  };
+
+  const handleAddAttachment = async () => {
+    try {
+      await addAttachment(id, attachmentForm as Omit<JobReportAttachment, "id" | "uploaded_by_id" | "uploaded_at">);
+      await fetchReport(job?.status || "");
+      setShowAttachmentModal(false);
+      setAttachmentForm({ category: "PHOTO", filename: "", file_url: "", file_type: "", file_size_kb: 0, caption: "" });
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      setErrorMessage(e.message || "Failed to add attachment.");
+    }
+  };
+
+  const handleCreateAmendment = async () => {
+    try {
+      await createAmendment(id, amendmentForm);
+      await fetchReport(job?.status || "");
+      setShowAmendmentModal(false);
+      setAmendmentForm({ field_name: "corrective_action", new_value: "", amendment_reason: "" });
+      setSuccessMessage("Amendment recorded.");
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      setErrorMessage(e.message || "Failed to create amendment.");
+    }
+  };
 
   // Execute State Machine Transition
   const executeTransition = async (endpoint: string, payload: Record<string, unknown> = {}) => {
@@ -905,6 +1095,585 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
               </div>
             </CardContent>
           </Card>
+
+          {/* ── V1.3: STAGE 3B — JOB EXECUTION REPORT ────────────── */}
+          {report && (
+            <Card id="stage-job-report">
+              <CardHeader>
+                <CardTitle>
+                  <ClipboardList className="size-4 text-violet-500" />
+                  <span>Stage 3B: Job Execution Report</span>
+                  {report.is_locked && (
+                    <span className="ml-auto flex items-center gap-1 text-[10px] font-mono text-amber-600 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded">
+                      <Lock className="size-3" /> LOCKED — POST-CLOSURE
+                    </span>
+                  )}
+                </CardTitle>
+                <span className="text-[10px] font-mono text-muted-foreground uppercase">
+                  Dept Schema: {report.dept_schema_type} • {report.is_locked ? `Locked ${report.locked_at ? new Date(report.locked_at).toLocaleDateString() : ""}` : "Active"}
+                </span>
+              </CardHeader>
+              <CardContent className="space-y-5 pt-2">
+
+                {/* LOCKED BANNER */}
+                {report.is_locked && (
+                  <div className="rounded border border-amber-500/40 bg-amber-500/8 p-3 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 font-mono">
+                      <Lock className="size-3.5" />
+                      <span>This report is <strong>locked</strong>. The job card has been formally closed. All corrections require an auditable amendment.</span>
+                    </div>
+                    <Button size="sm" variant="outline" className="text-amber-600 border-amber-500/40 ml-3" onClick={() => setShowAmendmentModal(true)}>
+                      <PenLine className="size-3 mr-1" /> Create Amendment
+                    </Button>
+                  </div>
+                )}
+
+                {/* ── SECTION 1: EXECUTION TIMELINE ─────────────── */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono uppercase text-muted-foreground font-bold flex items-center gap-1">
+                      <BarChart3 className="size-3" /> Work Execution Timeline
+                    </span>
+                    {!report.is_locked && (
+                      <Button size="sm" variant="outline" className="h-6 text-[10px] font-mono" onClick={() => setShowProgressModal(true)}>
+                        <Plus className="size-3 mr-1" /> Log Update
+                      </Button>
+                    )}
+                  </div>
+                  {(!report.progress_updates || report.progress_updates.length === 0) ? (
+                    <div className="p-3 rounded border border-dashed border-border text-muted-foreground text-center text-[11px] font-mono">
+                      No progress events logged yet. Use &quot;Log Update&quot; to begin the execution timeline.
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {report.progress_updates.map((pu) => {
+                        const typeColors: Record<string, string> = {
+                          WORK_START: "bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-300",
+                          PROGRESS: "bg-blue-500/10 border-blue-500/40 text-blue-700 dark:text-blue-300",
+                          PAUSE: "bg-amber-500/10 border-amber-500/40 text-amber-700 dark:text-amber-300",
+                          RESUME: "bg-cyan-500/10 border-cyan-500/40 text-cyan-700 dark:text-cyan-300",
+                          COMPLETION: "bg-violet-500/10 border-violet-500/40 text-violet-700 dark:text-violet-300",
+                        };
+                        const cls = typeColors[pu.update_type] || "bg-muted/30 border-border text-foreground";
+                        return (
+                          <div key={pu.id} className={`rounded border p-2.5 text-xs ${cls}`}>
+                            <div className="flex items-center justify-between">
+                              <span className="font-mono font-bold text-[10px]">{pu.update_type.replace("_", " ")}</span>
+                              <span className="font-mono text-[10px] opacity-70">{new Date(pu.timestamp).toLocaleString()}</span>
+                            </div>
+                            {pu.percentage_complete > 0 && (
+                              <div className="mt-1.5 flex items-center gap-2">
+                                <div className="flex-1 h-1.5 bg-black/10 rounded-full overflow-hidden">
+                                  <div className="h-full bg-current opacity-60 rounded-full transition-all" style={{ width: `${pu.percentage_complete}%` }} />
+                                </div>
+                                <span className="text-[10px] font-mono font-bold">{pu.percentage_complete}%</span>
+                              </div>
+                            )}
+                            {pu.notes && <p className="mt-1 text-[11px] opacity-90">{pu.notes}</p>}
+                            {pu.hold_reason && (
+                              <div className="mt-1 text-[10px] font-mono"><span className="font-bold">Hold Reason:</span> {pu.hold_reason}</div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── SECTION 2 & 3: FAULT, CORRECTIVE ACTION, OUTCOMES ── */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {[
+                    { key: "fault_found", label: "Fault Found", icon: <AlertTriangle className="size-3 text-red-500" />, rows: 3 },
+                    { key: "fault_code", label: "Fault Code", icon: <FlaskConical className="size-3 text-orange-500" />, rows: 1 },
+                    { key: "corrective_action", label: "Corrective Action Taken", icon: <Wrench className="size-3 text-blue-500" />, rows: 4 },
+                    { key: "technical_notes", label: "Technical Notes", icon: <FileText className="size-3 text-cyan-500" />, rows: 3 },
+                    { key: "observations", label: "Observations", icon: <CheckCheck className="size-3 text-emerald-500" />, rows: 3 },
+                    { key: "recommendations", label: "Recommendations", icon: <BarChart3 className="size-3 text-violet-500" />, rows: 3 },
+                  ].map(({ key, label, icon, rows }) => (
+                    <div key={key} className={rows >= 4 ? "md:col-span-2" : ""}>
+                      <label className="text-[10px] font-mono uppercase text-muted-foreground flex items-center gap-1 mb-1">
+                        {icon} {label}
+                      </label>
+                      {report.is_locked ? (
+                        <div className="p-2.5 rounded bg-muted/20 border border-border text-xs text-foreground leading-relaxed whitespace-pre-wrap min-h-[40px]">
+                          {(report as unknown as Record<string, string>)[key] || <span className="text-muted-foreground italic">Not recorded</span>}
+                        </div>
+                      ) : (
+                        <textarea
+                          rows={rows}
+                          className="w-full rounded border border-border bg-background text-xs text-foreground p-2.5 font-sans leading-relaxed resize-none focus:outline-none focus:ring-1 focus:ring-primary/50"
+                          value={(reportDraft as Record<string, string>)[key] ?? ""}
+                          onChange={(e) => setReportDraft(prev => ({ ...prev, [key]: e.target.value }))}
+                          placeholder={`Enter ${label.toLowerCase()}...`}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Follow-up toggle */}
+                {!report.is_locked && (
+                  <div className="flex items-center gap-3 text-xs">
+                    <label className="text-[10px] font-mono uppercase text-muted-foreground">Follow-up Work Required</label>
+                    <button
+                      onClick={() => setReportDraft(prev => ({ ...prev, follow_up_required: !prev.follow_up_required }))}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                        reportDraft.follow_up_required ? "bg-violet-500" : "bg-muted"
+                      }`}
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                        reportDraft.follow_up_required ? "translate-x-4" : "translate-x-1"
+                      }`} />
+                    </button>
+                  </div>
+                )}
+                {reportDraft.follow_up_required && !report.is_locked && (
+                  <div>
+                    <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">Follow-up Notes</label>
+                    <textarea
+                      rows={2}
+                      className="w-full rounded border border-border bg-background text-xs text-foreground p-2.5 resize-none focus:outline-none focus:ring-1 focus:ring-primary/50"
+                      value={reportDraft.follow_up_notes ?? ""}
+                      onChange={(e) => setReportDraft(prev => ({ ...prev, follow_up_notes: e.target.value }))}
+                      placeholder="Describe the follow-up work required..."
+                    />
+                  </div>
+                )}
+
+                {/* ── SECTION 4: LABOUR SUMMARY ─────────────────── */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">Actual Labour Hours</label>
+                    {report.is_locked ? (
+                      <div className="p-2.5 rounded bg-muted/20 border border-border text-xs font-mono font-bold">{report.actual_labour_hours} hrs</div>
+                    ) : (
+                      <Input
+                        type="number"
+                        className="font-mono text-xs h-8"
+                        value={reportDraft.actual_labour_hours ?? 0}
+                        onChange={(e) => setReportDraft(prev => ({ ...prev, actual_labour_hours: parseFloat(e.target.value) || 0 }))}
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">Actual Cost (USD)</label>
+                    {report.is_locked ? (
+                      <div className="p-2.5 rounded bg-muted/20 border border-border text-xs font-mono font-bold">${report.actual_cost.toFixed(2)}</div>
+                    ) : (
+                      <Input
+                        type="number"
+                        className="font-mono text-xs h-8"
+                        value={reportDraft.actual_cost ?? 0}
+                        onChange={(e) => setReportDraft(prev => ({ ...prev, actual_cost: parseFloat(e.target.value) || 0 }))}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* ── SECTION 5: MATERIALS / TOOLS / EQUIPMENT ─── */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono uppercase text-muted-foreground font-bold flex items-center gap-1">
+                      <Wrench className="size-3" /> Materials, Tools & Equipment
+                    </span>
+                    {!report.is_locked && (
+                      <Button size="sm" variant="outline" className="h-6 text-[10px] font-mono" onClick={() => setShowMaterialModal(true)}>
+                        <Plus className="size-3 mr-1" /> Add Item
+                      </Button>
+                    )}
+                  </div>
+                  {(!report.materials || report.materials.length === 0) ? (
+                    <div className="p-3 rounded border border-dashed border-border text-muted-foreground text-center text-[11px] font-mono">
+                      No materials, tools, or equipment recorded.
+                    </div>
+                  ) : (
+                    <Table dense zebra>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Category</TableHead>
+                          <TableHead>Item</TableHead>
+                          <TableHead className="w-20">Code</TableHead>
+                          <TableHead className="w-14 text-right">Qty</TableHead>
+                          <TableHead className="w-16">Unit</TableHead>
+                          <TableHead className="w-20 text-right">Cost ($)</TableHead>
+                          {!report.is_locked && <TableHead className="w-8" />}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {report.materials.map((m) => (
+                          <TableRow key={m.id}>
+                            <TableCell>
+                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted border border-border">{m.category}</span>
+                            </TableCell>
+                            <TableCell className="font-semibold text-foreground">{m.item_name}</TableCell>
+                            <TableCell mono className="text-muted-foreground">{m.item_code || "—"}</TableCell>
+                            <TableCell mono className="text-right">{m.quantity}</TableCell>
+                            <TableCell mono>{m.unit || "—"}</TableCell>
+                            <TableCell mono className="text-right">{m.unit_cost != null ? `$${m.unit_cost.toFixed(2)}` : "—"}</TableCell>
+                            {!report.is_locked && (
+                              <TableCell>
+                                <button onClick={() => handleDeleteMaterial(m.id)} className="text-destructive/70 hover:text-destructive transition-colors">
+                                  <Trash2 className="size-3.5" />
+                                </button>
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+
+                {/* ── SECTION 6: DEPARTMENT-SPECIFIC FIELDS ─────── */}
+                {deptFields.length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-mono uppercase text-muted-foreground font-bold flex items-center gap-1">
+                      <FlaskConical className="size-3" /> {report.dept_schema_type} — Department-Specific Fields
+                    </span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {deptFields.map((field) => {
+                        const currentVal = (reportDraft.dept_specific_data as Record<string, unknown> | undefined)?.[field.name];
+                        const isBoolean = field.type.includes("bool");
+                        const isNumber = field.type.includes("float") || field.type.includes("int");
+                        return (
+                          <div key={field.name}>
+                            <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1" title={field.description}>
+                              {field.label}
+                            </label>
+                            {report.is_locked ? (
+                              <div className="p-2 rounded bg-muted/20 border border-border text-xs font-mono">
+                                {currentVal != null ? String(currentVal) : <span className="text-muted-foreground italic">—</span>}
+                              </div>
+                            ) : isBoolean ? (
+                              <select
+                                className="w-full rounded border border-border bg-background text-xs p-2 focus:outline-none"
+                                value={currentVal == null ? "" : String(currentVal)}
+                                onChange={(e) => {
+                                  const v = e.target.value === "" ? null : e.target.value === "true";
+                                  setReportDraft(prev => ({ ...prev, dept_specific_data: { ...(prev.dept_specific_data || {}), [field.name]: v } }));
+                                }}
+                              >
+                                <option value="">— Not recorded —</option>
+                                <option value="true">Yes</option>
+                                <option value="false">No</option>
+                              </select>
+                            ) : (
+                              <Input
+                                type={isNumber ? "number" : "text"}
+                                className="text-xs h-8 font-mono"
+                                value={currentVal != null ? String(currentVal) : ""}
+                                placeholder={field.description}
+                                onChange={(e) => {
+                                  const v = isNumber ? (parseFloat(e.target.value) || null) : (e.target.value || null);
+                                  setReportDraft(prev => ({ ...prev, dept_specific_data: { ...(prev.dept_specific_data || {}), [field.name]: v } }));
+                                }}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── SECTION 7: ATTACHMENTS ─────────────────────── */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono uppercase text-muted-foreground font-bold flex items-center gap-1">
+                      <Paperclip className="size-3" /> Report Attachments
+                    </span>
+                    {!report.is_locked && (
+                      <Button size="sm" variant="outline" className="h-6 text-[10px] font-mono" onClick={() => setShowAttachmentModal(true)}>
+                        <Upload className="size-3 mr-1" /> Add File
+                      </Button>
+                    )}
+                  </div>
+                  {(!report.attachments || report.attachments.length === 0) ? (
+                    <div className="p-3 rounded border border-dashed border-border text-muted-foreground text-center text-[11px] font-mono">
+                      No photos, documents, or certificates attached.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {report.attachments.map((att) => {
+                        const catColors: Record<string, string> = {
+                          PHOTO: "bg-blue-500/10 text-blue-600",
+                          DOCUMENT: "bg-violet-500/10 text-violet-600",
+                          CERTIFICATE: "bg-emerald-500/10 text-emerald-600",
+                          SKETCH: "bg-amber-500/10 text-amber-600",
+                          MEASUREMENT_SHEET: "bg-cyan-500/10 text-cyan-600",
+                          OTHER: "bg-muted text-muted-foreground",
+                        };
+                        return (
+                          <div key={att.id} className="rounded border border-border p-2.5 space-y-1">
+                            <div className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded w-fit ${catColors[att.category] || catColors.OTHER}`}>
+                              {att.category}
+                            </div>
+                            <div className="text-xs font-semibold text-foreground truncate" title={att.filename}>{att.filename}</div>
+                            {att.caption && <div className="text-[10px] text-muted-foreground">{att.caption}</div>}
+                            <div className="text-[10px] font-mono text-muted-foreground">{att.file_size_kb > 0 ? `${att.file_size_kb} KB` : ""}</div>
+                            {att.file_url && (
+                              <a href={att.file_url} target="_blank" rel="noreferrer" className="text-[10px] text-primary underline">View</a>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── SECTION 8: POST-CLOSURE AMENDMENTS ─────────── */}
+                {report.amendments && report.amendments.length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-mono uppercase text-muted-foreground font-bold flex items-center gap-1">
+                      <PenLine className="size-3" /> Post-Closure Amendments
+                    </span>
+                    <Table dense>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Field</TableHead>
+                          <TableHead>Old Value</TableHead>
+                          <TableHead>New Value</TableHead>
+                          <TableHead>Reason</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Date</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {report.amendments.map((am) => (
+                          <TableRow key={am.id}>
+                            <TableCell mono className="font-bold">{am.field_name}</TableCell>
+                            <TableCell className="text-muted-foreground text-xs max-w-[120px] truncate" title={am.old_value ?? ""}>{am.old_value || "—"}</TableCell>
+                            <TableCell className="text-foreground text-xs max-w-[120px] truncate" title={am.new_value ?? ""}>{am.new_value || "—"}</TableCell>
+                            <TableCell className="text-xs max-w-[160px] truncate" title={am.amendment_reason}>{am.amendment_reason}</TableCell>
+                            <TableCell>
+                              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
+                                am.approval_status === "APPROVED" ? "bg-emerald-500/10 text-emerald-600" :
+                                am.approval_status === "PENDING" ? "bg-amber-500/10 text-amber-600" :
+                                "bg-red-500/10 text-red-600"
+                              }`}>{am.approval_status}</span>
+                            </TableCell>
+                            <TableCell mono className="text-muted-foreground text-[10px]">{new Date(am.created_at).toLocaleDateString()}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+
+                {/* SAVE BUTTON (only when not locked) */}
+                {!report.is_locked && (
+                  <div className="flex justify-end pt-2 border-t border-border/50">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={saveReport}
+                      loading={reportSaving}
+                      className="font-mono text-xs"
+                    >
+                      <CheckCheck className="size-3.5 mr-1.5" />
+                      Save Report Changes
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Placeholder when report hasn't been created yet (before IN_PROGRESS) */}
+          {!report && !reportLoading && job && ["IN_PROGRESS", "ON_HOLD", "COMPLETED", "PENDING_REVIEW", "VERIFIED", "CLOSED"].includes(job.status) && (
+            <Card id="stage-job-report">
+              <CardContent className="py-8 text-center text-muted-foreground text-xs font-mono">
+                <ClipboardList className="size-6 mx-auto mb-2 opacity-30" />
+                Job Execution Report not yet initialised. Start the job to create the report.
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ── PROGRESS UPDATE MODAL ─────────────────────────── */}
+          <Dialog open={showProgressModal} onOpenChange={setShowProgressModal}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Log Execution Progress Update</DialogTitle>
+                <DialogDescription>Record a timestamped event in the job execution timeline.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 py-2 text-xs">
+                <div>
+                  <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">Update Type</label>
+                  <select
+                    className="w-full rounded border border-border bg-background text-xs p-2 focus:outline-none"
+                    value={progressForm.update_type}
+                    onChange={(e) => setProgressForm(prev => ({ ...prev, update_type: e.target.value }))}
+                  >
+                    <option value="WORK_START">Work Start — Physical work begins</option>
+                    <option value="PROGRESS">Progress — Mid-job update</option>
+                    <option value="PAUSE">Pause — Work stopped (hold reason required)</option>
+                    <option value="RESUME">Resume — Work resumed from hold</option>
+                    <option value="COMPLETION">Completion — Technician marks work done</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">% Complete: {progressForm.percentage_complete}%</label>
+                  <input
+                    type="range" min={0} max={100} step={5}
+                    className="w-full"
+                    value={progressForm.percentage_complete}
+                    onChange={(e) => setProgressForm(prev => ({ ...prev, percentage_complete: parseInt(e.target.value) }))}
+                  />
+                </div>
+                {progressForm.update_type === "PAUSE" && (
+                  <div>
+                    <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">Hold Reason <span className="text-red-500">*</span></label>
+                    <Input
+                      className="text-xs h-8"
+                      placeholder="Why is work being paused?"
+                      value={progressForm.hold_reason}
+                      onChange={(e) => setProgressForm(prev => ({ ...prev, hold_reason: e.target.value }))}
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">Notes (Optional)</label>
+                  <textarea rows={3} className="w-full rounded border border-border bg-background text-xs p-2.5 resize-none focus:outline-none" value={progressForm.notes} onChange={(e) => setProgressForm(prev => ({ ...prev, notes: e.target.value }))} placeholder="Describe current status..." />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" size="sm" onClick={() => setShowProgressModal(false)}>Cancel</Button>
+                <Button size="sm" onClick={handleAddProgress}>Log Update</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* ── MATERIAL MODAL ────────────────────────────────── */}
+          <Dialog open={showMaterialModal} onOpenChange={setShowMaterialModal}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Material / Tool / Equipment</DialogTitle>
+                <DialogDescription>Record a resource consumed or used during this job.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 py-2 text-xs">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">Category</label>
+                    <select className="w-full rounded border border-border bg-background text-xs p-2" value={materialForm.category} onChange={(e) => setMaterialForm(prev => ({ ...prev, category: e.target.value }))}>
+                      <option value="SPARE_PART">Spare Part</option>
+                      <option value="CONSUMABLE">Consumable</option>
+                      <option value="MATERIAL">Material</option>
+                      <option value="TOOL">Tool</option>
+                      <option value="EQUIPMENT">Equipment</option>
+                      <option value="OTHER">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">Item Name <span className="text-red-500">*</span></label>
+                    <Input className="text-xs h-8" value={materialForm.item_name} onChange={(e) => setMaterialForm(prev => ({ ...prev, item_name: e.target.value }))} placeholder="e.g. SKF Bearing 6205" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">Item Code / Part #</label>
+                    <Input className="text-xs h-8 font-mono" value={materialForm.item_code} onChange={(e) => setMaterialForm(prev => ({ ...prev, item_code: e.target.value }))} placeholder="e.g. SKF-6205" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">Quantity</label>
+                      <Input type="number" className="text-xs h-8" value={materialForm.quantity} onChange={(e) => setMaterialForm(prev => ({ ...prev, quantity: parseFloat(e.target.value) || 1 }))} />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">Unit</label>
+                      <Input className="text-xs h-8 font-mono" value={materialForm.unit} onChange={(e) => setMaterialForm(prev => ({ ...prev, unit: e.target.value }))} placeholder="pcs" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">Unit Cost (USD)</label>
+                    <Input type="number" className="text-xs h-8" value={materialForm.unit_cost} onChange={(e) => setMaterialForm(prev => ({ ...prev, unit_cost: parseFloat(e.target.value) || 0 }))} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">Notes</label>
+                    <Input className="text-xs h-8" value={materialForm.notes} onChange={(e) => setMaterialForm(prev => ({ ...prev, notes: e.target.value }))} />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" size="sm" onClick={() => setShowMaterialModal(false)}>Cancel</Button>
+                <Button size="sm" onClick={handleAddMaterial} disabled={!materialForm.item_name.trim()}>Add Item</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* ── ATTACHMENT MODAL ──────────────────────────────── */}
+          <Dialog open={showAttachmentModal} onOpenChange={setShowAttachmentModal}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Report Attachment</DialogTitle>
+                <DialogDescription>Attach a photo, document, certificate, or sketch to the report.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 py-2 text-xs">
+                <div>
+                  <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">Category</label>
+                  <select className="w-full rounded border border-border bg-background text-xs p-2" value={attachmentForm.category} onChange={(e) => setAttachmentForm(prev => ({ ...prev, category: e.target.value }))}>
+                    <option value="PHOTO">Photo</option>
+                    <option value="DOCUMENT">Document</option>
+                    <option value="CERTIFICATE">Certificate</option>
+                    <option value="SKETCH">Sketch / Drawing</option>
+                    <option value="MEASUREMENT_SHEET">Measurement Sheet</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">Filename <span className="text-red-500">*</span></label>
+                  <Input className="text-xs h-8" value={attachmentForm.filename} onChange={(e) => setAttachmentForm(prev => ({ ...prev, filename: e.target.value }))} placeholder="e.g. photo-01.jpg" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">File URL (or leave blank)</label>
+                  <Input className="text-xs h-8 font-mono" value={attachmentForm.file_url} onChange={(e) => setAttachmentForm(prev => ({ ...prev, file_url: e.target.value }))} placeholder="https://..." />
+                </div>
+                <div>
+                  <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">Caption</label>
+                  <Input className="text-xs h-8" value={attachmentForm.caption} onChange={(e) => setAttachmentForm(prev => ({ ...prev, caption: e.target.value }))} placeholder="Brief description of attachment" />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" size="sm" onClick={() => setShowAttachmentModal(false)}>Cancel</Button>
+                <Button size="sm" onClick={handleAddAttachment} disabled={!attachmentForm.filename.trim()}>Attach File</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* ── AMENDMENT MODAL ───────────────────────────────── */}
+          <Dialog open={showAmendmentModal} onOpenChange={setShowAmendmentModal}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create Post-Closure Amendment</DialogTitle>
+                <DialogDescription>Corrections to locked reports are permanently recorded with the original and corrected values.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 py-2 text-xs">
+                <div>
+                  <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">Field to Amend <span className="text-red-500">*</span></label>
+                  <select className="w-full rounded border border-border bg-background text-xs p-2" value={amendmentForm.field_name} onChange={(e) => setAmendmentForm(prev => ({ ...prev, field_name: e.target.value }))}>
+                    <option value="fault_found">Fault Found</option>
+                    <option value="fault_code">Fault Code</option>
+                    <option value="corrective_action">Corrective Action</option>
+                    <option value="technical_notes">Technical Notes</option>
+                    <option value="observations">Observations</option>
+                    <option value="recommendations">Recommendations</option>
+                    <option value="follow_up_notes">Follow-up Notes</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">Corrected Value <span className="text-red-500">*</span></label>
+                  <textarea rows={4} className="w-full rounded border border-border bg-background text-xs p-2.5 resize-none focus:outline-none" value={amendmentForm.new_value} onChange={(e) => setAmendmentForm(prev => ({ ...prev, new_value: e.target.value }))} placeholder="Enter the corrected content..." />
+                </div>
+                <div>
+                  <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">Justification Reason <span className="text-red-500">*</span></label>
+                  <textarea rows={2} className="w-full rounded border border-border bg-background text-xs p-2.5 resize-none focus:outline-none" value={amendmentForm.amendment_reason} onChange={(e) => setAmendmentForm(prev => ({ ...prev, amendment_reason: e.target.value }))} placeholder="Why is this correction necessary? (minimum 5 characters)" />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" size="sm" onClick={() => setShowAmendmentModal(false)}>Cancel</Button>
+                <Button size="sm" variant="default" onClick={handleCreateAmendment} disabled={!amendmentForm.new_value.trim() || amendmentForm.amendment_reason.length < 5}>
+                  <PenLine className="size-3.5 mr-1" /> Submit Amendment
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {/* STAGE 4: QUALITY REVIEW, CONFIRMATION & CLOSURE */}
           <Card id="stage-closure">

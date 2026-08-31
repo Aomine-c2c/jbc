@@ -6,6 +6,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.session import Base
 from app.db.mixins import TimestampMixin, SoftDeleteMixin
 
+# Import report models to ensure they are registered with the Base metadata
+# (avoids circular imports; models are not directly referenced here)
+import app.modules.jobs.report_models  # noqa: F401
+
 
 # ── Work Package State Machine ─────────────────────────────────
 WORK_PACKAGE_STATES = [
@@ -158,6 +162,9 @@ class JobCard(Base, TimestampMixin, SoftDeleteMixin):
     external_contractor: Mapped[str | None] = mapped_column(String(500), nullable=True)
     workshop_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
     location: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    location_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("locations.id"), nullable=True, index=True
+    )
     plant_area: Mapped[str | None] = mapped_column(String(255), nullable=True)
     machine_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("machines.id"), nullable=True)
 
@@ -219,6 +226,9 @@ class JobCard(Base, TimestampMixin, SoftDeleteMixin):
     # Cross-department collaboration
     collaborators = relationship("JobCardCollaborator", back_populates="job_card", lazy="selectin", cascade="all, delete-orphan")
     work_packages = relationship("WorkPackage", back_populates="job_card", lazy="selectin", cascade="all, delete-orphan", foreign_keys="WorkPackage.job_card_id", order_by="WorkPackage.package_number.asc()")
+    # V1.3: 1:1 Job Execution Report
+    job_report = relationship("JobReport", back_populates="job_card", uselist=False, lazy="selectin", cascade="all, delete-orphan")
+    location_ref = relationship("Location", foreign_keys=[location_id], lazy="selectin")
 
 
 class JobCardPart(Base, TimestampMixin):

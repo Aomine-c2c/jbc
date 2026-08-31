@@ -25,23 +25,23 @@ from app.modules.fleet.schemas import (
     MachineUpdate,
     RequisitionCreate,
     RequisitionSubmit,
-    RequisitionDeptApprove,
-    RequisitionEquipmentCheck,
+    RequisitionReview,
+    RequisitionReturnForCorrection,
     RequisitionApprove,
-    RequisitionSchedule,
+    RequisitionAllocate,
+    RequisitionAllocatePartial,
+    RequisitionMarkUnavailable,
     RequisitionReserve,
-    RequisitionDispatch,
     RequisitionConfirm,
     RequisitionStartUse,
     RequisitionFinish,
-    RequisitionRequestReturn,
     RequisitionReturn,
-    RequisitionInspect,
     RequisitionClose,
     RequisitionReject,
     RequisitionCancel,
     MachineAvailabilityItem,
     ScheduledSlot,
+    MaintenanceScheduleCreate,
 )
 
 
@@ -92,6 +92,7 @@ class FleetService:
             identifier=data.identifier,
             serial_number=data.serial_number,
             location=data.location,
+            location_id=data.location_id,
             capacity_rating=data.capacity_rating,
             current_hour_meter=data.current_hour_meter or 0.0,
         )
@@ -153,36 +154,43 @@ class FleetService:
         ref_end = end_time or (ref_start + timedelta(days=2))
 
         # Query all active reservations overlapping the window
-        active_req_query = select(MachineRequisition).where(
-            MachineRequisition.machine_id.is_not(None),
-            MachineRequisition.status.in_(["SCHEDULED", "DISPATCHED", "IN_USE", "RETURN_REQUESTED"]),
-            MachineRequisition.start_time < ref_end,
-            MachineRequisition.end_time > ref_start,
+        active_res_query = select(MachineReservation).where(
+            MachineReservation.reservation_status.in_(["SCHEDULED", "ALLOCATED", "IN_USE", "PARTIALLY_ALLOCATED"]),
+            MachineReservation.start_time < ref_end,
+            MachineReservation.end_time > ref_start,
         )
-        active_reqs_res = await db.execute(active_req_query)
-        active_reqs = active_reqs_res.scalars().all()
+        active_res = await db.execute(active_res_query)
+        reservations = active_res.scalars().all()
+
+        # Pre-fetch requisitions to get details
+        req_ids = [r.requisition_id for r in reservations if r.requisition_id]
+        reqs = {}
+        if req_ids:
+            reqs_res = await db.execute(select(MachineRequisition).where(MachineRequisition.id.in_(req_ids)))
+            reqs = {r.id: r for r in reqs_res.scalars().all()}
 
         # Map by machine_id
-        reqs_by_machine: dict[uuid.UUID, list[MachineRequisition]] = {}
-        for r in active_reqs:
-            if r.machine_id:
-                reqs_by_machine.setdefault(r.machine_id, []).append(r)
+        res_by_machine: dict[uuid.UUID, list[MachineReservation]] = {}
+        for r in reservations:
+            res_by_machine.setdefault(r.machine_id, []).append(r)
 
         availability_list: list[MachineAvailabilityItem] = []
         for m in machines:
             slots = []
-            m_reqs = reqs_by_machine.get(m.id, [])
-            is_avail = m.status != "MAINTENANCE"
+            m_res_list = res_by_machine.get(m.id, [])
+            is_avail = m.status not in ["UNDER_MAINTENANCE", "OUT_OF_SERVICE", "RETIRED"]
 
-            for r in m_reqs:
+            for r in m_res_list:
+                req = reqs.get(r.requisition_id)
                 slots.append(
                     ScheduledSlot(
-                        requisition_id=r.id,
-                        requisition_number=r.requisition_number,
-                        purpose=r.purpose,
+                        requisition_id=r.requisition_id,
+                        requisition_number=req.requisition_number if req else None,
+                        purpose=req.purpose if req else ("Maintenance" if r.reservation_type == "MAINTENANCE" else "Unknown"),
                         start_time=r.start_time,
                         end_time=r.end_time,
-                        status=r.status,
+                        status=r.reservation_status,
+                        reservation_type=r.reservation_type,
                     )
                 )
                 if start_time and end_time:
@@ -214,27 +222,60 @@ class FleetService:
         exclude_req_id: Optional[uuid.UUID] = None,
     ):
         """Prevent double booking: verifies no overlapping active reservations exist."""
-        query = select(MachineRequisition).where(
-            MachineRequisition.machine_id == machine_id,
-            MachineRequisition.status.in_(["SCHEDULED", "DISPATCHED", "IN_USE", "RETURN_REQUESTED"]),
-            MachineRequisition.start_time < end_time,
-            MachineRequisition.end_time > start_time,
+        query = select(MachineReservation).where(
+            MachineReservation.machine_id == machine_id,
+            MachineReservation.reservation_status.in_(["SCHEDULED", "ALLOCATED", "IN_USE", "PARTIALLY_ALLOCATED"]),
+            MachineReservation.start_time < end_time,
+            MachineReservation.end_time > start_time,
         )
         if exclude_req_id:
-            query = query.where(MachineRequisition.id != exclude_req_id)
+            query = query.where(MachineReservation.requisition_id != exclude_req_id)
 
         res = await db.execute(query)
-        conflict = res.scalar_one_or_none()
+        conflict = res.scalars().first()
         if conflict:
             m_res = await db.execute(select(Machine).where(Machine.id == machine_id))
             m = m_res.scalar_one_or_none()
             m_name = m.identifier if m else str(machine_id)
             c_start = conflict.start_time.strftime("%Y-%m-%d %H:%M")
             c_end = conflict.end_time.strftime("%Y-%m-%d %H:%M")
+            req_name = "an active booking"
+            if conflict.requisition_id:
+                conflict_req = await db.execute(select(MachineRequisition).where(MachineRequisition.id == conflict.requisition_id))
+                r = conflict_req.scalar_one_or_none()
+                if r and r.requisition_number:
+                    req_name = r.requisition_number
+            if conflict.reservation_type == "MAINTENANCE":
+                req_name = "scheduled maintenance"
             raise HTTPException(
                 status_code=409,
-                detail=f"Double booking conflict: Machine '{m_name}' is already reserved/in use from {c_start} to {c_end} on {conflict.requisition_number or 'active requisition'}.",
+                detail=f"Double booking conflict: Machine '{m_name}' is already reserved/in use from {c_start} to {c_end} for {req_name}.",
             )
+
+    @staticmethod
+    async def schedule_maintenance(
+        db: AsyncSession, machine_id: uuid.UUID, data: MaintenanceScheduleCreate, current_user: User
+    ) -> MachineReservation:
+        user_perms = _get_user_permissions(current_user)
+        if not AuthzGuard.check_permission(current_user, "machines:manage", user_perms):
+            raise HTTPException(status_code=403, detail="Not enough privileges to schedule maintenance")
+
+        if data.end_time <= data.start_time:
+            raise HTTPException(status_code=400, detail="end_time must be after start_time")
+
+        await FleetService._check_double_booking(db, machine_id, data.start_time, data.end_time)
+
+        res = MachineReservation(
+            machine_id=machine_id,
+            start_time=data.start_time,
+            end_time=data.end_time,
+            reservation_status="SCHEDULED",
+            reservation_type="MAINTENANCE",
+        )
+        db.add(res)
+        await db.commit()
+        await db.refresh(res)
+        return res
 
     # ── Generic Requisition Lifecycle Service ─────────────────────
 
@@ -271,6 +312,7 @@ class FleetService:
             machine_id=data.machine_id,
             quantity=data.quantity,
             location=data.location,
+            location_id=data.location_id,
             required_date=data.required_date or data.start_time,
             start_time=data.start_time,
             end_time=data.end_time,
@@ -355,7 +397,7 @@ class FleetService:
         return req
 
     @staticmethod
-    async def dept_approve_requisition(db: AsyncSession, req_id: uuid.UUID, data: RequisitionDeptApprove, current_user: User) -> MachineRequisition:
+    async def review_requisition(db: AsyncSession, req_id: uuid.UUID, data: RequisitionReview, current_user: User) -> MachineRequisition:
         req = await FleetService.get_requisition(db, req_id, current_user)
         user_perms = _get_user_permissions(current_user)
         if not AuthzGuard.check_permission(current_user, "requisition:approve", user_perms, resource_dept_id=req.department_id):
@@ -363,7 +405,7 @@ class FleetService:
 
         old_state = req.status
         try:
-            target = validate_requisition_transition(req.status, "dept_approve")
+            target = validate_requisition_transition(req.status, "review")
         except ValueError as e:
             raise HTTPException(status_code=409, detail=str(e))
 
@@ -376,37 +418,30 @@ class FleetService:
         await db.commit()
         await db.refresh(req)
         await FleetService._log(
-            db, req.id, current_user.id, "dept_approve", state_from=old_state, state_to=req.status, details=data.comments or "Department approval authorized"
+            db, req.id, current_user.id, "review", state_from=old_state, state_to=req.status, details=data.comments or "Review completed"
         )
         return req
 
     @staticmethod
-    async def equipment_check_requisition(db: AsyncSession, req_id: uuid.UUID, data: RequisitionEquipmentCheck, current_user: User) -> MachineRequisition:
+    async def return_for_correction_requisition(db: AsyncSession, req_id: uuid.UUID, data: RequisitionReturnForCorrection, current_user: User) -> MachineRequisition:
         req = await FleetService.get_requisition(db, req_id, current_user)
         user_perms = _get_user_permissions(current_user)
-        if not AuthzGuard.check_permission(current_user, "machines:manage", user_perms):
-            raise HTTPException(status_code=403, detail="Not enough privileges to perform equipment check")
+        if not AuthzGuard.check_permission(current_user, "requisition:approve", user_perms, resource_dept_id=req.department_id):
+            raise HTTPException(status_code=403, detail="Not enough privileges")
 
         old_state = req.status
         try:
-            target = validate_requisition_transition(req.status, "equipment_check")
+            target = validate_requisition_transition(req.status, "return_for_correction")
         except ValueError as e:
             raise HTTPException(status_code=409, detail=str(e))
 
-        if data.machine_id:
-            await FleetService._check_double_booking(db, data.machine_id, req.start_time, req.end_time, req.id)
-            req.machine_id = data.machine_id
-
         req.status = target
-        req.equipment_checker_id = current_user.id
-        req.equipment_checked_at = datetime.utcnow()
-        if data.comments:
-            req.comments = data.comments
+        req.comments = data.comments
 
         await db.commit()
         await db.refresh(req)
         await FleetService._log(
-            db, req.id, current_user.id, "equipment_check", state_from=old_state, state_to=req.status, details=data.comments or "Equipment check verified"
+            db, req.id, current_user.id, "return_for_correction", state_from=old_state, state_to=req.status, details=data.comments
         )
         return req
 
@@ -446,19 +481,18 @@ class FleetService:
         return req
 
     @staticmethod
-    async def schedule_requisition(db: AsyncSession, req_id: uuid.UUID, data: RequisitionSchedule, current_user: User) -> MachineRequisition:
+    async def allocate_requisition(db: AsyncSession, req_id: uuid.UUID, data: RequisitionAllocate, current_user: User) -> MachineRequisition:
         req = await FleetService.get_requisition(db, req_id, current_user)
         user_perms = _get_user_permissions(current_user)
         if not AuthzGuard.check_permission(current_user, "machines:manage", user_perms):
-            raise HTTPException(status_code=403, detail="Not enough privileges to schedule equipment")
+            raise HTTPException(status_code=403, detail="Not enough privileges to allocate equipment")
 
         old_state = req.status
         try:
-            target = validate_requisition_transition(req.status, "schedule")
+            target = validate_requisition_transition(req.status, "allocate")
         except ValueError as e:
             raise HTTPException(status_code=409, detail=str(e))
 
-        # Check double booking
         await FleetService._check_double_booking(db, data.machine_id, req.start_time, req.end_time, req.id)
 
         req.status = target
@@ -467,6 +501,9 @@ class FleetService:
             req.operator_name = data.operator_name
         req.scheduler_id = current_user.id
         req.scheduled_at = datetime.utcnow()
+        req.start_hour_meter = data.start_hour_meter or (float(data.start_hours) if data.start_hours else 0.0)
+        if data.comments:
+            req.comments = data.comments
 
         # Add reservation record
         res = MachineReservation(
@@ -474,54 +511,79 @@ class FleetService:
             machine_id=data.machine_id,
             start_time=req.start_time,
             end_time=req.end_time,
-            reservation_status="SCHEDULED",
+            reservation_status="ALLOCATED",
         )
         db.add(res)
 
         await db.commit()
         await db.refresh(req)
         await FleetService._log(
-            db, req.id, current_user.id, "schedule", state_from=old_state, state_to=req.status, details=f"Scheduled equipment {data.machine_id}"
+            db, req.id, current_user.id, "allocate", state_from=old_state, state_to=req.status, details=f"Allocated equipment {data.machine_id}"
         )
         return req
 
     @staticmethod
-    async def dispatch_requisition(db: AsyncSession, req_id: uuid.UUID, data: RequisitionDispatch, current_user: User) -> MachineRequisition:
+    async def allocate_partial_requisition(db: AsyncSession, req_id: uuid.UUID, data: RequisitionAllocatePartial, current_user: User) -> MachineRequisition:
         req = await FleetService.get_requisition(db, req_id, current_user)
         user_perms = _get_user_permissions(current_user)
         if not AuthzGuard.check_permission(current_user, "machines:manage", user_perms):
-            raise HTTPException(status_code=403, detail="Not enough privileges to dispatch equipment")
+            raise HTTPException(status_code=403, detail="Not enough privileges to allocate equipment")
 
         old_state = req.status
         try:
-            target = validate_requisition_transition(req.status, "dispatch")
+            target = validate_requisition_transition(req.status, "allocate_partial")
+        except ValueError as e:
+            raise HTTPException(status_code=409, detail=str(e))
+
+        await FleetService._check_double_booking(db, data.machine_id, req.start_time, req.end_time, req.id)
+
+        req.status = target
+        req.machine_id = data.machine_id
+        if data.operator_name:
+            req.operator_name = data.operator_name
+        req.scheduler_id = current_user.id
+        req.scheduled_at = datetime.utcnow()
+        req.start_hour_meter = data.start_hour_meter or 0.0
+        if data.comments:
+            req.comments = data.comments
+
+        # Add reservation record
+        res = MachineReservation(
+            requisition_id=req.id,
+            machine_id=data.machine_id,
+            start_time=req.start_time,
+            end_time=req.end_time,
+            reservation_status="PARTIALLY_ALLOCATED",
+        )
+        db.add(res)
+
+        await db.commit()
+        await db.refresh(req)
+        await FleetService._log(
+            db, req.id, current_user.id, "allocate_partial", state_from=old_state, state_to=req.status, details=f"Partially allocated equipment {data.machine_id}"
+        )
+        return req
+
+    @staticmethod
+    async def mark_unavailable_requisition(db: AsyncSession, req_id: uuid.UUID, data: RequisitionMarkUnavailable, current_user: User) -> MachineRequisition:
+        req = await FleetService.get_requisition(db, req_id, current_user)
+        user_perms = _get_user_permissions(current_user)
+        if not AuthzGuard.check_permission(current_user, "machines:manage", user_perms):
+            raise HTTPException(status_code=403, detail="Not enough privileges")
+
+        old_state = req.status
+        try:
+            target = validate_requisition_transition(req.status, "mark_unavailable")
         except ValueError as e:
             raise HTTPException(status_code=409, detail=str(e))
 
         req.status = target
-        req.dispatcher_id = current_user.id
-        req.dispatched_at = datetime.utcnow()
-
-        start_meter = data.start_hour_meter or (float(data.start_hours) if data.start_hours else 0.0)
-        req.start_hour_meter = start_meter
-        if data.operator_name:
-            req.operator_name = data.operator_name
-
-        if req.machine_id:
-            m_res = await db.execute(select(Machine).where(Machine.id == req.machine_id))
-            m = m_res.scalar_one_or_none()
-            if m:
-                m.status = "IN_USE"
+        req.comments = data.comments
 
         await db.commit()
         await db.refresh(req)
-        
-        # Refresh the allocated machine to prevent MissingGreenlet in serialization
-        if req.machine_id and m:
-            await db.refresh(m)
-            
         await FleetService._log(
-            db, req.id, current_user.id, "dispatch", state_from=old_state, state_to=req.status, details=f"Dispatched with hour meter {start_meter}"
+            db, req.id, current_user.id, "mark_unavailable", state_from=old_state, state_to=req.status, details=data.comments
         )
         return req
 
@@ -535,28 +597,21 @@ class FleetService:
             raise HTTPException(status_code=409, detail=str(e))
 
         req.status = target
+        
+        if req.machine_id:
+            m_res = await db.execute(select(Machine).where(Machine.id == req.machine_id))
+            m = m_res.scalar_one_or_none()
+            if m:
+                m.status = "IN_USE"
+                
         await db.commit()
         await db.refresh(req)
+        
+        if req.machine_id and m:
+            await db.refresh(m)
+            
         await FleetService._log(
             db, req.id, current_user.id, "start_use", state_from=old_state, state_to=req.status, details="Equipment active in use on site"
-        )
-        return req
-
-    @staticmethod
-    async def request_return_requisition(db: AsyncSession, req_id: uuid.UUID, data: Optional[RequisitionRequestReturn], current_user: User) -> MachineRequisition:
-        req = await FleetService.get_requisition(db, req_id, current_user)
-        old_state = req.status
-        try:
-            target = validate_requisition_transition(req.status, "request_return")
-        except ValueError as e:
-            raise HTTPException(status_code=409, detail=str(e))
-
-        req.status = target
-        req.return_requested_at = datetime.utcnow()
-        await db.commit()
-        await db.refresh(req)
-        await FleetService._log(
-            db, req.id, current_user.id, "request_return", state_from=old_state, state_to=req.status, details="Site requested equipment return / pickup"
         )
         return req
 
@@ -565,7 +620,7 @@ class FleetService:
         req = await FleetService.get_requisition(db, req_id, current_user)
         old_state = req.status
         try:
-            target = validate_requisition_transition(req.status, "return")
+            target = validate_requisition_transition(req.status, "return_equipment")
         except ValueError as e:
             raise HTTPException(status_code=409, detail=str(e))
 
@@ -582,10 +637,17 @@ class FleetService:
                 if end_meter is not None:
                     m.current_hour_meter = end_meter
 
-        if req.start_hour_meter is not None and end_meter is not None:
-            actual_hours = max(0.5, end_meter - req.start_hour_meter)
+        start_meter = req.start_hour_meter if req.start_hour_meter is not None else (float(req.start_hours) if req.start_hours is not None else None)
+        if start_meter is not None and end_meter is not None:
+            actual_hours = max(0.5, end_meter - start_meter)
+            if not req.machine_type and req.machine_type_id:
+                mt_res = await db.execute(select(MachineType).where(MachineType.id == req.machine_type_id))
+                req.machine_type = mt_res.scalar_one_or_none()
             rate = req.machine_type.hourly_rate if req.machine_type else 50.0
             req.actual_cost = round(actual_hours * rate, 2)
+
+        if data.damage_or_issues:
+            req.notes = (req.notes or "") + f"\nDamage or issues reported on return: {data.damage_or_issues}"
 
         await db.commit()
         await db.refresh(req)
@@ -594,32 +656,7 @@ class FleetService:
             await db.refresh(m)
             
         await FleetService._log(
-            db, req.id, current_user.id, "return", state_from=old_state, state_to=req.status, details=f"Returned to yard, end meter {end_meter}"
-        )
-        return req
-
-    @staticmethod
-    async def inspect_requisition(db: AsyncSession, req_id: uuid.UUID, data: RequisitionInspect, current_user: User) -> MachineRequisition:
-        req = await FleetService.get_requisition(db, req_id, current_user)
-        user_perms = _get_user_permissions(current_user)
-        if not AuthzGuard.check_permission(current_user, "machines:manage", user_perms):
-            raise HTTPException(status_code=403, detail="Not enough privileges to inspect equipment")
-
-        old_state = req.status
-        try:
-            target = validate_requisition_transition(req.status, "inspect")
-        except ValueError as e:
-            raise HTTPException(status_code=409, detail=str(e))
-
-        req.status = target
-        req.inspector_id = current_user.id
-        req.inspected_at = datetime.utcnow()
-        req.inspection_notes = data.inspection_notes
-
-        await db.commit()
-        await db.refresh(req)
-        await FleetService._log(
-            db, req.id, current_user.id, "inspect", state_from=old_state, state_to=req.status, details=f"Inspection passed: {data.inspection_notes}"
+            db, req.id, current_user.id, "return_equipment", state_from=old_state, state_to=req.status, details=f"Returned to yard, end meter {end_meter}"
         )
         return req
 

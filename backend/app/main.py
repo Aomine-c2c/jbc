@@ -276,12 +276,18 @@ from app.api.v1.export import export_router
 from app.api.v1.org import org_router as v1_org_router
 from app.modules.iam.api import iam_router
 from app.modules.iam.org_api import org_router
+from app.modules.iam.location_api import location_router
 from app.modules.jobs.api import job_router, wp_router
 from app.modules.fleet.api import fleet_router
 from app.modules.dashboard.api import dashboard_router
 from app.modules.approvals.api import approvals_router
 from app.modules.notifications.api import router as notifications_router
 from app.modules.audit.api import audit_router
+from app.modules.work.api import router as work_router
+from app.modules.assets.api import router as assets_router
+from app.modules.requests.api import router as requests_router
+from app.modules.materials.api import router as materials_router
+from app.modules.contractors.api import router as contractors_router
 
 app.include_router(system_router)
 app.include_router(storage_router)
@@ -289,7 +295,9 @@ app.include_router(setup_router)
 app.include_router(platform_router)
 app.include_router(events_router)
 app.include_router(export_router)
+app.include_router(v1_org_router)
 app.include_router(org_router)
+app.include_router(location_router)
 app.include_router(iam_router)
 app.include_router(job_router)
 app.include_router(wp_router)
@@ -298,3 +306,8 @@ app.include_router(dashboard_router)
 app.include_router(approvals_router)
 app.include_router(notifications_router)
 app.include_router(audit_router)
+app.include_router(work_router, prefix="/api/v1")
+app.include_router(assets_router, prefix="/api/v1")
+app.include_router(requests_router, prefix="/api/v1")
+app.include_router(materials_router, prefix="/api/v1")
+app.include_router(contractors_router, prefix="/api/v1")

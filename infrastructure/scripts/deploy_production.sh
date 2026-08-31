@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # BIKITA MINERALS DWRMS — PRODUCTION SERVER DEPLOYMENT ORCHESTRATOR
-# Platform Version: V1.9 (Server-First Authoritative Operations Core)
+# Platform Version: V2.1 (Server-First Authoritative Operations Core)
 # Target OS: Ubuntu Server 22.04 LTS / 24.04 LTS
 # ==============================================================================
 # Lifecycle Workflow:
@@ -31,7 +31,7 @@ LOG_DIR="${LOG_DIR:-/var/dwrms/logs}"
 COMPOSE_FILE="${INSTALL_DIR}/docker-compose.prod.yml"
 
 echo -e "${BLUE}========================================================================${NC}"
-echo -e "${BLUE}   BIKITA MINERALS DWRMS — UBUNTU SERVER PRODUCTION DEPLOYMENT (V1.9)   ${NC}"
+echo -e "${BLUE}   BIKITA MINERALS DWRMS — UBUNTU SERVER PRODUCTION DEPLOYMENT (V2.1)   ${NC}"
 echo -e "${BLUE}========================================================================${NC}"
 
 # Check for root privileges
@@ -221,7 +221,7 @@ echo "Testing /version endpoint..."
 curl -k -fsS https://localhost/version | jq . || curl -k -fsS https://localhost/api/v1/version | jq .
 
 echo -e "\n${GREEN}========================================================================${NC}"
-echo -e "${GREEN}   DEPLOYMENT SUCCESSFUL: DWRMS V1.9 Authoritative Ubuntu Server Core   ${NC}"
+echo -e "${GREEN}   DEPLOYMENT SUCCESSFUL: DWRMS V2.1 Authoritative Ubuntu Server Core   ${NC}"
 echo -e "${GREEN}========================================================================${NC}"
 echo -e "Operational Portal:  ${BLUE}${FRONTEND_URL:-https://dwrms.bikita.com}${NC}"
 echo -e "API Gateway:         ${BLUE}${FRONTEND_URL:-https://dwrms.bikita.com}/api/v1${NC}"

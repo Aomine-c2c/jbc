@@ -8,11 +8,18 @@ from app.db.mixins import TimestampMixin
 
 
 # ── Machine State Machine ─────────────────────────────────────
-MACHINE_STATES = ["AVAILABLE", "IN_USE", "MAINTENANCE"]
+MACHINE_STATES = [
+    "AVAILABLE", "RESERVED", "ALLOCATED", "IN_USE", 
+    "UNDER_MAINTENANCE", "OUT_OF_SERVICE", "RETIRED"
+]
 MACHINE_TRANSITIONS = {
-    "AVAILABLE": {"reserve": "IN_USE", "maintenance": "MAINTENANCE"},
-    "IN_USE": {"return": "AVAILABLE", "maintenance": "MAINTENANCE"},
-    "MAINTENANCE": {"available": "AVAILABLE"},
+    "AVAILABLE": {"reserve": "RESERVED", "allocate": "ALLOCATED", "start_use": "IN_USE", "maintenance": "UNDER_MAINTENANCE", "out_of_service": "OUT_OF_SERVICE", "retire": "RETIRED"},
+    "RESERVED": {"allocate": "ALLOCATED", "start_use": "IN_USE", "cancel": "AVAILABLE", "maintenance": "UNDER_MAINTENANCE"},
+    "ALLOCATED": {"start_use": "IN_USE", "cancel": "AVAILABLE", "maintenance": "UNDER_MAINTENANCE"},
+    "IN_USE": {"return": "AVAILABLE", "maintenance": "UNDER_MAINTENANCE", "out_of_service": "OUT_OF_SERVICE"},
+    "UNDER_MAINTENANCE": {"available": "AVAILABLE", "out_of_service": "OUT_OF_SERVICE", "retire": "RETIRED"},
+    "OUT_OF_SERVICE": {"available": "AVAILABLE", "maintenance": "UNDER_MAINTENANCE", "retire": "RETIRED"},
+    "RETIRED": {}
 }
 
 
@@ -28,18 +35,18 @@ def validate_machine_transition(from_state: str, action: str) -> str:
 REQUISITION_STATES = [
     "DRAFT",
     "SUBMITTED",
-    "DEPARTMENT_APPROVAL",
-    "EQUIPMENT_CHECK",
+    "REVIEWED",
     "APPROVED",
-    "SCHEDULED",
-    "DISPATCHED",
+    "AWAITING_ALLOCATION",
+    "ALLOCATED",
     "IN_USE",
-    "RETURN_REQUESTED",
     "RETURNED",
-    "INSPECTED",
     "CLOSED",
     "REJECTED",
     "CANCELLED",
+    "RETURNED_FOR_CORRECTION",
+    "UNAVAILABLE",
+    "PARTIALLY_ALLOCATED",
 ]
 
 REQUISITION_TRANSITIONS = {
@@ -48,48 +55,80 @@ REQUISITION_TRANSITIONS = {
         "cancel": "CANCELLED",
     },
     "SUBMITTED": {
+        "review": "REVIEWED",
         "dept_approve": "DEPARTMENT_APPROVAL",
-        "submit": "DEPARTMENT_APPROVAL",
+        "dept-approve": "DEPARTMENT_APPROVAL",
+        "return_for_correction": "RETURNED_FOR_CORRECTION",
         "reject": "REJECTED",
         "cancel": "CANCELLED",
     },
     "DEPARTMENT_APPROVAL": {
         "equipment_check": "EQUIPMENT_CHECK",
+        "equipment-check": "EQUIPMENT_CHECK",
         "approve": "APPROVED",
         "reject": "REJECTED",
         "cancel": "CANCELLED",
     },
     "EQUIPMENT_CHECK": {
         "approve": "APPROVED",
+        "allocate": "ALLOCATED",
         "schedule": "SCHEDULED",
         "reject": "REJECTED",
         "cancel": "CANCELLED",
     },
+    "REVIEWED": {
+        "approve": "APPROVED",
+        "return_for_correction": "RETURNED_FOR_CORRECTION",
+        "reject": "REJECTED",
+        "cancel": "CANCELLED",
+    },
     "APPROVED": {
+        "await_allocation": "AWAITING_ALLOCATION",
+        "allocate": "ALLOCATED",
         "schedule": "SCHEDULED",
         "dispatch": "DISPATCHED",
         "cancel": "CANCELLED",
     },
     "SCHEDULED": {
         "dispatch": "DISPATCHED",
+        "allocate": "ALLOCATED",
+        "start_use": "IN_USE",
         "cancel": "CANCELLED",
     },
     "DISPATCHED": {
         "start_use": "IN_USE",
-        "confirm": "IN_USE",
+        "cancel": "CANCELLED",
+    },
+    "AWAITING_ALLOCATION": {
+        "allocate": "ALLOCATED",
+        "allocate_partial": "PARTIALLY_ALLOCATED",
+        "mark_unavailable": "UNAVAILABLE",
+        "cancel": "CANCELLED",
+    },
+    "PARTIALLY_ALLOCATED": {
+        "allocate": "ALLOCATED",
+        "mark_unavailable": "UNAVAILABLE",
+        "cancel": "CANCELLED",
+        "start_use": "IN_USE",
+    },
+    "ALLOCATED": {
+        "start_use": "IN_USE",
+        "cancel": "CANCELLED",
         "return": "RETURNED",
     },
     "IN_USE": {
-        "request_return": "RETURN_REQUESTED",
-        "finish": "RETURN_REQUESTED",
         "return": "RETURNED",
+        "return_equipment": "RETURNED",
+        "request_return": "RETURN_REQUESTED",
+        "request-return": "RETURN_REQUESTED",
     },
     "RETURN_REQUESTED": {
         "return": "RETURNED",
+        "return_equipment": "RETURNED",
+        "inspect": "INSPECTED",
     },
     "RETURNED": {
         "inspect": "INSPECTED",
-        "complete": "INSPECTED",
         "close": "CLOSED",
     },
     "INSPECTED": {
@@ -100,6 +139,14 @@ REQUISITION_TRANSITIONS = {
         "submit": "SUBMITTED",
     },
     "CANCELLED": {},
+    "RETURNED_FOR_CORRECTION": {
+        "submit": "SUBMITTED",
+        "cancel": "CANCELLED",
+    },
+    "UNAVAILABLE": {
+        "await_allocation": "AWAITING_ALLOCATION",
+        "cancel": "CANCELLED",
+    },
 }
 
 
@@ -136,6 +183,12 @@ class Machine(Base):
     serial_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="AVAILABLE")
     location: Mapped[str | None] = mapped_column(String(255), nullable=True, default="Central Equipment Yard")
+    location_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("locations.id"), nullable=True, index=True
+    )
+    asset_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("assets.id", use_alter=True), nullable=True, index=True
+    )
     capacity_rating: Mapped[str | None] = mapped_column(String(100), nullable=True)
     current_hour_meter: Mapped[float] = mapped_column(Float, default=0.0)
     last_maintenance_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -145,6 +198,8 @@ class Machine(Base):
     machine_type = relationship("MachineType", back_populates="machines", lazy="selectin")
     reservations = relationship("MachineReservation", back_populates="machine", lazy="selectin")
     requisitions = relationship("MachineRequisition", back_populates="allocated_machine", lazy="selectin")
+    location_ref = relationship("Location", foreign_keys=[location_id], lazy="selectin")
+    asset = relationship("Asset", foreign_keys=[asset_id], lazy="selectin")
 
 
 class MachineRequisition(Base, TimestampMixin):
@@ -167,6 +222,11 @@ class MachineRequisition(Base, TimestampMixin):
     machine_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("machines.id"), nullable=True)
     quantity: Mapped[int] = mapped_column(Integer, default=1)
     location: Mapped[str] = mapped_column(String(255), nullable=False, default="On-site Works")
+    location_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("locations.id"), nullable=True, index=True
+    )
+    
+    location_ref = relationship("Location", foreign_keys=[location_id], lazy="selectin")
 
     # Time Schedule
     required_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -230,11 +290,14 @@ class MachineReservation(Base):
     __tablename__ = "machine_reservations"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    requisition_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("machine_requisitions.id"), nullable=False)
+    requisition_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("machine_requisitions.id"), nullable=True)
     machine_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("machines.id"), nullable=False)
+    reservation_type: Mapped[str] = mapped_column(String(50), nullable=False, default="REQUISITION")  # REQUISITION, MAINTENANCE
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    reservation_status: Mapped[str] = mapped_column(String(50), nullable=False, default="SCHEDULED")  # SCHEDULED, DISPATCHED, COMPLETED, CANCELLED
+    actual_start_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    actual_end_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reservation_status: Mapped[str] = mapped_column(String(50), nullable=False, default="SCHEDULED")  # SCHEDULED, ALLOCATED, IN_USE, COMPLETED, CANCELLED
     start_hours: Mapped[float] = mapped_column(Float, default=0.0)
     end_hours: Mapped[float | None] = mapped_column(Float, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

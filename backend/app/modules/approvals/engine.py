@@ -9,9 +9,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.iam.models import User
-from app.modules.approvals.models import ApprovalRequest, ApprovalStep
+from app.modules.approvals.models import ApprovalRequest, ApprovalStep, WorkflowDefinition
 from app.core.config import settings
 from app.modules.audit.service import AuditService
+from sqlalchemy.orm import selectinload
 
 
 @dataclass
@@ -37,56 +38,49 @@ class ApprovalDecision:
     signature_token: str
 
 
-STEP_DEFINITIONS = {
-    "SUPERVISOR": {
-        "authority_role": "SUPERVISOR",
-        "required_permission": "job_card:approve",
-    },
-    "DEPT_MANAGER": {
-        "authority_role": "DEPT_MANAGER",
-        "required_permission": "job_card:approve",
-    },
-    "RESOURCE_CONTROLLER": {
-        "authority_role": "RESOURCE_CONTROLLER",
-        "required_permission": "machine_requisition:approve",
-    },
-    "MAINTENANCE_AUTHORITY": {
-        "authority_role": "MAINTENANCE_AUTHORITY",
-        "required_permission": "job_card:approve",
-    },
-    "FINANCE": {
-        "authority_role": "FINANCE",
-        "required_permission": "approval:finance_approve",
-    },
-    "HSE": {
-        "authority_role": "HSE",
-        "required_permission": "approval:hse_approve",
-    },
-    "FINAL_APPROVER": {
-        "authority_role": "FINAL_APPROVER",
-        "required_permission": "approval:final_approve",
-    },
-}
-
-
-def get_required_steps(ctx: ApprovalContext) -> list[dict]:
-    steps = []
-    if ctx.workflow_type == "EMERGENCY":
-        steps.append(STEP_DEFINITIONS["SUPERVISOR"])
-        return steps
-    if ctx.resource_type == "machine_requisition":
-        steps.append(STEP_DEFINITIONS["RESOURCE_CONTROLLER"])
-    else:
-        steps.append(STEP_DEFINITIONS["SUPERVISOR"])
-    if ctx.estimated_cost >= 5_000:
-        steps.append(STEP_DEFINITIONS["DEPT_MANAGER"])
-    if ctx.estimated_cost >= 50_000 or ctx.workflow_type == "CAPEX":
-        steps.append(STEP_DEFINITIONS["FINANCE"])
-    if ctx.risk_level in ("HIGH", "CRITICAL") or ctx.workflow_type == "HSE_CRITICAL":
-        steps.append(STEP_DEFINITIONS["HSE"])
-    if ctx.workflow_type == "CAPEX":
-        steps.append(STEP_DEFINITIONS["FINAL_APPROVER"])
-    return steps
+async def get_required_steps(db: AsyncSession, ctx: ApprovalContext) -> list[dict]:
+    # Fetch all active workflows, ordered by priority DESC
+    result = await db.execute(
+        select(WorkflowDefinition)
+        .where(WorkflowDefinition.is_active == True)
+        .options(selectinload(WorkflowDefinition.steps))
+        .order_by(WorkflowDefinition.priority.desc())
+    )
+    workflows = result.scalars().all()
+    
+    for wf in workflows:
+        match = True
+        if wf.resource_type and wf.resource_type != ctx.resource_type:
+            match = False
+        if match and wf.department_id and str(wf.department_id) != str(ctx.department_id):
+            match = False
+        if match and wf.min_cost is not None and ctx.estimated_cost < wf.min_cost:
+            match = False
+        if match and wf.min_priority is not None and ctx.priority < wf.min_priority:
+            match = False
+        if match and wf.risk_level and wf.risk_level != ctx.risk_level:
+            match = False
+        if match and wf.workflow_type and wf.workflow_type != ctx.workflow_type:
+            match = False
+            
+        if match:
+            # Sort steps by step_number
+            sorted_steps = sorted(wf.steps, key=lambda s: s.step_number)
+            return [
+                {
+                    "authority_role": s.authority_role,
+                    "required_permission": s.required_permission
+                }
+                for s in sorted_steps
+            ]
+            
+    # Fallback if no matching workflow found
+    return [
+        {
+            "authority_role": "SUPERVISOR",
+            "required_permission": "job_card:approve",
+        }
+    ]
 
 
 def _generate_signature_token(
@@ -146,7 +140,7 @@ class ApprovalEngine:
                 status_code=409,
                 detail="An open approval request already exists for this resource.",
             )
-        step_defs = get_required_steps(ctx)
+        step_defs = await get_required_steps(db, ctx)
         req = ApprovalRequest(
             resource_type=ctx.resource_type,
             resource_id=ctx.resource_id,

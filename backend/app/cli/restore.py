@@ -160,6 +160,15 @@ def restore_command(archive_name, yes, skip_storage, pre_snapshot):
         if settings.DB_ENGINE == "postgresql":
             res_cmd = ["docker", "compose", "-f", "docker-compose.prod.yml", "exec", "-T", "db", "psql", "-U", settings.DB_USER or "postgres", "-d", settings.DB_NAME or "dwrms"]
             code, out, err = run_command_capture(res_cmd)
+        elif settings.DB_ENGINE == "mysql":
+            res_cmd = ["docker", "compose", "-f", "docker-compose.prod.yml", "exec", "-T", "db", "mysql", "-u", settings.DB_USER or "user", f"-p{settings.DB_PASSWORD or 'password'}", settings.DB_NAME or "dwrms"]
+            try:
+                import subprocess
+                with open(db_sql, "r", encoding="utf-8") as f:
+                    proc = subprocess.run(res_cmd, stdin=f, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=str(ROOT_DIR))
+                    code, out, err = proc.returncode, proc.stdout, proc.stderr
+            except Exception as e:
+                code, out, err = 1, "", str(e)
         elif settings.DB_ENGINE == "sqlite":
             for target_db in [ROOT_DIR / "test_dwrms.db", ROOT_DIR / "backend" / "test_dwrms.db"]:
                 if target_db.parent.exists():

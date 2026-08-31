@@ -11,6 +11,8 @@ from app.db.session import Base
 class Scope(str, enum.Enum):
     OWN = "OWN"
     ASSIGNED = "ASSIGNED"
+    LOCATION = "LOCATION"
+    SITE = "SITE"
     DEPARTMENT = "DEPARTMENT"
     CROSS_DEPARTMENT = "CROSS_DEPARTMENT"
     GLOBAL = "GLOBAL"
@@ -57,6 +59,59 @@ class Site(Base):
 
     organization = relationship("Organization", back_populates="sites")
     departments = relationship("Department", back_populates="site", lazy="selectin")
+    locations = relationship("Location", back_populates="site", lazy="selectin", cascade="all, delete-orphan")
+
+
+# ── Physical & Spatial Location Hierarchy ─────────────────────
+
+class Location(Base):
+    """
+    Flexible, scalable physical and spatial hierarchy node.
+    Supports arbitrary depth: Site -> Facility/Plant -> Area -> Section -> Specific Location.
+    Features self-referential parent-child relationships with recursive path breadcrumb.
+    """
+    __tablename__ = "locations"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=True, index=True
+    )
+    site_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("sites.id"), nullable=True, index=True
+    )
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("locations.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    
+    code: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    location_type: Mapped[str] = mapped_column(String(50), nullable=False, default="AREA")
+    description: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    
+    # Path & search helpers
+    breadcrumb: Mapped[str | None] = mapped_column(String(1024), nullable=True, index=True)
+    hierarchy_level: Mapped[int] = mapped_column(Integer, default=1)
+    
+    # Physical / GIS Metadata
+    gps_coordinates: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    barcode_or_nfc: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+    criticality_rating: Mapped[str | None] = mapped_column(String(50), default="MEDIUM")
+    
+    # Lifecycle / Archiving
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    archived_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    parent = relationship("Location", remote_side=[id], back_populates="children")
+    children = relationship("Location", back_populates="parent", lazy="selectin", cascade="all")
+    organization = relationship("Organization", lazy="selectin")
+    site = relationship("Site", back_populates="locations", lazy="selectin")
 
 
 # ── Department, Section & Team Structure ──────────────────────
@@ -164,6 +219,12 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     
     # Organizational Placement
+    site_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("sites.id"), nullable=True, index=True
+    )
+    location_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("locations.id"), nullable=True, index=True
+    )
     department_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("departments.id"), nullable=True, index=True
     )
@@ -194,6 +255,8 @@ class User(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
+    site = relationship("Site", foreign_keys=[site_id], lazy="selectin")
+    location = relationship("Location", foreign_keys=[location_id], lazy="selectin")
     department = relationship("Department", back_populates="users", foreign_keys=[department_id])
     section = relationship("Section", back_populates="users", foreign_keys=[section_id])
     team = relationship("Team", back_populates="users", foreign_keys=[team_id])

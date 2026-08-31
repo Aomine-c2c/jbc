@@ -178,3 +178,187 @@ async def get_approval_certificate(
         return reqs[0]
     from fastapi import HTTPException
     raise HTTPException(status_code=404, detail="No approval history found for this resource.")
+
+# --- Workflow Definitions ---
+from app.modules.approvals.schemas import (
+    WorkflowDefinitionOut,
+    WorkflowDefinitionCreate,
+    WorkflowDefinitionUpdate
+)
+from app.modules.approvals.models import WorkflowDefinition, WorkflowStepDef
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+
+@approvals_router.get("/admin/workflows", response_model=list[WorkflowDefinitionOut])
+async def list_workflows(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(_get_current_user()),
+):
+    """List all workflow definitions."""
+    from app.core.authz import require_permission
+    require_permission(current_user, "settings:manage")
+    
+    result = await db.execute(
+        select(WorkflowDefinition)
+        .options(selectinload(WorkflowDefinition.steps))
+        .order_by(WorkflowDefinition.priority.desc())
+    )
+    return result.scalars().all()
+
+
+@approvals_router.post("/admin/workflows", response_model=WorkflowDefinitionOut)
+async def create_workflow(
+    data: WorkflowDefinitionCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(_get_current_user()),
+):
+    from app.core.authz import require_permission
+    from app.modules.audit.service import AuditService
+    require_permission(current_user, "settings:manage")
+
+    wf = WorkflowDefinition(
+        name=data.name,
+        description=data.description,
+        resource_type=data.resource_type,
+        department_id=data.department_id,
+        min_cost=data.min_cost,
+        min_priority=data.min_priority,
+        risk_level=data.risk_level,
+        workflow_type=data.workflow_type,
+        is_active=data.is_active,
+        priority=data.priority,
+    )
+    db.add(wf)
+    await db.flush()
+
+    for step_data in data.steps:
+        step = WorkflowStepDef(
+            workflow_id=wf.id,
+            step_number=step_data.step_number,
+            authority_role=step_data.authority_role,
+            required_permission=step_data.required_permission
+        )
+        db.add(step)
+
+    await db.commit()
+    await db.refresh(wf)
+
+    await AuditService.log_event(
+        db=db,
+        action="CREATE",
+        resource="WORKFLOW_DEFINITION",
+        resource_id=str(wf.id),
+        user=current_user,
+        new_value=data.model_dump(),
+        ip_address=_client_ip(request)
+    )
+
+    return wf
+
+
+@approvals_router.put("/admin/workflows/{workflow_id}", response_model=WorkflowDefinitionOut)
+async def update_workflow(
+    workflow_id: uuid.UUID,
+    data: WorkflowDefinitionUpdate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(_get_current_user()),
+):
+    from app.core.authz import require_permission
+    from fastapi import HTTPException
+    from app.modules.audit.service import AuditService
+    require_permission(current_user, "settings:manage")
+
+    result = await db.execute(
+        select(WorkflowDefinition)
+        .options(selectinload(WorkflowDefinition.steps))
+        .where(WorkflowDefinition.id == workflow_id)
+    )
+    wf = result.scalar_one_or_none()
+    if not wf:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+
+    # Capture previous state
+    previous_state = {
+        "name": wf.name,
+        "description": wf.description,
+        "resource_type": wf.resource_type,
+        "department_id": str(wf.department_id) if wf.department_id else None,
+        "min_cost": wf.min_cost,
+        "min_priority": wf.min_priority,
+        "risk_level": wf.risk_level,
+        "workflow_type": wf.workflow_type,
+        "is_active": wf.is_active,
+        "priority": wf.priority,
+        "steps": [{"step_number": s.step_number, "authority_role": s.authority_role, "required_permission": s.required_permission} for s in wf.steps]
+    }
+
+    update_data = data.model_dump(exclude_unset=True)
+    steps_data = update_data.pop("steps", None)
+
+    for k, v in update_data.items():
+        setattr(wf, k, v)
+
+    if steps_data is not None:
+        # Replace steps entirely
+        for step in wf.steps:
+            await db.delete(step)
+        await db.flush()
+        
+        for step_data in steps_data:
+            step = WorkflowStepDef(
+                workflow_id=wf.id,
+                step_number=step_data["step_number"],
+                authority_role=step_data["authority_role"],
+                required_permission=step_data["required_permission"]
+            )
+            db.add(step)
+
+    await db.commit()
+    await db.refresh(wf)
+
+    await AuditService.log_event(
+        db=db,
+        action="UPDATE",
+        resource="WORKFLOW_DEFINITION",
+        resource_id=str(wf.id),
+        user=current_user,
+        previous_value=previous_state,
+        new_value=data.model_dump(exclude_unset=True),
+        ip_address=_client_ip(request)
+    )
+
+    return wf
+
+
+@approvals_router.delete("/admin/workflows/{workflow_id}")
+async def delete_workflow(
+    workflow_id: uuid.UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(_get_current_user()),
+):
+    from app.core.authz import require_permission
+    from fastapi import HTTPException
+    from app.modules.audit.service import AuditService
+    require_permission(current_user, "settings:manage")
+
+    result = await db.execute(select(WorkflowDefinition).where(WorkflowDefinition.id == workflow_id))
+    wf = result.scalar_one_or_none()
+    if not wf:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+        
+    await db.delete(wf)
+    await db.commit()
+
+    await AuditService.log_event(
+        db=db,
+        action="DELETE",
+        resource="WORKFLOW_DEFINITION",
+        resource_id=str(workflow_id),
+        user=current_user,
+        ip_address=_client_ip(request)
+    )
+
+    return {"message": "Workflow deleted successfully"}

@@ -1,4 +1,4 @@
-# Bikita Minerals DWRMS — Platform Administration CLI (`ops`) Reference Manual (V2.0)
+# Bikita Minerals DWRMS — Platform Administration CLI (`ops`) Reference Manual (V2.2)
 
 The **`ops`** command is the unified technical administration and operations interface for the **Bikita Minerals Digital Work & Resource Management System (DWRMS)**.
 
@@ -12,7 +12,7 @@ Installed globally on Ubuntu Server at `/usr/local/bin/ops` (or accessible via `
 ops [OPTIONS] COMMAND [ARGS]...
 
 Options:
-  --version     Show platform version (v2.0.0)
+  --version     Show platform version (v2.2.0)
   -h, --help    Show help message and exit
 ```
 
@@ -22,19 +22,20 @@ Options:
 
 | Command | Summary | Key Options / Arguments |
 | :--- | :--- | :--- |
-| **`ops setup`** | Interactive first-time server setup wizard | `--non-interactive` |
+| **`ops setup`** | Interactive first-time server setup wizard | `--non-interactive`, `--force` |
 | **`ops install`** | Installs system packages, firewall rules, directories & systemd | `--skip-docker`, `--skip-firewall` |
 | **`ops configure`** | Inspect, get, set, and validate environment settings | `list`, `get <key>`, `set <k> <v>`, `validate` |
-| **`ops status`** | Consolidated real-time status of all containers & core components | — |
+| **`ops status`** | Consolidated real-time status (App, API, DB, Worker, Storage, Backup) | — |
 | **`ops health`** | Deep latency & readiness probe (Database, Redis, Storage, Gateway) | `--timeout <sec>` |
 | **`ops logs`** | Tail, search, and filter structured logs with correlation IDs | `-s <service>`, `-n <lines>`, `-f`, `-l <level>`, `-q <search>`, `--request-id <id>` |
 | **`ops diagnostics`** | Safe non-sensitive system telemetry report (Text or JSON) | `--json` |
-| **`ops backup`** | Create, list, and verify SHA-256 disaster recovery snapshots | `create`, `list`, `verify <archive>` |
+| **`ops backup`** | Create, list, and verify SHA-256 disaster recovery snapshots | `create`, `list`, `verify <archive>`, `prune` |
 | **`ops restore`** | Restore database & storage with integrity check and confirmation | `<archive>`, `-y`, `--skip-storage` |
 | **`ops users`** | Emergency user administration, role assignment & password reset | `list`, `create-admin`, `reset-password`, `activate`, `deactivate` |
 | **`ops network`** | Inspect network interfaces, ports, CORS, and DNS reachability | — |
 | **`ops server`** | Stack lifecycle orchestrator (Docker & background workers) | `start`, `stop`, `restart [svc]`, `reload`, `ps` |
-| **`ops update`** | Upgrade platform, run schema migrations, and reload containers | `--skip-git`, `--skip-migrations` |
+| **`ops update`** | Upgrade platform, run schema migrations, and reload containers | `matrix`, `check`, `apply`, `rollback` |
+| **`ops version`** | Display platform version, database engine, schema, and environment | — |
 
 ---
 
@@ -259,8 +260,29 @@ ops update
 
 ---
 
+### 3.11 `ops version`
+Displays full authoritative platform build metadata, database engine, schema version, release channel, and environment:
+```bash
+ops version
+```
+```
+======================================================================
+  BIKITA MINERALS DWRMS -- PLATFORM VERSION
+======================================================================
+  Application:       Bikita Minerals DWRMS
+  Platform Version:  v2.2.0
+  API Version:       v1
+  Database Engine:   MYSQL
+  Database Schema:   2026.08.28.01
+  Environment:       PRODUCTION
+  Release Channel:   enterprise_lts
+  Min Client:        v2.0.0
+```
+
+---
+
 ## 4. Security & Remote Administration Guidelines
 
 1. **Least Privilege**: `ops install`, `ops server start/stop`, and `ops restore` require appropriate host permissions (`sudo`).
-2. **Credential Redaction**: `ops configure list` and `ops diagnostics` redact sensitive secrets (`SECRET_KEY`, `DB_PASSWORD`, `POSTGRES_PASSWORD`).
+2. **Credential Redaction**: `ops configure list` and `ops diagnostics` redact sensitive secrets (`SECRET_KEY`, `DB_PASSWORD`, `POSTGRES_PASSWORD`, `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD`, `JWT_SECRET`).
 3. **SSH Remote Administration**: All commands format output using clean ASCII tables that render across PuTTY, OpenSSH, and Windows Terminal.

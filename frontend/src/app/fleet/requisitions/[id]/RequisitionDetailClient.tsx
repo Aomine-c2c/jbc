@@ -83,7 +83,17 @@ export default function RequisitionDetailClient({ params }: { params: Promise<{ 
             </Protect>
           )}
 
-          {req.status === "PENDING_APPROVAL" && (
+          {req.status === "SUBMITTED" && (
+            <Protect capability="requisition:review">
+              <div className="flex flex-col gap-2">
+                <button onClick={() => handleAction('review', { comments: "Reviewed" })} className="btn-success">Review</button>
+                <button onClick={() => handleAction('return-for-correction', { correction_reason: "Needs updates" })} className="btn-warning">Return for Correction</button>
+                <button onClick={() => handleAction('reject', { comments: "Rejected" })} className="btn-danger">Reject</button>
+              </div>
+            </Protect>
+          )}
+
+          {(req.status === "REVIEWED" || req.status === "RETURNED_FOR_CORRECTION") && (
             <Protect capability="requisition:approve">
               <div className="flex gap-2">
                 <button onClick={() => handleAction('approve', { comments: "Approved" })} className="btn-success flex-1">Approve</button>
@@ -92,8 +102,8 @@ export default function RequisitionDetailClient({ params }: { params: Promise<{ 
             </Protect>
           )}
 
-          {req.status === "APPROVED" && (
-            <Protect capability="requisition:reserve">
+          {req.status === "AWAITING_ALLOCATION" && (
+            <Protect capability="requisition:allocate">
               <div className="flex flex-col gap-2">
                 <input 
                   type="text" 
@@ -103,16 +113,28 @@ export default function RequisitionDetailClient({ params }: { params: Promise<{ 
                   onChange={(e) => setMachineId(e.target.value)}
                 />
                 <button 
-                  onClick={() => handleAction('reserve', { machine_id: machineId || "00000000-0000-0000-0000-000000000000" })} 
+                  onClick={() => handleAction('allocate', { machine_id: machineId || "00000000-0000-0000-0000-000000000000" })} 
                   className="btn-primary"
                 >
-                  Confirm Reservation
+                  Allocate Machine
+                </button>
+                <button 
+                  onClick={() => handleAction('allocate-partial', { machine_id: machineId || "00000000-0000-0000-0000-000000000000" })} 
+                  className="btn-warning"
+                >
+                  Allocate Partially
+                </button>
+                <button 
+                  onClick={() => handleAction('mark-unavailable', { reason: "No machines available" })} 
+                  className="btn-danger"
+                >
+                  Mark Unavailable
                 </button>
               </div>
             </Protect>
           )}
 
-          {req.status === "RESERVED" && (
+          {(req.status === "ALLOCATED" || req.status === "PARTIALLY_ALLOCATED") && (
             <Protect capability="requisition:dispatch">
               <div className="flex flex-col gap-2">
                 <input 
@@ -123,28 +145,16 @@ export default function RequisitionDetailClient({ params }: { params: Promise<{ 
                   onChange={(e) => setStartHours(e.target.value)}
                 />
                 <button 
-                  onClick={() => handleAction('dispatch', { start_hours: parseInt(startHours) || 0 })} 
-                  className="btn-primary"
+                  onClick={() => handleAction('start-use', { start_hours: parseInt(startHours) || 0 })} 
+                  className="btn-success"
                 >
-                  Dispatch Machine
+                  Start Use (Confirm Received)
                 </button>
               </div>
             </Protect>
           )}
 
-          {req.status === "DISPATCHED" && (
-            <Protect capability="requisition:dispatch">
-              <button onClick={() => handleAction('confirm')} className="btn-success">Confirm Received (In Use)</button>
-            </Protect>
-          )}
-
           {req.status === "IN_USE" && (
-            <Protect capability="requisition:dispatch">
-              <button onClick={() => handleAction('finish')} className="btn-warning">Finish Work (Return Pending)</button>
-            </Protect>
-          )}
-
-          {req.status === "RETURN_PENDING" && (
             <Protect capability="requisition:return">
               <div className="flex flex-col gap-2">
                 <input 
@@ -155,18 +165,18 @@ export default function RequisitionDetailClient({ params }: { params: Promise<{ 
                   onChange={(e) => setEndHours(e.target.value)}
                 />
                 <button 
-                  onClick={() => handleAction('return', { end_hours: parseInt(endHours) || 0 })} 
-                  className="btn-primary"
+                  onClick={() => handleAction('return', { end_hours: parseInt(endHours) || 0, return_notes: "Work complete" })} 
+                  className="btn-warning"
                 >
-                  Process Return
+                  Return Equipment
                 </button>
               </div>
             </Protect>
           )}
 
           {req.status === "RETURNED" && (
-            <Protect capability="requisition:return">
-              <button onClick={() => handleAction('complete')} className="btn-success">Complete Requisition</button>
+            <Protect capability="requisition:close">
+              <button onClick={() => handleAction('close', { close_notes: "Closed after return" })} className="btn-primary">Close Requisition</button>
             </Protect>
           )}
         </div>

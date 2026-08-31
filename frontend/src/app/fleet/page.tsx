@@ -75,19 +75,26 @@ export default function FleetDashboard() {
   const totalMachines = machines.length;
   const availableMachines = machines.filter(m => m.status === 'AVAILABLE').length;
   const inUseMachines = machines.filter(m => m.status === 'IN_USE').length;
-  const maintenanceMachines = machines.filter(m => m.status === 'MAINTENANCE').length;
+  const maintenanceMachines = machines.filter(m => m.status === 'UNDER_MAINTENANCE').length;
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-foreground tracking-tight">Fleet & Equipment</h1>
-        <Protect capability="requisition:create">
-          <Link href="/fleet/requisitions/new">
-            <Button size="lg">
-              New Requisition
+        <div className="flex gap-2">
+          <Link href="/fleet/calendar">
+            <Button variant="outline" size="lg">
+              Calendar
             </Button>
           </Link>
-        </Protect>
+          <Protect capability="requisition:create">
+            <Link href="/fleet/requisitions/new">
+              <Button size="lg">
+                New Requisition
+              </Button>
+            </Link>
+          </Protect>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -193,13 +200,13 @@ export default function FleetDashboard() {
                        <Button 
                          variant="outline"
                          className="w-full text-xs"
-                         onClick={() => handleStatusChange(machine.id, 'MAINTENANCE')}
+                         onClick={() => handleStatusChange(machine.id, 'UNDER_MAINTENANCE')}
                          disabled={updatingId === machine.id}
                        >
                          {updatingId === machine.id ? 'Updating...' : 'Send to Maintenance'}
                        </Button>
                     )}
-                    {machine.status === 'MAINTENANCE' && (
+                    {machine.status === 'UNDER_MAINTENANCE' && (
                        <Button 
                          variant="default"
                          className="w-full text-xs"

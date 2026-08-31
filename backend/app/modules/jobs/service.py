@@ -28,6 +28,7 @@ from app.modules.jobs.models import (
 )
 from app.modules.approvals.engine import ApprovalEngine
 from app.modules.audit.service import AuditService
+from app.modules.jobs.report_service import ReportService as _ReportService
 from app.modules.jobs.schemas import (
     JobCardCreate,
     JobCardUpdate,
@@ -142,6 +143,7 @@ class JobCardService:
             maintenance_type=data.maintenance_type,
             workshop_code=data.workshop_code,
             location=data.location,
+            location_id=data.location_id,
             plant_area=data.plant_area,
             required_date=data.required_date,
             reported_issue=data.reported_issue,
@@ -159,6 +161,11 @@ class JobCardService:
         await JobCardService._log(
             db, job.id, current_user.id, "create", state_from=None, state_to="DRAFT", details="Created new Job Card"
         )
+        try:
+            from app.modules.work.service import WorkItemService
+            await WorkItemService.sync_job_card_to_work_item(db, job)
+        except Exception:
+            pass # Non-blocking sync
         return job
 
     @staticmethod
@@ -237,6 +244,11 @@ class JobCardService:
         await JobCardService._log(
             db, job.id, current_user.id, "update", state_from=job.status, state_to=job.status, details="Updated job specifications"
         )
+        try:
+            from app.modules.work.service import WorkItemService
+            await WorkItemService.sync_job_card_to_work_item(db, job)
+        except Exception:
+            pass
         return job
 
     @staticmethod
@@ -554,6 +566,9 @@ class JobCardService:
         await JobCardService._log(
             db, job.id, current_user.id, "start", state_from=old_state, state_to=job.status, details=f"Execution {event_name.lower()} on site"
         )
+        # V1.3: Auto-create a JobReport when work begins (idempotent — safe to call multiple times)
+        await _ReportService.get_or_create(db, job.id)
+        await db.commit()
         return job
 
     @staticmethod
@@ -828,6 +843,9 @@ class JobCardService:
         await JobCardService._log(
             db, job.id, current_user.id, "close", state_from=old_state, state_to=job.status, details="Formally closed and archived"
         )
+        # V1.3: Lock the JobReport to prevent further edits after closure
+        await _ReportService.lock(db, job.id, current_user)
+        await db.commit()
         return job
 
     @staticmethod

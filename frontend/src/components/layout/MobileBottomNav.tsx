@@ -22,7 +22,7 @@ export function MobileBottomNav({ onOpenDrawer }: MobileBottomNavProps) {
 
   const navButtons = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'My Work', href: '/jobs', icon: Wrench },
+    { name: 'My Work', href: '/my-work', icon: Wrench },
     { name: 'Approvals', href: '/approvals', icon: ShieldCheck, badge: pendingApprovals > 0 ? pendingApprovals : null },
     { name: 'Fleet', href: '/fleet', icon: Truck },
   ];

@@ -18,6 +18,7 @@ class JobCardCreate(BaseModel):
     maintenance_type: Optional[str] = None
     workshop_code: Optional[str] = None
     location: Optional[str] = None
+    location_id: Optional[uuid.UUID] = None
     plant_area: Optional[str] = None
     required_date: Optional[datetime] = None
     reported_issue: Optional[str] = None
@@ -35,6 +36,7 @@ class JobCardUpdate(BaseModel):
     maintenance_type: Optional[str] = None
     workshop_code: Optional[str] = None
     location: Optional[str] = None
+    location_id: Optional[uuid.UUID] = None
     plant_area: Optional[str] = None
     required_date: Optional[datetime] = None
     reported_issue: Optional[str] = None
@@ -363,6 +365,8 @@ class JobCardResponse(BaseModel):
     external_contractor: Optional[str] = None
     workshop_code: Optional[str] = None
     location: Optional[str] = None
+    location_id: Optional[uuid.UUID] = None
+    location_breadcrumb: Optional[str] = None
     plant_area: Optional[str] = None
     machine_id: Optional[uuid.UUID] = None
 
@@ -434,6 +438,8 @@ class JobCardListResponse(BaseModel):
     department_id: uuid.UUID
     workshop_code: Optional[str] = None
     location: Optional[str] = None
+    location_id: Optional[uuid.UUID] = None
+    location_breadcrumb: Optional[str] = None
     maintenance_type: Optional[str] = None
     created_at: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)

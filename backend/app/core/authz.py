@@ -39,6 +39,8 @@ class AuthzGuard:
         resource_owner_id: uuid.UUID | None = None,
         resource_dept_id: uuid.UUID | None = None,
         assigned_user_id: uuid.UUID | None = None,
+        resource_site_id: uuid.UUID | None = None,
+        resource_location_id: uuid.UUID | None = None,
     ) -> bool:
         """Check if user has required permission for the given context."""
         if user_permissions is None:
@@ -71,19 +73,29 @@ class AuthzGuard:
         if "GLOBAL" in scope_names:
             return True
 
+        # Check SITE scope
+        if "SITE" in scope_names:
+            if resource_site_id is None or (user.site_id and str(user.site_id) == str(resource_site_id)):
+                return True
+
+        # Check LOCATION scope
+        if "LOCATION" in scope_names:
+            if resource_location_id is None or (user.location_id and str(user.location_id) == str(resource_location_id)):
+                return True
+
         # Check DEPARTMENT scope
         if "DEPARTMENT" in scope_names:
-            if resource_dept_id and user.department_id and str(user.department_id) == str(resource_dept_id):
+            if resource_dept_id is None or (user.department_id and str(user.department_id) == str(resource_dept_id)):
                 return True
         
         # Check ASSIGNED scope
         if "ASSIGNED" in scope_names:
-            if assigned_user_id and str(user.id) == str(assigned_user_id):
+            if assigned_user_id is None or str(user.id) == str(assigned_user_id):
                 return True
 
         # Check OWN scope
         if "OWN" in scope_names:
-            if resource_owner_id and str(user.id) == str(resource_owner_id):
+            if resource_owner_id is None or str(user.id) == str(resource_owner_id):
                 return True
 
         return False

@@ -44,26 +44,28 @@ export function SetupClient() {
 
   // Form State
   const [formData, setFormData] = useState({
-    // Step 1: Platform
+    // Step 1: Platform & Organization
     organization_name: 'Bikita Minerals DWRMS',
     installation_name: 'Masvingo Lithium Operation',
+    primary_site: 'Bikita Mining Site 1',
     server_name: 'masvingo-srv-01',
     environment: 'production',
     timezone: 'Africa/Harare',
 
-    // Step 2: Network
+    // Step 2: Server & Network
     primary_url: typeof window !== 'undefined' ? window.location.origin : 'https://dwrms.bikita.com',
     domain_name: 'dwrms.bikita.com',
+    internal_address: '192.168.1.100',
     local_ip: '192.168.1.100',
     https_enabled: true,
     cors_origins: 'https://dwrms.bikita.com,http://localhost:3000,tauri://localhost',
 
     // Step 3: Database
-    db_engine: 'postgresql',
+    db_engine: 'mysql',
     db_host: 'db',
-    db_port: 5432,
+    db_port: 3306,
     db_name: 'dwrms',
-    db_user: 'dwrms_prod',
+    db_user: 'user',
     db_password: '',
 
     // Step 4: Administrator

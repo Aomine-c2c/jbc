@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Protect } from "@/components/auth/Protect";
-import { LayoutDashboard, Wrench, Truck, Users, Settings, Database, HardHat, ShieldAlert, ShieldCheck, Server, Building2 } from "lucide-react";
+import { LayoutDashboard, Wrench, Truck, Users, Settings, Database, HardHat, ShieldAlert, ShieldCheck, Server, Building2, MapPin, Layers, Boxes, FileText } from "lucide-react";
 import { getPendingApprovals } from "@/lib/approvals";
 
 interface SidebarProps {
@@ -24,14 +24,20 @@ export function Sidebar({ onOpenServerConfig }: SidebarProps = {}) {
   }, []);
 
   const navItems = [
+    { name: "My Work", href: "/my-work", icon: Wrench, exact: true },
+    { name: "Work Hub", href: "/work", icon: Layers, capability: "job_card:read" },
+    { name: "Asset Registry", href: "/assets", icon: Boxes, capability: "job_card:read" },
+    { name: "Requisitions Hub", href: "/requests", icon: FileText, capability: "job_card:read" },
     { name: "Home", href: "/", icon: LayoutDashboard, exact: true },
     { name: "Ops Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Approvals Inbox", href: "/approvals", icon: ShieldCheck, badge: pendingCount !== null && pendingCount > 0 ? pendingCount : null },
     { name: "Job Cards", href: "/jobs", icon: Wrench, capability: "job_card:read" },
     { name: "Fleet & Machines", href: "/fleet", icon: Truck },
     { name: "Organization", href: "/admin/org", icon: Building2, capability: "users:manage" },
+    { name: "Locations", href: "/admin/locations", icon: MapPin, capability: "settings:manage" },
     { name: "User Management", href: "/admin/users", icon: Users, capability: "users:manage" },
     { name: "Platform Admin", href: "/admin/platform", icon: Server, capability: "settings:manage" },
+    { name: "Workflows", href: "/admin/workflows", icon: Settings, capability: "settings:manage" },
     { name: "System Info", href: "/admin/system", icon: Database },
     { name: "Audit Logs", href: "/admin/audit", icon: ShieldAlert, capability: "settings:manage" },
   ];

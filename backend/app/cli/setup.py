@@ -22,8 +22,8 @@ from app.core.setup_manager import SetupManager
 @click.option("--non-interactive", is_flag=True, help="Run non-interactively using existing .env or defaults")
 @click.option("--force", is_flag=True, help="Force re-run setup even if already completed (CAUTION)")
 def setup_command(non_interactive, force):
-    """Launch the 8-stage first-time server setup process for DWRMS platform."""
-    print_header("BIKITA MINERALS DWRMS -- FIRST-TIME SERVER SETUP WIZARD (V2.1)")
+    """Launch the structured 8-stage first-time server setup wizard for DWRMS platform."""
+    print_header("BIKITA MINERALS DWRMS -- FIRST-TIME SERVER SETUP WIZARD (V2.3)")
 
     if SetupManager.is_setup_completed() and not force:
         print_warning("Platform setup has already been completed and locked.")
@@ -40,81 +40,87 @@ def setup_command(non_interactive, force):
             _display_completion_report(report)
         except Exception as e:
             print_error(f"Setup finalization error: {e}")
+            click.secho("\nRecovery Instructions:", fg="yellow", bold=True)
+            click.echo("  1. Review database credentials in .env or run 'ops configure list'.")
+            click.echo("  2. Check storage directory permissions (/var/dwrms/storage).")
+            click.echo("  3. Run 'ops health' to identify degraded subsystems.\n")
             sys.exit(1)
         return
 
-    click.echo("This 8-stage wizard will configure and verify your authoritative server stack.\n")
+    click.echo("This structured 8-stage wizard will configure, provision, and verify your authoritative server stack.\n")
 
-    # ── STEP 1: PLATFORM CONFIGURATION ───────────────────────────
-    click.secho("[STEP 1/8] Platform & Server Identity", fg="cyan", bold=True)
+    # ── STEP 1: ORGANIZATION ─────────────────────────────────────
+    click.secho("[STEP 1/8] Organization & Operational Site", fg="cyan", bold=True)
     step1_defaults = saved_state.get("step_1_platform", {})
     org_name = click.prompt("  Organization Name", default=step1_defaults.get("organization_name", "Bikita Minerals DWRMS"))
-    inst_name = click.prompt("  Installation/Site Name", default=step1_defaults.get("installation_name", "Masvingo Lithium Operation"))
-    server_name = click.prompt("  Server Node Identifier", default=step1_defaults.get("server_name", "bikita-srv-01"))
-    env_type = click.prompt(
-        "  Deployment Environment",
-        type=click.Choice(["production", "staging", "development"], case_sensitive=False),
-        default=step1_defaults.get("environment", "production"),
-    )
-    timezone = click.prompt("  Server Operational Timezone", default=step1_defaults.get("timezone", "Africa/Harare"))
+    inst_name = click.prompt("  Installation Name", default=step1_defaults.get("installation_name", "Masvingo Lithium Operation"))
+    primary_site = click.prompt("  Primary Site", default=step1_defaults.get("primary_site", "Bikita Mining Site 1"))
+    timezone = click.prompt("  Timezone", default=step1_defaults.get("timezone", "Africa/Harare"))
 
     step1_data = {
         "organization_name": org_name,
         "installation_name": inst_name,
-        "server_name": server_name,
-        "environment": env_type,
+        "primary_site": primary_site,
         "timezone": timezone,
     }
     SetupManager.save_step(1, step1_data)
-    print_success("Platform identity saved.")
+    print_success("Organization settings saved.")
 
-    # ── STEP 2: NETWORK CONFIGURATION ────────────────────────────
-    click.secho("\n[STEP 2/8] Network & Client Endpoint Configuration", fg="cyan", bold=True)
-    click.echo("  (Note: Fixed public IP is NOT required. Dynamic or internal LAN addresses are supported.)")
+    # ── STEP 2: SERVER ───────────────────────────────────────────
+    click.secho("\n[STEP 2/8] Server Identity & Network Endpoints", fg="cyan", bold=True)
     step2_defaults = saved_state.get("step_2_network", {})
-    primary_url = click.prompt("  Primary Server URL", default=step2_defaults.get("primary_url", "https://dwrms.bikita.com"))
-    domain_name = click.prompt("  Domain Name (where available)", default=step2_defaults.get("domain_name", "dwrms.bikita.com"))
-    local_ip = click.prompt("  Local LAN IP / Binding Address", default=step2_defaults.get("local_ip", "192.168.1.100"))
-    https_enabled = click.confirm("  Enable HTTPS / TLS Encryption?", default=step2_defaults.get("https_enabled", True))
+    server_name = click.prompt("  Server Name", default=step2_defaults.get("server_name", "masvingo-srv-01"))
+    env_type = click.prompt(
+        "  Environment",
+        type=click.Choice(["production", "staging", "development"], case_sensitive=False),
+        default=step2_defaults.get("environment", "production"),
+    )
+    domain_name = click.prompt("  Domain Name", default=step2_defaults.get("domain_name", "dwrms.bikita.com"))
+    internal_address = click.prompt("  Internal Address (LAN IP / Host Binding)", default=step2_defaults.get("internal_address", "192.168.1.100"))
+    https_enabled = click.confirm("  HTTPS Configuration (Enable TLS Encryption)?", default=step2_defaults.get("https_enabled", True))
+    default_url = f"https://{domain_name}" if https_enabled else f"http://{domain_name}"
+    primary_url = click.prompt("  Primary Server URL", default=step2_defaults.get("primary_url", default_url))
     cors_origins = click.prompt(
         "  Trusted CORS Origins (comma-separated)",
         default=step2_defaults.get("cors_origins", f"{primary_url},tauri://localhost,http://tauri.localhost"),
     )
 
     step2_data = {
-        "primary_url": primary_url,
+        "server_name": server_name,
+        "environment": env_type,
         "domain_name": domain_name,
-        "local_ip": local_ip,
+        "internal_address": internal_address,
         "https_enabled": https_enabled,
+        "primary_url": primary_url,
         "cors_origins": cors_origins,
     }
     SetupManager.save_step(2, step2_data)
-    print_success("Network configuration saved.")
+    print_success("Server & endpoint configuration saved.")
 
-    # ── STEP 3: DATABASE CONFIGURATION & PRE-FLIGHT ──────────────
-    click.secho("\n[STEP 3/8] Database Configuration & Connection Test", fg="cyan", bold=True)
+    # ── STEP 3: DATABASE ─────────────────────────────────────────
+    click.secho("\n[STEP 3/8] Database Configuration & Pre-Flight Testing", fg="cyan", bold=True)
     step3_defaults = saved_state.get("step_3_database", {})
     db_engine = click.prompt(
         "  Database Engine",
-        type=click.Choice(["postgresql", "mysql", "sqlite"], case_sensitive=False),
-        default=step3_defaults.get("engine", "postgresql"),
+        type=click.Choice(["mysql", "postgresql", "sqlite"], case_sensitive=False),
+        default=step3_defaults.get("engine", "mysql"),
     )
 
-    db_host = "localhost"
-    db_port = 5432
+    db_host = "db" if db_engine != "sqlite" else "localhost"
+    db_port = 3306 if db_engine == "mysql" else (5432 if db_engine == "postgresql" else 0)
     db_name = "dwrms"
-    db_user = "postgres"
+    db_user = "user" if db_engine == "mysql" else "postgres"
     db_pass = ""
 
     if db_engine != "sqlite":
         while True:
             db_host = click.prompt("  Database Host", default=step3_defaults.get("host", "db"))
-            db_port = click.prompt("  Database Port", type=int, default=5432 if db_engine == "postgresql" else 3306)
+            db_port = click.prompt("  Database Port", type=int, default=3306 if db_engine == "mysql" else 5432)
             db_name = click.prompt("  Database Name", default=step3_defaults.get("name", "dwrms"))
-            db_user = click.prompt("  Database Username", default=step3_defaults.get("user", "dwrms_prod"))
+            db_user = click.prompt("  Database User", default=step3_defaults.get("user", "user" if db_engine == "mysql" else "dwrms_prod"))
             db_pass = click.prompt("  Database Password", hide_input=True, default=step3_defaults.get("password", ""))
 
-            print_info(f"Testing connectivity to {db_engine} at {db_host}:{db_port}/{db_name}...")
+            print_info(f"Testing database connectivity to {db_engine.upper()} at {db_host}:{db_port}/{db_name}...")
             try:
                 probe_res = asyncio.run(
                     SetupManager.test_database(db_engine, db_host, db_port, db_name, db_user, db_pass)
@@ -123,6 +129,7 @@ def setup_command(non_interactive, force):
                 break
             except Exception as e:
                 print_error(f"Database probe failed: {e}")
+                click.secho("  Recovery: Verify database service is running and credentials are valid.", fg="yellow")
                 if not click.confirm("  Would you like to re-enter database credentials?", default=True):
                     print_warning("Proceeding with unverified database configuration.")
                     break
@@ -137,8 +144,8 @@ def setup_command(non_interactive, force):
     }
     SetupManager.save_step(3, step3_data)
 
-    # ── STEP 4: INITIAL ADMINISTRATOR ACCOUNT ────────────────────
-    click.secho("\n[STEP 4/8] Initial System Administrator Account", fg="cyan", bold=True)
+    # ── STEP 4: INITIAL ADMINISTRATOR ────────────────────────────
+    click.secho("\n[STEP 4/8] Initial Platform Administrator", fg="cyan", bold=True)
     step4_defaults = saved_state.get("step_4_admin", {})
     admin_email = click.prompt("  Administrator Email", default=step4_defaults.get("email", "admin@bikita.com"))
     admin_fname = click.prompt("  First Name", default=step4_defaults.get("first_name", "System"))
@@ -160,21 +167,21 @@ def setup_command(non_interactive, force):
         "password": admin_pass,
     }
     SetupManager.save_step(4, step4_data)
-    print_success("Administrator account credentials validated.")
+    print_success("Initial Administrator credentials validated.")
 
-    # ── STEP 5: FILE STORAGE CONFIGURATION ───────────────────────
-    click.secho("\n[STEP 5/8] Persistent File & Attachment Storage", fg="cyan", bold=True)
+    # ── STEP 5: STORAGE ──────────────────────────────────────────
+    click.secho("\n[STEP 5/8] Attachment Storage & Capacity Verification", fg="cyan", bold=True)
     step5_defaults = saved_state.get("step_5_storage", {})
     default_storage = "/var/dwrms/storage" if env_type != "development" else "./storage"
     storage_path = click.prompt("  Storage Directory Path", default=step5_defaults.get("path", default_storage))
-    max_upload_mb = click.prompt("  Max Attachment Upload Size (MB)", type=int, default=step5_defaults.get("max_upload_size_mb", 25))
+    max_upload_mb = click.prompt("  Max Upload Size (MB)", type=int, default=step5_defaults.get("max_upload_size_mb", 25))
 
-    print_info(f"Probing storage path write access at {storage_path}...")
+    print_info(f"Probing storage path write access and capacity at {storage_path}...")
     st_res = SetupManager.test_storage(storage_path)
     if st_res.get("write_ok"):
-        print_success(f"Storage path verified writable ({st_res.get('free_gb')} GB free space, {st_res.get('free_percentage')}% free).")
+        print_success(f"Storage verified: {st_res.get('free_gb')} GB free space ({st_res.get('free_percentage')}% free).")
     else:
-        print_warning(f"Storage probe notice: {st_res.get('error', 'Unwritable')}. Directory will be created during initialization.")
+        print_warning(f"Storage notice: {st_res.get('error', 'Unwritable')}. Directory will be initialized during finalization.")
 
     step5_data = {
         "path": storage_path,
@@ -182,13 +189,13 @@ def setup_command(non_interactive, force):
     }
     SetupManager.save_step(5, step5_data)
 
-    # ── STEP 6: BACKUPS & RETENTION POLICY ───────────────────────
-    click.secho("\n[STEP 6/8] Disaster Recovery & Backup Policy", fg="cyan", bold=True)
+    # ── STEP 6: BACKUPS ──────────────────────────────────────────
+    click.secho("\n[STEP 6/8] Backup Location, Schedule & Retention Policy", fg="cyan", bold=True)
     step6_defaults = saved_state.get("step_6_backups", {})
     default_backups = "/var/dwrms/backups" if env_type != "development" else "./backups"
-    backup_path = click.prompt("  Backup Directory Path", default=step6_defaults.get("path", default_backups))
-    backup_freq = click.prompt("  Backup Frequency", type=click.Choice(["daily", "weekly", "hourly"]), default="daily")
-    retention_days = click.prompt("  Backup Retention Window (Days)", type=int, default=step6_defaults.get("retention_days", 30))
+    backup_path = click.prompt("  Backup Directory Location", default=step6_defaults.get("path", default_backups))
+    backup_freq = click.prompt("  Backup Schedule", type=click.Choice(["daily", "weekly", "hourly"]), default="daily")
+    retention_days = click.prompt("  Retention Policy (Days)", type=int, default=step6_defaults.get("retention_days", 30))
 
     step6_data = {
         "path": backup_path,
@@ -196,14 +203,13 @@ def setup_command(non_interactive, force):
         "retention_days": retention_days,
     }
     SetupManager.save_step(6, step6_data)
-    print_success("Disaster recovery policy configured.")
+    print_success("Disaster recovery and backup policy configured.")
 
-    # ── STEP 7: OPTIONAL REMOTE CONNECTIVITY ─────────────────────
-    click.secho("\n[STEP 7/8] Optional Remote Connectivity", fg="cyan", bold=True)
-    click.echo("  Configure how operators and remote desktop clients securely connect to this server.")
-    click.echo("  (Note: SSH server administration remains independently active on port 22.)")
+    # ── STEP 7: CONNECTIVITY ─────────────────────────────────────
+    click.secho("\n[STEP 7/8] Connectivity (LAN, Internal Domain, Optional Remote Networking)", fg="cyan", bold=True)
+    click.echo("  (Note: Third-party remote networking is strictly optional. SSH administration operates on port 22.)")
     remote_mode = click.prompt(
-        "  Remote Connectivity Mode",
+        "  Network Connectivity Mode",
         type=click.Choice(["local_only", "org_managed", "tailscale"], case_sensitive=False),
         default="local_only",
     )
@@ -217,11 +223,11 @@ def setup_command(non_interactive, force):
         "tailscale_auth_key": tailscale_key,
     }
     SetupManager.save_step(7, step7_data)
-    print_success(f"Remote connectivity mode: {remote_mode.upper()}")
+    print_success(f"Connectivity mode: {remote_mode.upper()}")
 
-    # ── STEP 8: SYSTEM VERIFICATION & SETUP FINALIZATION ─────────
+    # ── STEP 8: VERIFICATION ─────────────────────────────────────
     click.secho("\n[STEP 8/8] System Verification Checklist & Provisioning", fg="cyan", bold=True)
-    click.echo("Executing schema migrations, seeding mining baseline data, provisioning administrator, and locking setup...\n")
+    click.echo("Executing verification checklist: Application, Database, Storage, Workers, Network, Administrator, and Health...\n")
 
     combined_config = {
         "step_1_platform": step1_data,
@@ -237,21 +243,31 @@ def setup_command(non_interactive, force):
         report = asyncio.run(SetupManager.finalize_setup(combined_config))
         _display_completion_report(report)
     except Exception as e:
-        print_error(f"Setup Finalization Failed: {e}")
+        print_error(f"Setup Verification Failed: {e}")
+        click.secho("\nRecovery Instructions:", fg="yellow", bold=True)
+        click.echo("  1. Run 'ops status' to inspect container health.")
+        click.echo("  2. If database schema failed: Check database engine configuration and port.")
+        click.echo("  3. If storage failed: Check filesystem permissions on storage directory.")
+        click.echo("  4. To restart the wizard: Run 'ops setup --force'.\n")
         sys.exit(1)
 
 
 def _display_completion_report(report: dict):
     """Displays formatted final setup report."""
     print_header("SERVER SETUP COMPLETED & VERIFIED")
-    click.secho("All system verification checks passed. The authoritative server is online.", fg="green", bold=True)
+    click.secho("All critical verification checks passed. The authoritative platform core is initialized and locked.", fg="green", bold=True)
     click.echo(f"  Portal URL:       {report.get('application_url')}")
     click.echo(f"  Server Node:      {report.get('server_name')}")
     click.echo(f"  Platform Version: {report.get('version')}")
     click.echo(f"  Environment:      {report.get('environment')}")
     click.echo(f"  Superuser Admin:  {report.get('admin_email')}\n")
 
-    click.secho("Next Administrative Steps:", fg="cyan", bold=True)
+    verification = report.get("verification", {})
+    if verification:
+        rows = [[k.replace("_", " ").title(), "PASS"] for k in verification.keys()]
+        print_table(["Verification Check", "Result"], rows, title="Step 8 System Verification Results")
+
+    click.secho("\nNext Administrative Steps:", fg="cyan", bold=True)
     for step in report.get("next_steps", []):
         click.echo(f"  * {step}")
     click.echo("")

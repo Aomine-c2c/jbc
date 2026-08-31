@@ -12,6 +12,21 @@ from app.modules.jobs.service import (
     compute_job_calculations,
     compute_overall_completion_pct,
 )
+from app.modules.jobs.report_service import ReportService
+from app.modules.jobs.report_schemas import (
+    JobReportUpdate,
+    JobReportResponse,
+    JobReportProgressUpdateCreate,
+    JobReportProgressUpdateResponse,
+    JobReportMaterialCreate,
+    JobReportMaterialResponse,
+    JobReportAttachmentCreate,
+    JobReportAttachmentResponse,
+    JobReportAmendmentCreate,
+    JobReportAmendmentResponse,
+    DeptSchemaMetaResponse,
+    DeptFieldMeta,
+)
 from app.modules.jobs.schemas import (
     JobCardCreate,
     JobCardUpdate,
@@ -93,14 +108,142 @@ async def get_job_card(
     return _format_job_response(job)
 
 
-@job_router.get("/{job_id}/report", response_model=JobCardResponse)
-async def get_digital_job_report(
+@job_router.get("/{job_id}/report", response_model=JobReportResponse)
+async def get_job_report(
     job_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_get_current_user()),
 ):
-    job = await JobCardService.get(db, job_id, current_user)
-    return _format_job_response(job)
+    """Get the full execution report for a job card."""
+    # Ensure the user has access to the job card first
+    await JobCardService.get(db, job_id, current_user)
+    report = await ReportService.get(db, job_id)
+    return report
+
+
+@job_router.patch("/{job_id}/report", response_model=JobReportResponse)
+async def update_job_report(
+    job_id: uuid.UUID,
+    data: JobReportUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(_get_current_user()),
+):
+    """Update report core fields (fault found, corrective action, technical notes, etc.)."""
+    await JobCardService.get(db, job_id, current_user)
+    report = await ReportService.update(db, job_id, data, current_user)
+    await db.commit()
+    await db.refresh(report)
+    return report
+
+
+@job_router.post(
+    "/{job_id}/report/progress",
+    response_model=JobReportProgressUpdateResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_report_progress(
+    job_id: uuid.UUID,
+    data: JobReportProgressUpdateCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(_get_current_user()),
+):
+    """Log a progress update (WORK_START, PROGRESS, PAUSE, RESUME, COMPLETION)."""
+    await JobCardService.get(db, job_id, current_user)
+    update = await ReportService.add_progress(db, job_id, data, current_user)
+    await db.commit()
+    await db.refresh(update)
+    return update
+
+
+@job_router.post(
+    "/{job_id}/report/materials",
+    response_model=JobReportMaterialResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_report_material(
+    job_id: uuid.UUID,
+    data: JobReportMaterialCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(_get_current_user()),
+):
+    """Add a material, spare part, tool, or equipment entry to the report."""
+    await JobCardService.get(db, job_id, current_user)
+    material = await ReportService.add_material(db, job_id, data, current_user)
+    await db.commit()
+    await db.refresh(material)
+    return material
+
+
+@job_router.delete(
+    "/{job_id}/report/materials/{material_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_report_material(
+    job_id: uuid.UUID,
+    material_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(_get_current_user()),
+):
+    """Remove a material entry from the report (blocked if report is locked)."""
+    await JobCardService.get(db, job_id, current_user)
+    await ReportService.delete_material(db, job_id, material_id, current_user)
+    await db.commit()
+
+
+@job_router.post(
+    "/{job_id}/report/attachments",
+    response_model=JobReportAttachmentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_report_attachment(
+    job_id: uuid.UUID,
+    data: JobReportAttachmentCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(_get_current_user()),
+):
+    """Add a categorised file attachment to the report (PHOTO, DOCUMENT, CERTIFICATE, etc.)."""
+    await JobCardService.get(db, job_id, current_user)
+    attachment = await ReportService.add_attachment(db, job_id, data, current_user)
+    await db.commit()
+    await db.refresh(attachment)
+    return attachment
+
+
+@job_router.post(
+    "/{job_id}/report/amend",
+    response_model=JobReportAmendmentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def amend_job_report(
+    job_id: uuid.UUID,
+    data: JobReportAmendmentCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(_get_current_user()),
+):
+    """
+    Create an auditable post-closure amendment record.
+    Required when the report is locked (job CLOSED).
+    Captures the old value, new value, and justification.
+    """
+    await JobCardService.get(db, job_id, current_user)
+    amendment = await ReportService.amend(db, job_id, data, current_user)
+    await db.commit()
+    await db.refresh(amendment)
+    return amendment
+
+
+@job_router.get("/report/dept-schema/{dept_schema_type}", response_model=DeptSchemaMetaResponse)
+async def get_dept_schema_meta(
+    dept_schema_type: str,
+    current_user: User = Depends(_get_current_user()),
+):
+    """
+    Return the field metadata for a department schema type.
+    Used by the frontend to dynamically render the correct department-specific form fields.
+    """
+    fields_raw = ReportService.get_dept_fields(dept_schema_type)
+    fields = [DeptFieldMeta(**f) for f in fields_raw]
+    return DeptSchemaMetaResponse(dept_schema_type=dept_schema_type, fields=fields)
 
 
 @job_router.patch("/{job_id}", response_model=JobCardResponse)

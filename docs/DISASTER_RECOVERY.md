@@ -165,6 +165,30 @@ The platform enforces a configurable retention policy (`RETENTION_DAYS=30` by de
 
 ---
 
+### Runbook 6: Persistent Storage Failure / Disk Loss
+**Symptom**: Persistent attachment storage (`/var/dwrms/storage` or `./storage`) is lost, unmounted, or corrupted.
+
+1. **Inspect Storage Health via CLI**:
+   ```bash
+   ops status
+   ops diagnostics
+   ```
+2. **Re-create / Remount Storage Volume**:
+   ```bash
+   sudo mkdir -p /var/dwrms/storage/uploads
+   sudo chown -R 1000:1000 /var/dwrms/storage
+   ```
+3. **Restore Storage from Latest Verified Snapshot**:
+   ```bash
+   ops restore <snapshot_name>
+   ```
+4. **Verify Storage Permissions & Capacity**:
+   ```bash
+   ops health
+   ```
+
+---
+
 ## 4. Disaster Recovery Readiness Checklist
 
 | Phase | Action Item | Frequency / Trigger | Verification Method |

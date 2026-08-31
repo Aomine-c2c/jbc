@@ -20,11 +20,11 @@ class Settings(BaseSettings):
     TIMEZONE: str = "Africa/Harare"
 
     # DB configuration
-    DB_ENGINE: str = "postgresql"  # postgresql, mysql, sqlite
-    DB_USER: str = "postgres"
-    DB_PASSWORD: str = ""
+    DB_ENGINE: str = "mysql"  # postgresql, mysql, sqlite
+    DB_USER: str = "user"
+    DB_PASSWORD: str = "password"
     DB_HOST: str = "localhost"
-    DB_PORT: int = 5432
+    DB_PORT: int = 3306
     DB_NAME: str = "dwrms"
     DATABASE_URL: str | None = None
     DB_POOL_SIZE: int = 20

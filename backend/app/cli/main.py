@@ -33,6 +33,22 @@ def ops_group():
     pass
 
 
+@ops_group.command("version")
+def version_command():
+    """Display platform version, database engine, schema version, and environment."""
+    from app.cli.utils import print_header
+    from app.core.config import settings
+    print_header("BIKITA MINERALS DWRMS -- PLATFORM VERSION")
+    click.echo(f"  Application:       {settings.APP_NAME}")
+    click.echo(f"  Platform Version:  {settings.APP_VERSION}")
+    click.echo(f"  API Version:       {settings.API_VERSION}")
+    click.echo(f"  Database Engine:   {settings.DB_ENGINE.upper()}")
+    click.echo(f"  Database Schema:   {settings.DB_SCHEMA_VERSION}")
+    click.echo(f"  Environment:       {settings.ENVIRONMENT.upper()}")
+    click.echo(f"  Release Channel:   {settings.UPDATE_CHANNEL}")
+    click.echo(f"  Min Client:        {settings.MIN_SUPPORTED_CLIENT_VERSION}\n")
+
+
 # Register Core Commands
 ops_group.add_command(setup_command)
 ops_group.add_command(install_command)
@@ -47,6 +63,7 @@ ops_group.add_command(users_group)
 ops_group.add_command(network_command)
 ops_group.add_command(server_group)
 ops_group.add_command(update_group)
+ops_group.add_command(version_command)
 
 
 # ── Backward-compatible Aliases ──────────────────────────────

@@ -68,10 +68,10 @@ def diagnostics_command(json_output):
         lat = (time.perf_counter() - t0) * 1000
         pool = engine.pool
         pool_stats = {
-            "size": pool.size(),
-            "checkedin": pool.checkedin(),
-            "checkedout": pool.checkedout(),
-            "overflow": pool.overflow(),
+            "size": pool.size() if hasattr(pool, "size") else 0,
+            "checkedin": pool.checkedin() if hasattr(pool, "checkedin") else 0,
+            "checkedout": pool.checkedout() if hasattr(pool, "checkedout") else 0,
+            "overflow": pool.overflow() if hasattr(pool, "overflow") else 0,
         }
         await engine.dispose()
         return lat, pool_stats
