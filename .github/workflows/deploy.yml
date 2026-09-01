@@ -25,4 +25,4 @@ jobs:
 
       - name: Re-bind Tailscale Funnel to Port 3000
         run: |
-          sudo tailscale funnel --bg http://127.0.0.1:3000
+          sudo tailscale funnel --bg http://127.0.0.1:3001
