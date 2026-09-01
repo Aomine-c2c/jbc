@@ -2,7 +2,7 @@
 
 import { login } from '@/lib/auth';
 import { useState } from 'react';
-import { HardHat, ShieldCheck, Wrench, UserCheck, Lock, Mail, ArrowRight } from 'lucide-react';
+import { HardHat, ShieldCheck, Wrench, UserCheck, Users, Lock, Mail, ArrowRight } from 'lucide-react';
 import { NotificationBanner } from '@/components/ui/notification';
 import { PlantTelemetryVisual } from '@/components/auth/PlantTelemetryVisual';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -182,6 +182,20 @@ export default function LoginPage() {
                 </div>
                 <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
                   tech@bikita.com
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('mechmgr@bikita.com', 'password123')}
+                className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
+              >
+                <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
+                  <Users className="size-3 text-amber-500" />
+                  <span>Dept Manager</span>
+                </div>
+                <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
+                  mechmgr@bikita.com
                 </div>
               </button>
             </div>
