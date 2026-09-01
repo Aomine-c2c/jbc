@@ -22,6 +22,11 @@ ROLES_PERMISSIONS = {
         "job_card:edit": Scope.ASSIGNED,
         "job_card:submit": Scope.ASSIGNED,
     },
+    "Operator": {
+        "job_card:view": Scope.DEPARTMENT,
+        "machine:view": Scope.GLOBAL,
+        "requisition:dispatch": Scope.GLOBAL,
+    },
     "Supervisor": {
         "job_card:view": Scope.DEPARTMENT,
         "job_card:approve": Scope.DEPARTMENT,
@@ -35,12 +40,12 @@ ROLES_PERMISSIONS = {
         "job_card:cancel": Scope.DEPARTMENT,
         "admin:users": Scope.DEPARTMENT,
     },
-    "Resource Coordinator": {
+    "Resource_Coordinator": {
         "machine:view": Scope.GLOBAL,
         "machine:allocate": Scope.GLOBAL,
         "job_card:allocate": Scope.GLOBAL,
     },
-    "Safety Officer": {
+    "Safety_Officer": {
         "job_card:view": Scope.GLOBAL,
         "job_card:approve": Scope.GLOBAL,
     },
@@ -77,6 +82,7 @@ PERMISSION_DESCRIPTIONS = {
     "machine:view": "View machine resources",
     "machine:allocate": "Allocate machines for use",
     "machine:manage": "Manage machine master data",
+    "requisition:dispatch": "Dispatch requisitions and resources",
     "admin:users": "Manage users and roles",
     "admin:workflows": "Manage workflow configurations",
     "admin:system": "System-wide administration",

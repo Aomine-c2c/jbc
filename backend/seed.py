@@ -99,6 +99,9 @@ async def seed():
             (departments["Electrical"].id, "S-ELEC", "HV Electrician", "MASTER"),
             (departments["Instrumentation"].id, "ENG-INST", "Automation Engineer", "MASTER"),
             (departments["IT"].id, "IT-ADMIN", "Systems Administrator", "MASTER"),
+            (departments["Mechanical"].id, "OPERATOR", "Machine Operator", "JOURNEYMAN"),
+            (departments["Mechanical"].id, "RES-COORD", "Resource Coordinator", "MASTER"),
+            (departments["Electrical"].id, "SAFETY-OFF", "Safety Officer", "MASTER"),
             (None, "MGR", "Plant Manager", "EXECUTIVE"),
         ]
         positions = {}
@@ -114,8 +117,11 @@ async def seed():
         # 5. Core Resource Permissions
         permissions = [
             "job_card:read", "job_card:create", "job_card:update", "job_card:delete", "job_card:approve", "job_card:verify",
+            "job_card:allocate", "job_card:close", "job_card:cancel", "job_card:export",
             "job_request:read", "job_request:create", "job_request:update", "job_request:delete", "job_request:approve",
             "machine_requisition:read", "machine_requisition:create", "machine_requisition:update", "machine_requisition:approve",
+            "machine:view", "machine:allocate", "machine:manage",
+            "requisition:dispatch",
             "users:read", "users:manage",
             "departments:read", "departments:manage",
             "settings:manage",
@@ -156,6 +162,13 @@ async def seed():
                     ("job_request:read", Scope.DEPARTMENT)
                 ]
             },
+            "Operator": {
+                "perms": [
+                    ("job_card:read", Scope.DEPARTMENT),
+                    ("machine:view", Scope.GLOBAL),
+                    ("requisition:dispatch", Scope.GLOBAL),
+                ]
+            },
             "Supervisor": {
                 "perms": [
                     ("job_card:read", Scope.DEPARTMENT),
@@ -180,7 +193,22 @@ async def seed():
                     ("users:manage", Scope.DEPARTMENT),
                     ("departments:read", Scope.DEPARTMENT)
                 ]
-            }
+            },
+            "Resource_Coordinator": {
+                "perms": [
+                    ("machine:view", Scope.GLOBAL),
+                    ("machine:allocate", Scope.GLOBAL),
+                    ("job_card:allocate", Scope.GLOBAL),
+                    ("machine_requisition:read", Scope.GLOBAL),
+                    ("machine_requisition:approve", Scope.GLOBAL),
+                ]
+            },
+            "Safety_Officer": {
+                "perms": [
+                    ("job_card:view", Scope.GLOBAL),
+                    ("job_card:approve", Scope.GLOBAL),
+                ]
+            },
         }
             
         role_objs = {}
@@ -263,12 +291,62 @@ async def seed():
             is_superuser=False
         )
 
-        session.add_all([admin_user, mech_mgr, mech_sup, mech_tech])
+        # Machine Operator
+        operator = User(
+            id=uuid.uuid4(),
+            email="operator@bikita.com",
+            first_name="Crane",
+            last_name="Operator",
+            hashed_password=get_password_hash("password123"),
+            department_id=departments["Mechanical"].id,
+            section_id=mech_section.id,
+            team_id=mech_team_alpha.id,
+            position_id=positions["OPERATOR"].id,
+            supervisor_id=mech_sup.id,
+            employee_number="EMP-1052",
+            is_active=True,
+            is_superuser=False
+        )
+
+        # Resource Coordinator
+        coordinator = User(
+            id=uuid.uuid4(),
+            email="coordinator@bikita.com",
+            first_name="Resource",
+            last_name="Coordinator",
+            hashed_password=get_password_hash("password123"),
+            department_id=departments["Mechanical"].id,
+            position_id=positions["RES-COORD"].id,
+            supervisor_id=mech_mgr.id,
+            employee_number="EMP-1060",
+            is_active=True,
+            is_superuser=False
+        )
+
+        # Safety Officer
+        safety = User(
+            id=uuid.uuid4(),
+            email="safety@bikita.com",
+            first_name="Safety",
+            last_name="Officer",
+            hashed_password=get_password_hash("password123"),
+            department_id=departments["Electrical"].id,
+            position_id=positions["SAFETY-OFF"].id,
+            supervisor_id=mech_mgr.id,
+            employee_number="EMP-1070",
+            is_active=True,
+            is_superuser=False
+        )
+
+        session.add_all([admin_user, mech_mgr, mech_sup, mech_tech, operator, coordinator, safety])
         await session.commit()
         await session.refresh(admin_user)
         await session.refresh(mech_mgr)
         await session.refresh(mech_sup)
         await session.refresh(mech_tech)
+        await session.refresh(operator)
+        await session.refresh(coordinator)
+        await session.refresh(safety)
 
         # Set section supervisors / team leads now that users exist
         mech_section.supervisor_id = mech_sup.id
@@ -285,6 +363,10 @@ async def seed():
         
         session.add(UserRole(user_id=mech_tech.id, role_id=role_objs["Technician"]["obj"].id))
         session.add(UserRole(user_id=mech_tech.id, role_id=role_objs["Employee/Requester"]["obj"].id))
+
+        session.add(UserRole(user_id=operator.id, role_id=role_objs["Operator"]["obj"].id))
+        session.add(UserRole(user_id=coordinator.id, role_id=role_objs["Resource_Coordinator"]["obj"].id))
+        session.add(UserRole(user_id=safety.id, role_id=role_objs["Safety_Officer"]["obj"].id))
         await session.commit()
 
         # 9. Employee Profiles

@@ -1,17 +1,36 @@
 'use client';
 
 import { login } from '@/lib/auth';
-import { useState } from 'react';
-import { HardHat, ShieldCheck, Wrench, UserCheck, Users, Lock, Mail, ArrowRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { HardHat, ShieldCheck, Wrench, UserCheck, Users, Gauge, Shield, Lock, Mail, ArrowRight, Server } from 'lucide-react';
 import { NotificationBanner } from '@/components/ui/notification';
 import { PlantTelemetryVisual } from '@/components/auth/PlantTelemetryVisual';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { getProfiles, getActiveProfile, setActiveProfile, ServerProfile } from '@/lib/serverProfiles';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [profiles, setProfiles] = useState<ServerProfile[]>([]);
+  const [activeProfileId, setActiveProfileId] = useState<string>('');
+
+  useEffect(() => {
+    getProfiles().then((list) => {
+      setProfiles(list);
+      getActiveProfile().then((active) => {
+        setActiveProfileId(active?.id || list[0]?.id || '');
+      });
+    });
+  }, []);
+
+  const handleProfileChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newId = e.target.value;
+    setActiveProfileId(newId);
+    await setActiveProfile(newId);
+    setError(null);
+  };
 
   const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
     if (e) e.preventDefault();
@@ -46,8 +65,19 @@ export default function LoginPage() {
 
       {/* RIGHT 50% PANEL: INDUSTRIAL AUTHENTICATION PORTAL */}
       <div className="relative w-full lg:w-1/2 min-h-[600px] lg:min-h-screen flex items-center justify-center p-6 md:p-12 bg-background">
-        {/* TOP RIGHT THEME TOGGLE */}
-        <div className="absolute top-4 right-4 z-20">
+        {/* TOP RIGHT CONTROLS */}
+        <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+          <select
+            value={activeProfileId}
+            onChange={handleProfileChange}
+            className="h-8 rounded border border-border bg-card px-2 text-[10px] font-mono text-foreground outline-none focus:border-ring"
+          >
+            {profiles.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} {p.isDefault ? '(Default)' : ''}
+              </option>
+            ))}
+          </select>
           <ThemeToggle />
         </div>
 
@@ -182,6 +212,48 @@ export default function LoginPage() {
                 </div>
                 <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
                   tech@bikita.com
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('operator@bikita.com', 'password123')}
+                className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
+              >
+                <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
+                  <Gauge className="size-3 text-orange-500" />
+                  <span>Operator</span>
+                </div>
+                <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
+                  operator@bikita.com
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('coordinator@bikita.com', 'password123')}
+                className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
+              >
+                <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
+                  <Users className="size-3 text-cyan-500" />
+                  <span>Coordinator</span>
+                </div>
+                <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
+                  coordinator@bikita.com
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('safety@bikita.com', 'password123')}
+                className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
+              >
+                <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
+                  <Shield className="size-3 text-rose-500" />
+                  <span>Safety Officer</span>
+                </div>
+                <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
+                  safety@bikita.com
                 </div>
               </button>
 

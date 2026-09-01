@@ -305,18 +305,20 @@ export async function getActiveApiUrl(): Promise<string> {
 
   const active = await getActiveProfile();
 
-  // In local browser development, the frontend runs on port 3000 while the API runs on 8000.
-  // Do not silently target the current page origin unless the app is actually hosted with the API on the same origin.
-  if (!active || active.id === 'prod-default') {
-    if (typeof window !== 'undefined') {
-      const origin = window.location.origin;
-      if (['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:3001', 'http://127.0.0.1:3001'].includes(origin)) {
+  // In local browser development, the frontend runs on port 3000/3001 while the API runs on 8000.
+  // If the active profile is not the production default and we're on a dev origin, use the local backend.
+  if (typeof window !== 'undefined') {
+    const origin = window.location.origin;
+    const isDevOrigin = ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:3001', 'http://127.0.0.1:3001'].includes(origin);
+    if (isDevOrigin && active && active.id !== 'prod-default') {
+      return DEFAULT_BACKEND_URL;
+    }
+    if (!active || active.id === 'prod-default') {
+      if (isDevOrigin) {
         return DEFAULT_BACKEND_URL;
       }
       return origin;
     }
-
-    return DEFAULT_BACKEND_URL;
   }
 
   return normalizeServerUrl(active.primaryUrl);
