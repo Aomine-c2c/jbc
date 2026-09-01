@@ -15,6 +15,8 @@ class WorkflowEntityType(str, enum.Enum):
     WORK_ITEM = "WORK_ITEM"
     REQUEST = "REQUEST"
     JOB_CARD = "JOB_CARD"
+    APPROVAL = "APPROVAL"
+    RESOURCE_ALLOCATION = "RESOURCE_ALLOCATION"
     ASSET = "ASSET"
     ANY = "ANY"
 
@@ -52,6 +54,9 @@ class WorkflowTemplate(Base, TimestampMixin):
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Escalation policy & Actions config
+    escalation_policy: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     # State machine definition stored as JSON
     states: Mapped[list] = mapped_column(JSON, nullable=False, default=list)

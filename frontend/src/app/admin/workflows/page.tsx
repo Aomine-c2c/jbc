@@ -115,19 +115,91 @@ export default function WorkflowsAdminPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
-  const [newEntityType, setNewEntityType] = useState('WORK_ITEM');
-  const [newStatesJson, setNewStatesJson] = useState(JSON.stringify([
-    { name: 'DRAFT', label: 'Draft', is_initial: true, is_terminal: false, requires_approval: false },
-    { name: 'SUBMITTED', label: 'Submitted', is_initial: false, is_terminal: false, requires_approval: false },
-    { name: 'APPROVED', label: 'Approved', is_initial: false, is_terminal: false, requires_approval: true },
-    { name: 'CLOSED', label: 'Closed', is_initial: false, is_terminal: true, requires_approval: false },
-  ], null, 2));
-  const [newTransitionsJson, setNewTransitionsJson] = useState(JSON.stringify([
-    { from_state: 'DRAFT', to_state: 'SUBMITTED', action: 'submit', label: 'Submit for Review', required_role: 'Operator' },
-    { from_state: 'SUBMITTED', to_state: 'APPROVED', action: 'approve', label: 'Approve', required_role: 'Supervisor', required_permission: 'job_card:approve' },
-    { from_state: 'SUBMITTED', to_state: 'DRAFT', action: 'return', label: 'Return for Correction', required_role: 'Supervisor' },
-    { from_state: 'APPROVED', to_state: 'CLOSED', action: 'close', label: 'Close', required_role: 'Supervisor' },
-  ], null, 2));
+  const [newEntityType, setNewEntityType] = useState('REQUEST');
+  const [selectedPreset, setSelectedPreset] = useState<'MACHINE_REQUEST' | 'WORK_ITEM' | 'RESOURCE_ALLOCATION' | 'CUSTOM'>('MACHINE_REQUEST');
+
+  const PRESETS = {
+    MACHINE_REQUEST: {
+      name: 'Machine Request Full Lifecycle',
+      description: 'Standard Machine Request with Supervisor Review, Conditional Safety Approval, and Resource Allocation',
+      entity_type: 'REQUEST',
+      states: [
+        { name: 'DRAFT', label: 'Draft', is_initial: true, is_terminal: false, requires_approval: false },
+        { name: 'SUBMITTED', label: 'Submitted', is_initial: false, is_terminal: false, requires_approval: false },
+        { name: 'SUPERVISOR_REVIEW', label: 'Supervisor Review', is_initial: false, is_terminal: false, requires_approval: true, approval_role: 'Supervisor' },
+        { name: 'SAFETY_REVIEW', label: 'Safety Approval', is_initial: false, is_terminal: false, requires_approval: true, approval_role: 'Safety_Officer' },
+        { name: 'RESOURCE_COORDINATION', label: 'Resource Coordinator', is_initial: false, is_terminal: false, requires_approval: false },
+        { name: 'ALLOCATED', label: 'Allocated', is_initial: false, is_terminal: false, requires_approval: false },
+        { name: 'COMPLETED', label: 'Completed', is_initial: false, is_terminal: true, requires_approval: false },
+        { name: 'REJECTED', label: 'Rejected', is_initial: false, is_terminal: true, requires_approval: false },
+      ],
+      transitions: [
+        { from_state: 'DRAFT', to_state: 'SUBMITTED', action: 'submit', label: 'Submit Request', required_role: 'Requester' },
+        { from_state: 'SUBMITTED', to_state: 'SUPERVISOR_REVIEW', action: 'begin_review', label: 'Begin Supervisor Review', required_role: 'Supervisor' },
+        { from_state: 'SUPERVISOR_REVIEW', to_state: 'SAFETY_REVIEW', action: 'supervisor_approve_high_risk', label: 'Approve & Route to Safety', required_role: 'Supervisor', conditions: { risk_level: 'HIGH' } },
+        { from_state: 'SUPERVISOR_REVIEW', to_state: 'RESOURCE_COORDINATION', action: 'supervisor_approve_standard', label: 'Approve (Standard Risk)', required_role: 'Supervisor', conditions: { risk_level: ['LOW', 'MEDIUM'] } },
+        { from_state: 'SUPERVISOR_REVIEW', to_state: 'REJECTED', action: 'reject', label: 'Reject', required_role: 'Supervisor' },
+        { from_state: 'SAFETY_REVIEW', to_state: 'RESOURCE_COORDINATION', action: 'safety_approve', label: 'Safety Signoff', required_role: 'Safety_Officer' },
+        { from_state: 'SAFETY_REVIEW', to_state: 'REJECTED', action: 'safety_reject', label: 'Safety Reject', required_role: 'Safety_Officer' },
+        { from_state: 'RESOURCE_COORDINATION', to_state: 'ALLOCATED', action: 'allocate', label: 'Allocate Machinery', required_role: 'Resource_Coordinator' },
+        { from_state: 'ALLOCATED', to_state: 'COMPLETED', action: 'complete', label: 'Mark Completed', required_role: 'Resource_Coordinator' },
+      ],
+    },
+    WORK_ITEM: {
+      name: 'Work Item Standard Lifecycle',
+      description: 'Standard Job Card and Work Item execution lifecycle',
+      entity_type: 'WORK_ITEM',
+      states: [
+        { name: 'DRAFT', label: 'Draft', is_initial: true, is_terminal: false, requires_approval: false },
+        { name: 'SUBMITTED', label: 'Submitted', is_initial: false, is_terminal: false, requires_approval: false },
+        { name: 'APPROVED', label: 'Approved', is_initial: false, is_terminal: false, requires_approval: true, approval_role: 'Supervisor' },
+        { name: 'IN_PROGRESS', label: 'In Progress', is_initial: false, is_terminal: false, requires_approval: false },
+        { name: 'COMPLETED', label: 'Completed', is_initial: false, is_terminal: false, requires_approval: false },
+        { name: 'VERIFIED', label: 'Verified & Closed', is_initial: false, is_terminal: true, requires_approval: false },
+        { name: 'CANCELLED', label: 'Cancelled', is_initial: false, is_terminal: true, requires_approval: false },
+      ],
+      transitions: [
+        { from_state: 'DRAFT', to_state: 'SUBMITTED', action: 'submit', label: 'Submit for Review', required_role: 'Operator' },
+        { from_state: 'SUBMITTED', to_state: 'APPROVED', action: 'approve', label: 'Supervisor Approve', required_role: 'Supervisor' },
+        { from_state: 'SUBMITTED', to_state: 'DRAFT', action: 'return', label: 'Return for Correction', required_role: 'Supervisor' },
+        { from_state: 'APPROVED', to_state: 'IN_PROGRESS', action: 'start', label: 'Start Work', required_role: 'Technician' },
+        { from_state: 'IN_PROGRESS', to_state: 'COMPLETED', action: 'complete', label: 'Complete Work', required_role: 'Technician' },
+        { from_state: 'COMPLETED', to_state: 'VERIFIED', action: 'verify', label: 'Verify & Close', required_role: 'Supervisor' },
+        { from_state: 'DRAFT', to_state: 'CANCELLED', action: 'cancel', label: 'Cancel', required_role: 'Supervisor' },
+      ],
+    },
+    RESOURCE_ALLOCATION: {
+      name: 'Resource Allocation Lifecycle',
+      description: 'Fleet, machinery, and tool allocation workflow',
+      entity_type: 'RESOURCE_ALLOCATION',
+      states: [
+        { name: 'PENDING_ALLOCATION', label: 'Pending Allocation', is_initial: true, is_terminal: false },
+        { name: 'RESERVED', label: 'Reserved', is_initial: false, is_terminal: false },
+        { name: 'DISPATCHED', label: 'Dispatched / In Use', is_initial: false, is_terminal: false },
+        { name: 'RETURNED', label: 'Returned', is_initial: false, is_terminal: true },
+        { name: 'REJECTED', label: 'Rejected', is_initial: false, is_terminal: true },
+      ],
+      transitions: [
+        { from_state: 'PENDING_ALLOCATION', to_state: 'RESERVED', action: 'reserve', label: 'Reserve Asset', required_role: 'Resource_Coordinator' },
+        { from_state: 'PENDING_ALLOCATION', to_state: 'REJECTED', action: 'reject', label: 'Reject Requisition', required_role: 'Resource_Coordinator' },
+        { from_state: 'RESERVED', to_state: 'DISPATCHED', action: 'dispatch', label: 'Dispatch to Site', required_role: 'Resource_Coordinator' },
+        { from_state: 'DISPATCHED', to_state: 'RETURNED', action: 'return', label: 'Return & Inspect', required_role: 'Resource_Coordinator' },
+      ],
+    },
+  };
+
+  const applyPreset = (key: 'MACHINE_REQUEST' | 'WORK_ITEM' | 'RESOURCE_ALLOCATION') => {
+    const p = PRESETS[key];
+    setSelectedPreset(key);
+    setNewName(p.name);
+    setNewDesc(p.description);
+    setNewEntityType(p.entity_type);
+    setNewStatesJson(JSON.stringify(p.states, null, 2));
+    setNewTransitionsJson(JSON.stringify(p.transitions, null, 2));
+  };
+
+  const [newStatesJson, setNewStatesJson] = useState(JSON.stringify(PRESETS.MACHINE_REQUEST.states, null, 2));
+  const [newTransitionsJson, setNewTransitionsJson] = useState(JSON.stringify(PRESETS.MACHINE_REQUEST.transitions, null, 2));
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [validating, setValidating] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -540,6 +612,43 @@ export default function WorkflowsAdminPage() {
               </div>
 
               <form onSubmit={handleCreateSubmit} className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+                {/* Presets */}
+                <div className="space-y-1.5 p-3 rounded-lg border border-border bg-muted/20">
+                  <div className="text-[11px] font-semibold text-foreground flex items-center justify-between">
+                    <span>Workflow Templates & Presets:</span>
+                    <span className="text-[10px] text-muted-foreground">Click to populate schema</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <Button
+                      type="button"
+                      variant={selectedPreset === 'MACHINE_REQUEST' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => applyPreset('MACHINE_REQUEST')}
+                      className="text-[11px] h-7"
+                    >
+                      Machine Request
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={selectedPreset === 'WORK_ITEM' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => applyPreset('WORK_ITEM')}
+                      className="text-[11px] h-7"
+                    >
+                      Work Item / Job Card
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={selectedPreset === 'RESOURCE_ALLOCATION' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => applyPreset('RESOURCE_ALLOCATION')}
+                      className="text-[11px] h-7"
+                    >
+                      Resource Allocation
+                    </Button>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className="font-medium text-foreground">Template Name *</label>
@@ -558,8 +667,10 @@ export default function WorkflowsAdminPage() {
                       onChange={(e) => setNewEntityType(e.target.value)}
                       className="w-full h-8 rounded border border-input bg-card px-2 text-xs"
                     >
-                      <option value="WORK_ITEM">WORK_ITEM</option>
                       <option value="REQUEST">REQUEST</option>
+                      <option value="WORK_ITEM">WORK_ITEM</option>
+                      <option value="RESOURCE_ALLOCATION">RESOURCE_ALLOCATION</option>
+                      <option value="APPROVAL">APPROVAL</option>
                       <option value="JOB_CARD">JOB_CARD</option>
                       <option value="ASSET">ASSET</option>
                       <option value="ANY">ANY</option>

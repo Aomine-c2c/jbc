@@ -168,7 +168,7 @@ async def execute_transition(
 ):
     """
     Execute a state transition on a workflow instance.
-    Server-side validates: action exists from current state, actor has required role/permission.
+    Server-side validates: action exists from current state, actor has required role/permission, conditions are met.
     """
     instance = await WorkflowService.execute_transition(
         db=db,
@@ -176,6 +176,7 @@ async def execute_transition(
         action=data.action,
         actor=current_user,
         notes=data.notes,
+        entity_context=data.entity_context,
     )
     return await WorkflowService.build_instance_response(db, instance)
 

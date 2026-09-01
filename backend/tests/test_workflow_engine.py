@@ -410,3 +410,154 @@ async def test_immutable_transition_log_append_only(db: AsyncSession):
     assert detail.transition_logs[0].action == "INITIALIZE"
     assert detail.transition_logs[-1].action == "close"
     assert detail.transition_logs[-1].to_state == "CLOSED"
+
+
+@pytest.mark.asyncio
+async def test_invalid_template_rejection_dead_end_trap():
+    """A non-terminal state from which no terminal state can be reached is rejected as a trap."""
+    states = [
+        WorkflowStateSchema(name="DRAFT", is_initial=True, is_terminal=False),
+        WorkflowStateSchema(name="TRAPPED", is_initial=False, is_terminal=False),
+        WorkflowStateSchema(name="CLOSED", is_initial=False, is_terminal=True),
+    ]
+    # DRAFT can go to TRAPPED or CLOSED, but TRAPPED has transitions only to itself
+    transitions = [
+        WorkflowTransitionSchema(from_state="DRAFT", to_state="TRAPPED", action="trap", required_role="Operator"),
+        WorkflowTransitionSchema(from_state="TRAPPED", to_state="TRAPPED", action="loop", required_role="Operator"),
+        WorkflowTransitionSchema(from_state="DRAFT", to_state="CLOSED", action="close", required_role="Operator"),
+    ]
+    result = validate_workflow_definition(
+        [s.model_dump() for s in states],
+        [t.model_dump() for t in transitions],
+    )
+    assert result.valid is False
+    assert any("trap" in e.lower() or "dead-end" in e.lower() for e in result.errors)
+
+
+@pytest.mark.asyncio
+async def test_machine_request_lifecycle_with_conditions_and_approvals(db: AsyncSession):
+    """
+    Test full Machine Request lifecycle:
+    Draft → Submitted → Supervisor Approval → Safety Approval (if high risk) → Resource Coordinator → Allocated → Completed
+    """
+    dept = Department(name=f"MR Dept {uuid.uuid4().hex[:4]}", code=f"MRD-{uuid.uuid4().hex[:4]}")
+    db.add(dept)
+    await db.commit()
+    admin = await _create_user(db, dept, superuser=True)
+
+    mr_states = [
+        WorkflowStateSchema(name="DRAFT", label="Draft", is_initial=True, is_terminal=False),
+        WorkflowStateSchema(name="SUBMITTED", label="Submitted", is_initial=False, is_terminal=False),
+        WorkflowStateSchema(name="SUPERVISOR_REVIEW", label="Supervisor Review", is_initial=False, is_terminal=False, requires_approval=True, approval_role="Supervisor"),
+        WorkflowStateSchema(name="SAFETY_REVIEW", label="Safety Approval", is_initial=False, is_terminal=False, requires_approval=True, approval_role="Safety_Officer"),
+        WorkflowStateSchema(name="RESOURCE_COORDINATION", label="Resource Coordinator", is_initial=False, is_terminal=False),
+        WorkflowStateSchema(name="ALLOCATED", label="Allocated", is_initial=False, is_terminal=False),
+        WorkflowStateSchema(name="COMPLETED", label="Completed", is_initial=False, is_terminal=True),
+        WorkflowStateSchema(name="REJECTED", label="Rejected", is_initial=False, is_terminal=True),
+    ]
+
+    mr_transitions = [
+        WorkflowTransitionSchema(from_state="DRAFT", to_state="SUBMITTED", action="submit", required_role="Requester"),
+        WorkflowTransitionSchema(from_state="SUBMITTED", to_state="SUPERVISOR_REVIEW", action="begin_review", required_role="Supervisor"),
+        # Conditional: High risk routes to SAFETY_REVIEW
+        WorkflowTransitionSchema(
+            from_state="SUPERVISOR_REVIEW", to_state="SAFETY_REVIEW", action="supervisor_approve_high_risk",
+            required_role="Supervisor", conditions={"risk_level": "HIGH"}
+        ),
+        # Conditional: Normal risk routes straight to RESOURCE_COORDINATION
+        WorkflowTransitionSchema(
+            from_state="SUPERVISOR_REVIEW", to_state="RESOURCE_COORDINATION", action="supervisor_approve_standard",
+            required_role="Supervisor", conditions={"risk_level": ["LOW", "MEDIUM"]}
+        ),
+        WorkflowTransitionSchema(from_state="SUPERVISOR_REVIEW", to_state="REJECTED", action="reject", required_role="Supervisor"),
+        WorkflowTransitionSchema(from_state="SAFETY_REVIEW", to_state="RESOURCE_COORDINATION", action="safety_approve", required_role="Safety_Officer"),
+        WorkflowTransitionSchema(from_state="SAFETY_REVIEW", to_state="REJECTED", action="safety_reject", required_role="Safety_Officer"),
+        WorkflowTransitionSchema(from_state="RESOURCE_COORDINATION", to_state="ALLOCATED", action="allocate", required_role="Resource_Coordinator"),
+        WorkflowTransitionSchema(from_state="ALLOCATED", to_state="COMPLETED", action="complete", required_role="Resource_Coordinator"),
+    ]
+
+    val = validate_workflow_definition(
+        [s.model_dump() for s in mr_states],
+        [t.model_dump() for t in mr_transitions],
+    )
+    assert val.valid is True
+
+    dto = WorkflowTemplateCreate(
+        name=f"Machine Request Comprehensive {uuid.uuid4().hex[:4]}",
+        entity_type="REQUEST",
+        request_type="MACHINE_REQUEST",
+        states=mr_states,
+        transitions=mr_transitions,
+    )
+    template = await WorkflowService.create_template(db, dto, admin)
+    await WorkflowService.activate_template(db, template.id, admin)
+
+    req_id = uuid.uuid4()
+    instance = await WorkflowService.create_instance(
+        db=db, entity_type="REQUEST", entity_id=req_id, current_user=admin, request_type="MACHINE_REQUEST"
+    )
+    assert instance.current_state == "DRAFT"
+
+    # 1. Submit
+    instance = await WorkflowService.execute_transition(db, instance.id, "submit", admin)
+    assert instance.current_state == "SUBMITTED"
+
+    # 2. Begin review
+    instance = await WorkflowService.execute_transition(db, instance.id, "begin_review", admin)
+    assert instance.current_state == "SUPERVISOR_REVIEW"
+
+    # 3. Try high-risk transition with LOW risk entity context -> should fail
+    from fastapi import HTTPException
+    with pytest.raises(HTTPException) as exc:
+        await WorkflowService.execute_transition(
+            db, instance.id, "supervisor_approve_high_risk", admin, entity_context={"risk_level": "LOW"}
+        )
+    assert exc.value.status_code == 422
+
+    # 4. Perform high-risk transition with HIGH risk context -> should succeed
+    instance = await WorkflowService.execute_transition(
+        db, instance.id, "supervisor_approve_high_risk", admin, entity_context={"risk_level": "HIGH"}
+    )
+    assert instance.current_state == "SAFETY_REVIEW"
+
+    # 5. Safety officer approves
+    instance = await WorkflowService.execute_transition(db, instance.id, "safety_approve", admin)
+    assert instance.current_state == "RESOURCE_COORDINATION"
+
+    # 6. Allocate
+    instance = await WorkflowService.execute_transition(db, instance.id, "allocate", admin)
+    assert instance.current_state == "ALLOCATED"
+
+    # 7. Complete
+    instance = await WorkflowService.execute_transition(db, instance.id, "complete", admin)
+    assert instance.current_state == "COMPLETED"
+    assert instance.completed_at is not None
+
+
+@pytest.mark.asyncio
+async def test_audit_logs_recorded_on_workflow_lifecycle(db: AsyncSession):
+    """Audit logs must be written to BusinessAuditLog for template creation and activation."""
+    dept = Department(name=f"Aud Dept {uuid.uuid4().hex[:4]}", code=f"AUD-{uuid.uuid4().hex[:4]}")
+    db.add(dept)
+    await db.commit()
+    admin = await _create_user(db, dept, superuser=True)
+
+    dto = WorkflowTemplateCreate(
+        name=f"Audited WF {uuid.uuid4().hex[:4]}",
+        entity_type="RESOURCE_ALLOCATION",
+        states=_make_simple_states(),
+        transitions=_make_simple_transitions(),
+    )
+    template = await WorkflowService.create_template(db, dto, admin)
+    await WorkflowService.activate_template(db, template.id, admin)
+
+    from sqlalchemy import select
+    from app.modules.audit.models import BusinessAuditLog
+    res = await db.execute(
+        select(BusinessAuditLog).where(BusinessAuditLog.resource == "WORKFLOW_TEMPLATE", BusinessAuditLog.resource_id == str(template.id))
+    )
+    logs = res.scalars().all()
+    actions = [l.action for l in logs]
+    assert "CREATE_WORKFLOW_TEMPLATE" in actions
+    assert "ACTIVATE_WORKFLOW_TEMPLATE" in actions
+

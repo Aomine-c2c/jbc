@@ -1,4 +1,5 @@
 import uuid
+from collections import deque
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 
@@ -21,6 +22,99 @@ from app.modules.workflow.schemas import (
     WorkflowValidationResult,
 )
 from app.modules.iam.models import User
+from app.modules.audit.service import AuditService
+
+
+# ── Condition Evaluation Engine ───────────────────────────────────────────────
+
+def evaluate_condition_expression(field_val: Any, rule: Any) -> bool:
+    """
+    Evaluates an entity field value against a rule definition.
+    Supports:
+      - Direct equality: rule == "HIGH"
+      - List membership: rule == ["HIGH", "CRITICAL"]
+      - Operator dict: rule == {">=": 2, "<": 5}, {"==": "VALUE"}, {"in": [...]}, {"!=": "DRAFT"}
+    """
+    if rule is None:
+        return True
+
+    if isinstance(rule, (str, int, float, bool)):
+        if isinstance(field_val, str) and isinstance(rule, str):
+            return field_val.upper().strip() == rule.upper().strip()
+        return field_val == rule
+
+    if isinstance(rule, list):
+        if isinstance(field_val, str):
+            norm_list = [str(x).upper().strip() for x in rule]
+            return field_val.upper().strip() in norm_list
+        return field_val in rule
+
+    if isinstance(rule, dict):
+        for op, target in rule.items():
+            op_norm = op.strip().lower()
+            if op_norm in ("==", "eq"):
+                if isinstance(field_val, str) and isinstance(target, str):
+                    if field_val.upper().strip() != target.upper().strip():
+                        return False
+                elif field_val != target:
+                    return False
+            elif op_norm in ("!=", "neq", "ne"):
+                if isinstance(field_val, str) and isinstance(target, str):
+                    if field_val.upper().strip() == target.upper().strip():
+                        return False
+                elif field_val == target:
+                    return False
+            elif op_norm in (">=", "gte"):
+                if field_val is None or float(field_val) < float(target):
+                    return False
+            elif op_norm in (">", "gt"):
+                if field_val is None or float(field_val) <= float(target):
+                    return False
+            elif op_norm in ("<=", "lte"):
+                if field_val is None or float(field_val) > float(target):
+                    return False
+            elif op_norm in ("<", "lt"):
+                if field_val is None or float(field_val) >= float(target):
+                    return False
+            elif op_norm in ("in", "contains"):
+                if isinstance(target, list):
+                    if isinstance(field_val, str):
+                        norm_target = [str(x).upper().strip() for x in target]
+                        if field_val.upper().strip() not in norm_target:
+                            return False
+                    elif field_val not in target:
+                        return False
+            elif op_norm in ("not in", "not_in"):
+                if isinstance(target, list):
+                    if isinstance(field_val, str):
+                        norm_target = [str(x).upper().strip() for x in target]
+                        if field_val.upper().strip() in norm_target:
+                            return False
+                    elif field_val in target:
+                        return False
+        return True
+
+    return True
+
+
+def evaluate_transition_conditions(conditions: Optional[Dict[str, Any]], context: Dict[str, Any]) -> tuple[bool, list[str]]:
+    """
+    Evaluates all condition rules against the provided entity context.
+    Returns (passed, list_of_failure_reasons).
+    """
+    if not conditions:
+        return True, []
+
+    failed_reasons: list[str] = []
+    for field_name, rule in conditions.items():
+        val = context.get(field_name)
+        passed = evaluate_condition_expression(val, rule)
+        if not passed:
+            failed_reasons.append(
+                f"Condition on '{field_name}' not satisfied: current value is '{val}', required rule: {rule}."
+            )
+
+    return len(failed_reasons) == 0, failed_reasons
 
 
 # ── Structural Validation ─────────────────────────────────────────────────────
@@ -30,8 +124,15 @@ def validate_workflow_definition(
     transitions: List[Dict[str, Any]],
 ) -> WorkflowValidationResult:
     """
-    Server-side structural validation of a workflow definition.
-    Returns a WorkflowValidationResult with errors and warnings.
+    Server-side structural and graph-theory validation of a workflow definition.
+    Checks:
+      1. Initial & Terminal state existence
+      2. Declared state references
+      3. Authority (required_role or required_permission) for all transitions
+      4. Approval rules (requires_approval requires role or step definition)
+      5. Reachability: all non-initial states must be reachable from initial states
+      6. Dead-End / Trap detection: all reachable states must have a path to a terminal state
+      7. Outgoing transition warnings from terminal states
     """
     errors: list[str] = []
     warnings: list[str] = []
@@ -49,6 +150,7 @@ def validate_workflow_definition(
         errors.append("Workflow must have at least one terminal state (set is_terminal=true on one state).")
 
     # Rule 3: All transition states must be declared
+    adj_forward: Dict[str, list[str]] = {s: [] for s in state_names}
     for t in transitions:
         fs = t.get("from_state", "")
         ts = t.get("to_state", "")
@@ -56,6 +158,8 @@ def validate_workflow_definition(
             errors.append(f"Transition '{t.get('action', '?')}' references unknown from_state: '{fs}'.")
         if ts not in state_names:
             errors.append(f"Transition '{t.get('action', '?')}' references unknown to_state: '{ts}'.")
+        if fs in state_names and ts in state_names:
+            adj_forward[fs].append(ts)
 
     # Rule 4: Every transition must specify required_role OR required_permission
     for t in transitions:
@@ -66,14 +170,60 @@ def validate_workflow_definition(
                 f"must define required_role or required_permission."
             )
 
-    # Rule 5: Unreachable states (non-initial states that no transition leads to)
-    reachable_via_transition = {t.get("to_state") for t in transitions if t.get("to_state")}
-    for state in states:
-        name = state["name"]
-        if not state.get("is_initial", False) and name not in reachable_via_transition:
-            errors.append(
-                f"State '{name}' is unreachable — no transition leads to it and it is not an initial state."
-            )
+    # Rule 5: Approval rules verification
+    for s in states:
+        if s.get("requires_approval", False) and not s.get("approval_role"):
+            # Check if any incoming transition defines required_role or supervisor authority
+            incoming = [t for t in transitions if t.get("to_state") == s["name"]]
+            has_auth = any(t.get("required_role") or t.get("required_permission") for t in incoming)
+            if not has_auth:
+                warnings.append(
+                    f"State '{s['name']}' requires approval but does not specify approval_role or transition authority."
+                )
+
+    # Rule 6: Graph Reachability from Initial States (BFS)
+    if initial_states and not any("unknown" in e for e in errors):
+        visited_from_initial = set()
+        queue = deque(initial_states)
+        for init_st in initial_states:
+            visited_from_initial.add(init_st)
+
+        while queue:
+            curr = queue.popleft()
+            for neighbor in adj_forward.get(curr, []):
+                if neighbor not in visited_from_initial:
+                    visited_from_initial.add(neighbor)
+                    queue.append(neighbor)
+
+        for s_name in state_names:
+            if s_name not in visited_from_initial:
+                errors.append(
+                    f"State '{s_name}' is unreachable — no path leads to it from any initial state."
+                )
+
+        # Rule 7: Dead-End / Circular Trap Detection (Reachability to Terminal States)
+        # Every reachable state must be able to reach at least one terminal state
+        if terminal_states:
+            # Build reverse adjacency graph
+            adj_reverse: Dict[str, list[str]] = {s: [] for s in state_names}
+            for u, neighbors in adj_forward.items():
+                for v in neighbors:
+                    adj_reverse[v].append(u)
+
+            can_reach_terminal = set(terminal_states)
+            rev_queue = deque(terminal_states)
+            while rev_queue:
+                curr = rev_queue.popleft()
+                for prev in adj_reverse.get(curr, []):
+                    if prev not in can_reach_terminal:
+                        can_reach_terminal.add(prev)
+                        rev_queue.append(prev)
+
+            for reachable_state in visited_from_initial:
+                if reachable_state not in can_reach_terminal:
+                    errors.append(
+                        f"State '{reachable_state}' is a dead-end / circular trap — it has no path to reach any terminal state."
+                    )
 
     # Warning: terminal states should not have outgoing transitions
     for state in states:
@@ -106,6 +256,7 @@ class WorkflowService:
         """
         Validate and create a new workflow template (version 1, inactive).
         Templates must be explicitly activated before use.
+        Logs business audit event.
         """
         states_raw = [s.model_dump() for s in data.states]
         transitions_raw = [t.model_dump() for t in data.transitions]
@@ -138,11 +289,30 @@ class WorkflowService:
             version=next_version,
             is_active=False,
             is_default=data.is_default,
+            escalation_policy=data.escalation_policy,
             states=states_raw,
             transitions=transitions_raw,
             created_by_id=current_user.id,
         )
         db.add(template)
+
+        # Record audit log
+        await AuditService.log_event(
+            db=db,
+            action="CREATE_WORKFLOW_TEMPLATE",
+            resource="WORKFLOW_TEMPLATE",
+            resource_id=str(template.id),
+            user=current_user,
+            new_value={
+                "name": template.name,
+                "version": template.version,
+                "entity_type": template.entity_type,
+                "states_count": len(states_raw),
+                "transitions_count": len(transitions_raw),
+            },
+            reason=f"Workflow template '{template.name}' v{template.version} created.",
+        )
+
         await db.commit()
         await db.refresh(template)
         return template
@@ -156,6 +326,7 @@ class WorkflowService:
         """
         Activate a workflow template version.
         Deactivates all other versions of the same name.
+        Logs business audit event.
         """
         res = await db.execute(
             select(WorkflowTemplate).where(WorkflowTemplate.id == template_id)
@@ -174,6 +345,22 @@ class WorkflowService:
             .values(is_active=False)
         )
         template.is_active = True
+
+        # Log audit event
+        await AuditService.log_event(
+            db=db,
+            action="ACTIVATE_WORKFLOW_TEMPLATE",
+            resource="WORKFLOW_TEMPLATE",
+            resource_id=str(template.id),
+            user=current_user,
+            new_value={
+                "name": template.name,
+                "version": template.version,
+                "is_active": True,
+            },
+            reason=f"Activated workflow template '{template.name}' v{template.version}.",
+        )
+
         await db.commit()
         await db.refresh(template)
         return template
@@ -344,6 +531,7 @@ class WorkflowService:
         snapshot = {
             "states": template.states,
             "transitions": template.transitions,
+            "escalation_policy": template.escalation_policy,
         }
 
         instance = WorkflowInstance(
@@ -407,6 +595,7 @@ class WorkflowService:
         action: str,
         actor: User,
         notes: Optional[str] = None,
+        entity_context: Optional[Dict[str, Any]] = None,
     ) -> WorkflowInstance:
         """
         Execute a state transition on a workflow instance.
@@ -414,7 +603,7 @@ class WorkflowService:
           - Instance is not already completed
           - Transition exists from current state with this action
           - Actor has required_role or required_permission
-          - Conditions are met
+          - Conditional rules (priority, risk_level, asset_type, department, location, etc.) are satisfied
         """
         res = await db.execute(
             select(WorkflowInstance).where(WorkflowInstance.id == instance_id)
@@ -467,11 +656,19 @@ class WorkflowService:
                        f"Required role: {required_role or 'N/A'} / permission: {required_permission or 'N/A'}.",
             )
 
-        # Condition check (priority, risk_level)
+        # Condition check (priority, risk_level, asset_type, location, etc.)
         conditions = transition.get("conditions") or {}
         if conditions:
-            # Conditions are informational for now — future: enforce dynamically
-            pass
+            ctx = entity_context or {}
+            cond_passed, reasons = evaluate_transition_conditions(conditions, ctx)
+            if not cond_passed:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "message": f"Transition '{action}' conditions not satisfied.",
+                        "reasons": reasons,
+                    },
+                )
 
         old_state = instance.current_state
         new_state = transition["to_state"]

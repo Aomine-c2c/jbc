@@ -11,7 +11,10 @@ class WorkflowStateSchema(BaseModel):
     is_initial: bool = False
     is_terminal: bool = False
     requires_approval: bool = False
+    approval_role: Optional[str] = None
     sla_minutes: Optional[int] = None
+    escalate_after_minutes: Optional[int] = None
+    escalation_role: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -24,8 +27,10 @@ class WorkflowTransitionSchema(BaseModel):
     label: Optional[str] = None
     required_role: Optional[str] = None
     required_permission: Optional[str] = None
-    # Conditions evaluated at transition time
+    # Conditions evaluated at transition time (e.g. {"priority": {">=": 2}, "risk_level": "HIGH"})
     conditions: Optional[Dict[str, Any]] = None
+    # Post-transition actions (e.g. ["NOTIFY_SUPERVISOR", "ALLOCATE_RESOURCE"])
+    actions: Optional[List[str]] = None
     auto_create_sla: bool = False
 
     model_config = {"from_attributes": True}
@@ -40,6 +45,7 @@ class WorkflowTemplateCreate(BaseModel):
     risk_level: Optional[str] = None
     request_type: Optional[str] = None
     is_default: bool = False
+    escalation_policy: Optional[Dict[str, Any]] = None
     states: List[WorkflowStateSchema] = Field(..., min_length=1)
     transitions: List[WorkflowTransitionSchema] = Field(..., min_length=1)
 
@@ -93,6 +99,7 @@ class WorkflowTemplateResponse(BaseModel):
     min_priority: Optional[int] = None
     risk_level: Optional[str] = None
     request_type: Optional[str] = None
+    escalation_policy: Optional[Dict[str, Any]] = None
     states: List[Dict[str, Any]] = []
     transitions: List[Dict[str, Any]] = []
     created_at: Optional[datetime] = None
@@ -104,6 +111,8 @@ class WorkflowTemplateResponse(BaseModel):
 class WorkflowTransitionRequest(BaseModel):
     action: str = Field(..., min_length=1)
     notes: Optional[str] = None
+    # Optional entity runtime context for condition evaluation
+    entity_context: Optional[Dict[str, Any]] = None
 
 
 class WorkflowTransitionLogResponse(BaseModel):
