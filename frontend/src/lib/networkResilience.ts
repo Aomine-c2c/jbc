@@ -181,7 +181,7 @@ class NetworkResilienceManager {
   public translateNetworkError(err: any, endpoint: string): string {
     const msg = err?.message || String(err);
     if (msg.includes('AbortError') || msg.includes('timeout') || err?.name === 'TimeoutError') {
-      return `Server response timed out after 10 seconds. The central server may be busy or unreachable.`;
+      return `Server response timed out after 4 seconds. The central server may be busy or unreachable.`;
     }
     if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('ECONNREFUSED')) {
       if (typeof navigator !== 'undefined' && !navigator.onLine) {

@@ -360,7 +360,7 @@ class RequestService:
         if not req:
             raise HTTPException(status_code=404, detail="Request not found")
 
-        if req.status != "APPROVED" and req.fulfillment_status not in ["AWAITING_FULFILLMENT", "PARTIALLY_FULFILLED"]:
+        if req.status != "APPROVED" or req.fulfillment_status not in ["AWAITING_FULFILLMENT", "PARTIALLY_FULFILLED"]:
             raise HTTPException(status_code=400, detail="Request must be APPROVED before fulfillment")
 
         target_fulfill = data.fulfillment_status.upper().strip()
@@ -412,7 +412,9 @@ class RequestService:
 
         # Check total fulfillment status of all items
         req_res = await db.execute(select(OperationalRequest).where(OperationalRequest.id == request_id))
-        req = req_res.scalar_one()
+        req = req_res.scalar_one_or_none()
+        if not req:
+            raise HTTPException(status_code=404, detail="Request not found")
 
         items_res = await db.execute(select(RequestMaterialItem).where(RequestMaterialItem.request_id == request_id))
         all_items = items_res.scalars().all()

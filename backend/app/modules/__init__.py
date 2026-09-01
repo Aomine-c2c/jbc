@@ -25,6 +25,9 @@ from app.modules.notifications.models import Notification, NotificationRule, Esc
 # Common models
 from app.modules.common.models import SMSMessage
 
+# Dashboard models
+from app.modules.dashboard.models import DashboardSavedView
+
 # Unified Work Management models
 from app.modules.work.models import WorkItem, WorkItemActionLog, WorkItemAttachment, WorkItemComment, WorkItemPart
 

@@ -38,13 +38,14 @@ export interface ValidationResult {
 const PROFILES_STORAGE_KEY = 'dwrms_server_profiles';
 const ACTIVE_PROFILE_ID_KEY = 'dwrms_active_profile_id';
 const LEGACY_API_URL_KEY = 'dwrms_api_url';
+const DEFAULT_BACKEND_URL = 'http://localhost:8000';
 
 // Default starter profile template
 export const DEFAULT_PROFILES: ServerProfile[] = [
   {
     id: 'prod-default',
     name: 'Bikita Minerals Production',
-    primaryUrl: process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '').replace(/\/api\/v1$/, '') || 'https://dwrms.bikita.com',
+    primaryUrl: process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '').replace(/\/api\/v1$/, '') || DEFAULT_BACKEND_URL,
     fallbackUrl: 'http://192.168.1.100:8000',
     connectionMode: 'domain',
     isVerified: false,
@@ -297,16 +298,26 @@ export async function deleteProfile(profileId: string): Promise<void> {
  * Resolves active API base URL with automatic fallback failover if needed.
  */
 export async function getActiveApiUrl(): Promise<string> {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '').replace(/\/api\/v1$/, '');
+  if (envUrl) {
+    return normalizeServerUrl(envUrl);
+  }
+
   const active = await getActiveProfile();
-  
-  // If no profile, or using the default production profile on the web, resolve dynamically
+
+  // In local browser development, the frontend runs on port 3000 while the API runs on 8000.
+  // Do not silently target the current page origin unless the app is actually hosted with the API on the same origin.
   if (!active || active.id === 'prod-default') {
     if (typeof window !== 'undefined') {
-      return window.location.origin;
+      const origin = window.location.origin;
+      if (['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:3001', 'http://127.0.0.1:3001'].includes(origin)) {
+        return DEFAULT_BACKEND_URL;
+      }
+      return origin;
     }
-    // On server-side (Next.js SSR), connect to internal backend container
-    return process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '').replace(/\/api\/v1$/, '') || 'http://backend:8000';
+
+    return DEFAULT_BACKEND_URL;
   }
-  
+
   return normalizeServerUrl(active.primaryUrl);
 }

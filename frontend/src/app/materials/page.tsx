@@ -134,9 +134,6 @@ export default function MaterialsManagementPage() {
 
       const deptData = await apiFetch<DepartmentOption[]>('/api/v1/departments');
       if (deptData) setDepartments(deptData);
-
-      const catData = await apiFetch<CatalogItem[]>('/api/v1/materials/catalog?limit=200');
-      if (catData) setCatalog(catData);
     } catch (err) {
       console.error('Failed to load materials data', err);
     } finally {

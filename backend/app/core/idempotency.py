@@ -75,9 +75,10 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         # Process new request
         response = await call_next(request)
 
-        # Cache only successful / client response statuses (200-299, 400-499)
-        # Never cache transient 5xx server errors
-        if response.status_code < 500:
+        # Cache only successful responses (2xx / 3xx).
+        # Never cache client errors (4xx) or transient server errors (5xx),
+        # because 4xx payloads are often stale on retry after the user fixes input.
+        if response.status_code < 300:
             response_body = [section async for section in response.body_iterator]
             full_body = b"".join(response_body)
 

@@ -4,25 +4,79 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
+# ── Priority Config Schemas ──────────────────────────────────────────────────
+
+class SLAPriorityConfigBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=50, description="Priority key, e.g. CRITICAL")
+    display_name: str = Field(..., min_length=1, max_length=100)
+    description: Optional[str] = None
+    color_code: Optional[str] = Field(None, max_length=20, description="Hex color e.g. #FF0000")
+    default_response_minutes: int = Field(60, ge=1)
+    default_completion_minutes: int = Field(480, ge=1)
+    sort_order: int = Field(50, ge=0)
+    is_active: bool = True
+
+
+class SLAPriorityConfigCreate(SLAPriorityConfigBase):
+    pass
+
+
+class SLAPriorityConfigUpdate(BaseModel):
+    display_name: Optional[str] = None
+    description: Optional[str] = None
+    color_code: Optional[str] = None
+    default_response_minutes: Optional[int] = Field(None, ge=1)
+    default_completion_minutes: Optional[int] = Field(None, ge=1)
+    sort_order: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+class SLAPriorityConfigResponse(SLAPriorityConfigBase):
+    id: UUID
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ── Escalation Rule Schema ───────────────────────────────────────────────────
+
 class EscalationRuleSchema(BaseModel):
-    level: int = Field(..., ge=1, le=5)
-    trigger: str = Field(..., description="RESPONSE_WARNING, RESPONSE_BREACH, COMPLETION_WARNING, COMPLETION_BREACH")
+    level: int = Field(..., ge=1, le=10)
+    trigger: str = Field(
+        ...,
+        description="RESPONSE_WARNING | RESPONSE_BREACH | COMPLETION_WARNING | COMPLETION_BREACH",
+    )
     after_percentage: int = Field(..., ge=1, le=200)
     target_role: Optional[str] = None
     notify_channel: str = Field("PUSH", description="PUSH, SMS, EMAIL, ALL")
 
 
+# ── SLA Policy Schemas ───────────────────────────────────────────────────────
+
 class SLAPolicyBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = None
-    priority: Optional[str] = None  # LOW, NORMAL, HIGH, CRITICAL
-    work_type: Optional[str] = None  # MAINTENANCE, INSPECTION, JOB_CARD, etc.
+
+    # Matching Criteria (NULL = wildcard)
+    priority: Optional[str] = None          # LOW, NORMAL, HIGH, CRITICAL
+    work_type: Optional[str] = None         # MAINTENANCE, INSPECTION, JOB_CARD, etc.
+    request_type: Optional[str] = None      # MAINTENANCE_REQUEST, MACHINE_REQUEST, etc.
     department_id: Optional[UUID] = None
+    location_id: Optional[UUID] = None
     asset_category: Optional[str] = None
     risk_level: Optional[str] = None
+
+    # Targets
     response_time_minutes: int = Field(60, ge=1)
     completion_time_minutes: int = Field(480, ge=1)
+
+    # Thresholds
     warning_threshold_percentage: int = Field(80, ge=1, le=100)
+    completion_warning_threshold_percentage: int = Field(80, ge=1, le=100)
+
+    # Spam prevention
+    notification_cooldown_minutes: int = Field(60, ge=0)
+
     escalation_rules: List[Dict[str, Any]] = Field(default_factory=list)
     is_active: bool = True
     is_default: bool = False
@@ -37,12 +91,16 @@ class SLAPolicyUpdate(BaseModel):
     description: Optional[str] = None
     priority: Optional[str] = None
     work_type: Optional[str] = None
+    request_type: Optional[str] = None
     department_id: Optional[UUID] = None
+    location_id: Optional[UUID] = None
     asset_category: Optional[str] = None
     risk_level: Optional[str] = None
     response_time_minutes: Optional[int] = None
     completion_time_minutes: Optional[int] = None
     warning_threshold_percentage: Optional[int] = None
+    completion_warning_threshold_percentage: Optional[int] = None
+    notification_cooldown_minutes: Optional[int] = None
     escalation_rules: Optional[List[Dict[str, Any]]] = None
     is_active: Optional[bool] = None
     is_default: Optional[bool] = None
@@ -51,10 +109,13 @@ class SLAPolicyUpdate(BaseModel):
 class SLAPolicyResponse(SLAPolicyBase):
     id: UUID
     department_name: Optional[str] = None
+    location_name: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)
 
+
+# ── Escalation Log Schemas ───────────────────────────────────────────────────
 
 class SLAEscalationLogResponse(BaseModel):
     id: UUID
@@ -64,9 +125,12 @@ class SLAEscalationLogResponse(BaseModel):
     notified_role: Optional[str] = None
     notified_user_ids: List[Any] = Field(default_factory=list)
     message: Optional[str] = None
+    fired_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)
 
+
+# ── SLA Tracker Schemas ──────────────────────────────────────────────────────
 
 class SLATrackerBase(BaseModel):
     policy_id: Optional[UUID] = None
@@ -75,7 +139,10 @@ class SLATrackerBase(BaseModel):
     resource_reference: Optional[str] = None
     title: str = Field(..., min_length=1, max_length=255)
     priority: str = Field("NORMAL", max_length=50)
+    request_type: Optional[str] = None
     department_id: Optional[UUID] = None
+    location_id: Optional[UUID] = None
+    timezone: str = Field("UTC", max_length=100, description="IANA timezone string e.g. Africa/Harare")
 
 
 class SLATrackerCreate(SLATrackerBase):
@@ -109,6 +176,7 @@ class SLATrackerResponse(SLATrackerBase):
     current_escalation_level: int = 0
     breach_reason: Optional[str] = None
     department_name: Optional[str] = None
+    location_name: Optional[str] = None
     policy_name: Optional[str] = None
     history_logs: List[Any] = Field(default_factory=list)
     escalation_logs: List[SLAEscalationLogResponse] = Field(default_factory=list)
@@ -124,24 +192,30 @@ class SLATrackerListResponse(BaseModel):
     resource_reference: Optional[str] = None
     title: str
     priority: str
+    request_type: Optional[str] = None
     status: str
     health: str
+    timezone: str = "UTC"
     target_response_at: Optional[datetime] = None
     target_completion_at: Optional[datetime] = None
     actual_response_at: Optional[datetime] = None
     actual_completion_at: Optional[datetime] = None
     current_escalation_level: int = 0
     department_name: Optional[str] = None
+    location_name: Optional[str] = None
     policy_name: Optional[str] = None
     created_at: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)
 
+
+# ── Dashboard Schema ─────────────────────────────────────────────────────────
 
 class SLADashboardResponse(BaseModel):
     total_active: int
     on_track_count: int
     at_risk_count: int
     breached_count: int
+    overdue_count: int                          # Both response AND completion breached, not yet completed
     critical_open_count: int
     compliance_percentage: float
     avg_response_minutes: float

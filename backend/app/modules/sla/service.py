@@ -1,11 +1,12 @@
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional, Dict, Any, Tuple
-from sqlalchemy import select, func, or_, and_, update
+from typing import List, Optional, Dict, Any
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 
 from app.modules.sla.models import (
+    SLAPriorityConfig,
     SLAPolicy,
     SLATracker,
     SLAEscalationLog,
@@ -14,6 +15,9 @@ from app.modules.sla.models import (
     SLAHealth,
 )
 from app.modules.sla.schemas import (
+    SLAPriorityConfigCreate,
+    SLAPriorityConfigUpdate,
+    SLAPriorityConfigResponse,
     SLAPolicyCreate,
     SLAPolicyUpdate,
     SLAPolicyResponse,
@@ -23,10 +27,12 @@ from app.modules.sla.schemas import (
     SLAEscalationLogResponse,
     SLADashboardResponse,
 )
-from app.modules.iam.models import User, Department, Role, UserRole
+from app.modules.iam.models import User
 from app.modules.notifications.engine import NotificationEngine
 from app.core.events import event_broker
 
+
+# ── Timezone-safe UTC helpers ────────────────────────────────────────────────
 
 def _to_utc(dt: Optional[datetime]) -> Optional[datetime]:
     if dt is None:
@@ -40,7 +46,119 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+# ── Internal helpers ─────────────────────────────────────────────────────────
+
+_PRIORITY_FALLBACK_RESPONSE: Dict[str, int] = {
+    "CRITICAL": 15,
+    "HIGH": 30,
+    "NORMAL": 60,
+    "LOW": 240,
+}
+_PRIORITY_FALLBACK_COMPLETION: Dict[str, int] = {
+    "CRITICAL": 120,
+    "HIGH": 240,
+    "NORMAL": 480,
+    "LOW": 1440,
+}
+
+
+def _tracker_to_list_row(t: SLATracker) -> SLATrackerListResponse:
+    return SLATrackerListResponse(
+        id=t.id,
+        resource_type=t.resource_type,
+        resource_id=t.resource_id,
+        resource_reference=t.resource_reference,
+        title=t.title,
+        priority=t.priority,
+        request_type=t.request_type,
+        status=t.status,
+        health=t.health,
+        timezone=t.timezone,
+        target_response_at=t.target_response_at,
+        target_completion_at=t.target_completion_at,
+        actual_response_at=t.actual_response_at,
+        actual_completion_at=t.actual_completion_at,
+        current_escalation_level=t.current_escalation_level,
+        department_name=t.department.name if t.department else None,
+        location_name=t.location.name if t.location else None,
+        policy_name=t.policy.name if t.policy else None,
+        created_at=t.created_at,
+    )
+
+
 class SLAService:
+
+    # ── Priority Config Management ───────────────────────────────
+
+    @staticmethod
+    async def create_priority_config(
+        db: AsyncSession, data: SLAPriorityConfigCreate, current_user: User
+    ) -> SLAPriorityConfig:
+        name = data.name.upper().strip()
+        existing = await db.execute(select(SLAPriorityConfig).where(SLAPriorityConfig.name == name))
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=409, detail=f"Priority config '{name}' already exists")
+
+        config = SLAPriorityConfig(
+            id=uuid.uuid4(),
+            name=name,
+            display_name=data.display_name.strip(),
+            description=data.description,
+            color_code=data.color_code,
+            default_response_minutes=data.default_response_minutes,
+            default_completion_minutes=data.default_completion_minutes,
+            sort_order=data.sort_order,
+            is_active=data.is_active,
+        )
+        db.add(config)
+        await db.commit()
+        await db.refresh(config)
+        return config
+
+    @staticmethod
+    async def list_priority_configs(db: AsyncSession) -> List[SLAPriorityConfig]:
+        res = await db.execute(
+            select(SLAPriorityConfig)
+            .where(SLAPriorityConfig.is_active == True)
+            .order_by(SLAPriorityConfig.sort_order.asc())
+        )
+        return list(res.scalars().all())
+
+    @staticmethod
+    async def update_priority_config(
+        db: AsyncSession, config_id: uuid.UUID, data: SLAPriorityConfigUpdate, current_user: User
+    ) -> SLAPriorityConfig:
+        res = await db.execute(select(SLAPriorityConfig).where(SLAPriorityConfig.id == config_id))
+        config = res.scalar_one_or_none()
+        if not config:
+            raise HTTPException(status_code=404, detail="Priority config not found")
+
+        for field, value in data.model_dump(exclude_none=True).items():
+            setattr(config, field, value)
+        await db.commit()
+        await db.refresh(config)
+        return config
+
+    @staticmethod
+    async def _get_priority_defaults(
+        db: AsyncSession, priority: Optional[str]
+    ) -> tuple[int, int]:
+        """Returns (response_minutes, completion_minutes) from DB config or hard-coded fallback."""
+        if priority:
+            name = priority.upper().strip()
+            res = await db.execute(
+                select(SLAPriorityConfig)
+                .where(SLAPriorityConfig.name == name, SLAPriorityConfig.is_active == True)
+            )
+            config = res.scalar_one_or_none()
+            if config:
+                return config.default_response_minutes, config.default_completion_minutes
+            # Fall through to hard-coded fallback
+            return (
+                _PRIORITY_FALLBACK_RESPONSE.get(name, 60),
+                _PRIORITY_FALLBACK_COMPLETION.get(name, 480),
+            )
+        return 60, 480
 
     # ── Policy Management ────────────────────────────────────────
 
@@ -61,12 +179,16 @@ class SLAService:
             description=data.description,
             priority=data.priority.upper().strip() if data.priority else None,
             work_type=data.work_type.upper().strip() if data.work_type else None,
+            request_type=data.request_type.upper().strip() if data.request_type else None,
             department_id=data.department_id,
+            location_id=data.location_id,
             asset_category=data.asset_category.strip() if data.asset_category else None,
             risk_level=data.risk_level.upper().strip() if data.risk_level else None,
             response_time_minutes=data.response_time_minutes,
             completion_time_minutes=data.completion_time_minutes,
             warning_threshold_percentage=data.warning_threshold_percentage,
+            completion_warning_threshold_percentage=data.completion_warning_threshold_percentage,
+            notification_cooldown_minutes=data.notification_cooldown_minutes,
             escalation_rules=data.escalation_rules or [],
             is_active=data.is_active,
             is_default=data.is_default,
@@ -75,6 +197,62 @@ class SLAService:
         await db.commit()
         await db.refresh(policy)
         return policy
+
+    @staticmethod
+    async def get_policy(db: AsyncSession, policy_id: uuid.UUID) -> SLAPolicy:
+        res = await db.execute(select(SLAPolicy).where(SLAPolicy.id == policy_id))
+        policy = res.scalar_one_or_none()
+        if not policy:
+            raise HTTPException(status_code=404, detail="SLA policy not found")
+        return policy
+
+    @staticmethod
+    async def update_policy(
+        db: AsyncSession, policy_id: uuid.UUID, data: SLAPolicyUpdate, current_user: User
+    ) -> SLAPolicy:
+        res = await db.execute(select(SLAPolicy).where(SLAPolicy.id == policy_id))
+        policy = res.scalar_one_or_none()
+        if not policy:
+            raise HTTPException(status_code=404, detail="SLA policy not found")
+
+        if data.is_default:
+            await db.execute(update(SLAPolicy).where(SLAPolicy.id != policy_id).values(is_default=False))
+
+        update_data = data.model_dump(exclude_none=True)
+        for field, value in update_data.items():
+            if field in ("priority", "work_type", "request_type", "risk_level") and value:
+                value = value.upper().strip()
+            setattr(policy, field, value)
+
+        await db.commit()
+        await db.refresh(policy)
+        return policy
+
+    @staticmethod
+    async def delete_policy(
+        db: AsyncSession, policy_id: uuid.UUID, current_user: User
+    ) -> dict:
+        res = await db.execute(select(SLAPolicy).where(SLAPolicy.id == policy_id))
+        policy = res.scalar_one_or_none()
+        if not policy:
+            raise HTTPException(status_code=404, detail="SLA policy not found")
+
+        # Check for active trackers referencing this policy
+        active_res = await db.execute(
+            select(SLATracker).where(
+                SLATracker.policy_id == policy_id,
+                SLATracker.status.in_([SLAStatus.CREATED.value, SLAStatus.IN_PROGRESS.value, SLAStatus.PAUSED.value]),
+            )
+        )
+        if active_res.scalars().first():
+            raise HTTPException(
+                status_code=409,
+                detail="Cannot delete policy with active SLA trackers. Deactivate the policy instead.",
+            )
+
+        policy.is_active = False
+        await db.commit()
+        return {"status": "deactivated", "policy_id": str(policy_id)}
 
     @staticmethod
     async def list_policies(
@@ -99,6 +277,7 @@ class SLAService:
         for p in policies:
             resp = SLAPolicyResponse.model_validate(p)
             resp.department_name = p.department.name if p.department else None
+            resp.location_name = p.location.name if p.location else None
             results.append(resp)
         return results
 
@@ -107,45 +286,70 @@ class SLAService:
         db: AsyncSession,
         priority: Optional[str] = None,
         work_type: Optional[str] = None,
+        request_type: Optional[str] = None,
         department_id: Optional[uuid.UUID] = None,
+        location_id: Optional[uuid.UUID] = None,
         asset_category: Optional[str] = None,
         risk_level: Optional[str] = None,
     ) -> Optional[SLAPolicy]:
         """
-        Calculates highest specificity match score across active SLA policies.
+        Returns highest-specificity matching active SLA policy.
+        Scoring:
+          priority match       = +15
+          department match     = +20
+          location match       = +18
+          request_type match   = +12
+          work_type match      = +15
+          asset_category match = +10
+          risk_level match     = +10
+          is_default           = +1  (tiebreaker)
         """
         res = await db.execute(select(SLAPolicy).where(SLAPolicy.is_active == True))
         policies = res.scalars().all()
         if not policies:
             return None
 
-        best_policy = None
-        best_score = -1
-
         norm_pri = priority.upper().strip() if priority else None
         norm_wt = work_type.upper().strip() if work_type else None
+        norm_rt = request_type.upper().strip() if request_type else None
         norm_cat = asset_category.lower().strip() if asset_category else None
         norm_risk = risk_level.upper().strip() if risk_level else None
 
+        best_policy = None
+        best_score = -1
+
         for p in policies:
             score = 0
+
             if p.priority:
                 if p.priority.upper() == norm_pri:
                     score += 15
                 else:
-                    continue
+                    continue  # Priority mismatch = disqualified
 
             if p.department_id:
                 if p.department_id == department_id:
                     score += 20
                 else:
-                    continue
+                    continue  # Department mismatch = disqualified
+
+            if p.location_id:
+                if p.location_id == location_id:
+                    score += 18
+                else:
+                    continue  # Location mismatch = disqualified
+
+            if p.request_type:
+                if p.request_type.upper() == norm_rt:
+                    score += 12
+                else:
+                    continue  # Request type mismatch = disqualified
 
             if p.work_type:
                 if p.work_type.upper() == norm_wt:
                     score += 15
                 else:
-                    continue
+                    continue  # Work type mismatch = disqualified
 
             if p.asset_category:
                 if norm_cat and p.asset_category.lower() in norm_cat:
@@ -184,13 +388,19 @@ class SLAService:
                 db=db,
                 priority=data.priority,
                 work_type=data.work_type,
+                request_type=data.request_type,
                 department_id=data.department_id,
+                location_id=data.location_id,
                 asset_category=data.asset_category,
                 risk_level=data.risk_level,
             )
 
-        resp_mins = policy.response_time_minutes if policy else (15 if data.priority == "CRITICAL" else 60)
-        comp_mins = policy.completion_time_minutes if policy else (120 if data.priority == "CRITICAL" else 480)
+        if policy:
+            resp_mins = policy.response_time_minutes
+            comp_mins = policy.completion_time_minutes
+        else:
+            # Consult priority config table, then fall back to hard-coded defaults
+            resp_mins, comp_mins = await SLAService._get_priority_defaults(db, data.priority)
 
         now = _utcnow()
         target_resp = now + timedelta(minutes=resp_mins)
@@ -204,7 +414,10 @@ class SLAService:
             resource_reference=data.resource_reference,
             title=data.title.strip(),
             priority=data.priority.upper().strip() if data.priority else "NORMAL",
+            request_type=data.request_type.upper().strip() if data.request_type else None,
             department_id=data.department_id,
+            location_id=data.location_id,
+            timezone=data.timezone or "UTC",
             status=SLAStatus.CREATED.value,
             health=SLAHealth.ON_TRACK.value,
             target_response_at=target_resp,
@@ -216,9 +429,10 @@ class SLAService:
             history_logs=[{
                 "event": "TRACKER_INITIALIZED",
                 "timestamp": now.isoformat(),
-                "policy_name": policy.name if policy else "Default Dynamic SLA",
+                "policy_name": policy.name if policy else "Priority Default",
                 "response_target_mins": resp_mins,
                 "completion_target_mins": comp_mins,
+                "timezone": data.timezone or "UTC",
             }],
         )
         db.add(tracker)
@@ -236,7 +450,7 @@ class SLAService:
             raise HTTPException(status_code=404, detail="SLA tracker not found")
 
         if tracker.actual_response_at is not None:
-            return tracker
+            return tracker  # Idempotent
 
         now = _utcnow()
         tracker.actual_response_at = now
@@ -274,7 +488,7 @@ class SLAService:
             raise HTTPException(status_code=404, detail="SLA tracker not found")
 
         if tracker.status == SLAStatus.PAUSED.value:
-            return tracker
+            return tracker  # Idempotent
 
         now = _utcnow()
         tracker.paused_at = now
@@ -303,13 +517,14 @@ class SLAService:
             raise HTTPException(status_code=404, detail="SLA tracker not found")
 
         if tracker.status != SLAStatus.PAUSED.value or not tracker.paused_at:
-            return tracker
+            return tracker  # Idempotent
 
         now = _utcnow()
         paused_at_utc = _to_utc(tracker.paused_at)
         paused_duration = (now - paused_at_utc).total_seconds() / 60.0
         tracker.total_paused_minutes += paused_duration
 
+        # Extend deadlines by paused duration to preserve fair SLA measurement
         target_resp = _to_utc(tracker.target_response_at)
         if target_resp and target_resp > paused_at_utc:
             tracker.target_response_at = target_resp + timedelta(minutes=paused_duration)
@@ -380,8 +595,12 @@ class SLAService:
     async def evaluate_trackers_and_escalate(db: AsyncSession) -> int:
         """
         Background worker evaluation loop.
-        Computes SLA health, identifies warning/breach thresholds,
-        and fires tiered escalations preventing duplicates.
+        - Computes SLA health for all active trackers.
+        - Applies warning/breach thresholds from each tracker's policy.
+        - Fires tiered escalations with:
+            (a) Level-based deduplication — each level fires only once per tracker/trigger.
+            (b) Cooldown-based spam prevention for WARNING triggers (per policy cooldown window).
+        - Completed/cancelled trackers are skipped entirely.
         """
         now = _utcnow()
         escalations_fired = 0
@@ -396,103 +615,158 @@ class SLAService:
         for tracker in trackers:
             policy = tracker.policy
             warn_pct = policy.warning_threshold_percentage if policy else 80
-            rules = policy.escalation_rules if (policy and policy.escalation_rules) else [
+            comp_warn_pct = policy.completion_warning_threshold_percentage if policy else 80
+            cooldown_mins = policy.notification_cooldown_minutes if policy else 60
+
+            rules = (policy.escalation_rules or []) if policy and policy.escalation_rules else [
                 {"level": 1, "trigger": "RESPONSE_WARNING", "after_percentage": warn_pct, "target_role": "Supervisor", "notify_channel": "PUSH"},
                 {"level": 2, "trigger": "RESPONSE_BREACH", "after_percentage": 100, "target_role": "Department Manager", "notify_channel": "PUSH"},
-                {"level": 3, "trigger": "COMPLETION_BREACH", "after_percentage": 100, "target_role": "Plant Manager", "notify_channel": "ALL"},
+                {"level": 3, "trigger": "COMPLETION_WARNING", "after_percentage": comp_warn_pct, "target_role": "Department Manager", "notify_channel": "PUSH"},
+                {"level": 4, "trigger": "COMPLETION_BREACH", "after_percentage": 100, "target_role": "Plant Manager", "notify_channel": "ALL"},
             ]
 
             created_at_utc = _to_utc(tracker.created_at) or now
             target_resp_utc = _to_utc(tracker.target_response_at)
             target_comp_utc = _to_utc(tracker.target_completion_at)
 
-            # 1. Evaluate Response SLA
+            # ── 1. Evaluate Response SLA ─────────────────────────
             if not tracker.actual_response_at and target_resp_utc:
                 if now > target_resp_utc:
                     tracker.health = SLAHealth.BREACHED_RESPONSE.value
-                elif now >= (created_at_utc + (target_resp_utc - created_at_utc) * (warn_pct / 100.0)):
-                    if tracker.health == SLAHealth.ON_TRACK.value:
-                        tracker.health = SLAHealth.AT_RISK.value
+                else:
+                    response_window = (target_resp_utc - created_at_utc).total_seconds()
+                    elapsed = (now - created_at_utc).total_seconds()
+                    if response_window > 0 and (elapsed / response_window) >= (warn_pct / 100.0):
+                        if tracker.health == SLAHealth.ON_TRACK.value:
+                            tracker.health = SLAHealth.AT_RISK.value
 
-            # 2. Evaluate Completion SLA
+            # ── 2. Evaluate Completion SLA ───────────────────────
             if target_comp_utc:
                 if now > target_comp_utc:
-                    tracker.health = SLAHealth.BREACHED_COMPLETION.value
-                elif now >= (created_at_utc + (target_comp_utc - created_at_utc) * (warn_pct / 100.0)):
-                    if tracker.health == SLAHealth.ON_TRACK.value:
-                        tracker.health = SLAHealth.AT_RISK.value
+                    if tracker.health != SLAHealth.BREACHED_RESPONSE.value:
+                        tracker.health = SLAHealth.BREACHED_COMPLETION.value
+                    # If response was already breached, keep BREACHED_RESPONSE (higher severity captured first)
+                else:
+                    completion_window = (target_comp_utc - created_at_utc).total_seconds()
+                    elapsed = (now - created_at_utc).total_seconds()
+                    if completion_window > 0 and (elapsed / completion_window) >= (comp_warn_pct / 100.0):
+                        if tracker.health == SLAHealth.ON_TRACK.value:
+                            tracker.health = SLAHealth.AT_RISK.value
 
-            # 3. Process Escalation Rules (Preventing duplicate logs)
-            for rule in rules:
+            # ── 3. Process Escalation Rules ──────────────────────
+            for rule in sorted(rules, key=lambda r: r.get("level", 1)):
                 level = rule.get("level", 1)
                 trigger = rule.get("trigger", "RESPONSE_WARNING")
                 target_role = rule.get("target_role")
 
+                # Determine if this rule should fire based on current health
                 should_fire = False
-                if trigger == "RESPONSE_WARNING" and tracker.health in (SLAHealth.AT_RISK.value, SLAHealth.BREACHED_RESPONSE.value) and not tracker.actual_response_at:
+                if trigger == "RESPONSE_WARNING" and tracker.health in (
+                    SLAHealth.AT_RISK.value, SLAHealth.BREACHED_RESPONSE.value
+                ) and not tracker.actual_response_at:
                     should_fire = True
-                elif trigger == "RESPONSE_BREACH" and tracker.health == SLAHealth.BREACHED_RESPONSE.value and not tracker.actual_response_at:
+                elif trigger == "RESPONSE_BREACH" and tracker.health in (
+                    SLAHealth.BREACHED_RESPONSE.value, SLAHealth.BREACHED_COMPLETION.value
+                ) and not tracker.actual_response_at:
                     should_fire = True
-                elif trigger == "COMPLETION_WARNING" and tracker.health in (SLAHealth.AT_RISK.value, SLAHealth.BREACHED_COMPLETION.value):
+                elif trigger == "COMPLETION_WARNING" and tracker.health in (
+                    SLAHealth.AT_RISK.value, SLAHealth.BREACHED_COMPLETION.value
+                ):
                     should_fire = True
                 elif trigger == "COMPLETION_BREACH" and tracker.health == SLAHealth.BREACHED_COMPLETION.value:
                     should_fire = True
 
-                if should_fire and level > tracker.current_escalation_level:
-                    existing_log = await db.execute(
-                        select(SLAEscalationLog).where(
-                            SLAEscalationLog.tracker_id == tracker.id,
-                            SLAEscalationLog.escalation_level == level,
-                            SLAEscalationLog.trigger_type == trigger,
-                        )
+                if not should_fire or level <= tracker.current_escalation_level:
+                    continue
+
+                # ── Deduplication: Never fire the same level+trigger twice ──
+                existing_log = await db.execute(
+                    select(SLAEscalationLog).where(
+                        SLAEscalationLog.tracker_id == tracker.id,
+                        SLAEscalationLog.escalation_level == level,
+                        SLAEscalationLog.trigger_type == trigger,
                     )
-                    if not existing_log.scalar_one_or_none():
-                        msg = f"SLA {trigger.replace('_', ' ')}: '{tracker.title}' [{tracker.resource_reference or 'N/A'}] priority {tracker.priority} requires escalation to {target_role or 'management'}."
-                        
-                        notified_ids = []
-                        if target_role:
-                            try:
-                                await NotificationEngine.dispatch_to_role(
-                                    db=db,
-                                    role_name=target_role,
-                                    department_id=tracker.department_id,
-                                    event_type="SLA_ESCALATION",
-                                    title=f"SLA Escalation Level {level}: {tracker.title}",
-                                    message=msg,
-                                    resource_type=tracker.resource_type,
-                                    resource_id=tracker.resource_id,
-                                    priority=3 if tracker.priority == "CRITICAL" else 2,
-                                )
-                            except Exception:
-                                pass
+                )
+                if existing_log.scalar_one_or_none():
+                    continue  # Already fired this exact level/trigger
 
-                        esc_log = SLAEscalationLog(
-                            id=uuid.uuid4(),
-                            tracker_id=tracker.id,
-                            escalation_level=level,
-                            trigger_type=trigger,
-                            notified_role=target_role,
-                            notified_user_ids=notified_ids,
+                # ── Cooldown: Prevent warning spam ───────────────
+                # Only apply cooldown to WARNING-type triggers (not BREACH)
+                is_warning_trigger = "WARNING" in trigger
+                if is_warning_trigger and cooldown_mins > 0:
+                    cooldown_check_field = (
+                        tracker.response_warning_fired_at
+                        if "RESPONSE" in trigger
+                        else tracker.completion_warning_fired_at
+                    )
+                    if cooldown_check_field is not None:
+                        last_fired_utc = _to_utc(cooldown_check_field)
+                        if last_fired_utc and (now - last_fired_utc).total_seconds() < cooldown_mins * 60:
+                            continue  # Within cooldown window — skip
+
+                # ── Fire the escalation ───────────────────────────
+                msg = (
+                    f"SLA {trigger.replace('_', ' ')}: '{tracker.title}'"
+                    f" [{tracker.resource_reference or 'N/A'}]"
+                    f" priority {tracker.priority}"
+                    f" requires escalation to {target_role or 'management'}."
+                )
+
+                # Dispatch notification — RBAC respected: only users with target_role receive it
+                if target_role:
+                    try:
+                        await NotificationEngine.dispatch_to_role(
+                            db=db,
+                            role_name=target_role,
+                            department_id=tracker.department_id,
+                            event_type="SLA_ESCALATION",
+                            title=f"SLA Escalation Level {level}: {tracker.title}",
                             message=msg,
+                            resource_type=tracker.resource_type,
+                            resource_id=tracker.resource_id,
+                            priority=3 if tracker.priority == "CRITICAL" else 2,
                         )
-                        db.add(esc_log)
-                        tracker.current_escalation_level = level
-                        escalations_fired += 1
+                    except Exception:
+                        pass  # Notification failure must not abort SLA evaluation
 
-                        try:
-                            await event_broker.publish(
-                                event_type="sla.escalated",
-                                payload={
-                                    "tracker_id": str(tracker.id),
-                                    "level": level,
-                                    "trigger": trigger,
-                                    "title": tracker.title,
-                                    "priority": tracker.priority,
-                                },
-                                channel="sla",
-                            )
-                        except Exception:
-                            pass
+                fired_at = now
+                esc_log = SLAEscalationLog(
+                    id=uuid.uuid4(),
+                    tracker_id=tracker.id,
+                    escalation_level=level,
+                    trigger_type=trigger,
+                    notified_role=target_role,
+                    notified_user_ids=[],
+                    message=msg,
+                    fired_at=fired_at,
+                )
+                db.add(esc_log)
+                tracker.current_escalation_level = level
+
+                # Update warning cooldown timestamps
+                if is_warning_trigger:
+                    if "RESPONSE" in trigger:
+                        tracker.response_warning_fired_at = fired_at
+                    else:
+                        tracker.completion_warning_fired_at = fired_at
+
+                escalations_fired += 1
+
+                # Publish real-time event
+                try:
+                    await event_broker.publish(
+                        event_type="sla.escalated",
+                        payload={
+                            "tracker_id": str(tracker.id),
+                            "level": level,
+                            "trigger": trigger,
+                            "title": tracker.title,
+                            "priority": tracker.priority,
+                        },
+                        channel="sla",
+                    )
+                except Exception:
+                    pass
 
         await db.commit()
         return escalations_fired
@@ -509,19 +783,21 @@ class SLAService:
 
         res = await db.execute(query)
         trackers = res.scalars().all()
+        now = _utcnow()
 
         total_active = 0
         on_track = 0
         at_risk = 0
         breached = 0
+        overdue = 0
         critical_open = 0
         total_completed = 0
         met_count = 0
 
-        resp_times = []
-        comp_times = []
-        recent_breaches = []
-        at_risk_list = []
+        resp_times: List[float] = []
+        comp_times: List[float] = []
+        recent_breaches: List[SLATracker] = []
+        at_risk_list: List[SLATracker] = []
 
         for t in trackers:
             if t.status in (SLAStatus.CREATED.value, SLAStatus.IN_PROGRESS.value, SLAStatus.PAUSED.value):
@@ -537,6 +813,16 @@ class SLAService:
                 elif "BREACHED" in t.health:
                     breached += 1
                     recent_breaches.append(t)
+
+                    # Overdue = both response AND completion deadlines have passed, not completed
+                    target_resp_utc = _to_utc(t.target_response_at)
+                    target_comp_utc = _to_utc(t.target_completion_at)
+                    if (
+                        target_resp_utc and now > target_resp_utc
+                        and target_comp_utc and now > target_comp_utc
+                        and not t.actual_completion_at
+                    ):
+                        overdue += 1
 
             if t.status == SLAStatus.COMPLETED.value:
                 total_completed += 1
@@ -556,37 +842,18 @@ class SLAService:
         avg_resp = round(sum(resp_times) / len(resp_times), 1) if resp_times else 0.0
         avg_comp = round(sum(comp_times) / len(comp_times), 1) if comp_times else 0.0
 
-        def to_list_row(t: SLATracker) -> SLATrackerListResponse:
-            return SLATrackerListResponse(
-                id=t.id,
-                resource_type=t.resource_type,
-                resource_id=t.resource_id,
-                resource_reference=t.resource_reference,
-                title=t.title,
-                priority=t.priority,
-                status=t.status,
-                health=t.health,
-                target_response_at=t.target_response_at,
-                target_completion_at=t.target_completion_at,
-                actual_response_at=t.actual_response_at,
-                actual_completion_at=t.actual_completion_at,
-                current_escalation_level=t.current_escalation_level,
-                department_name=t.department.name if t.department else None,
-                policy_name=t.policy.name if t.policy else None,
-                created_at=t.created_at,
-            )
-
         return SLADashboardResponse(
             total_active=total_active,
             on_track_count=on_track,
             at_risk_count=at_risk,
             breached_count=breached,
+            overdue_count=overdue,
             critical_open_count=critical_open,
             compliance_percentage=compliance_pct,
             avg_response_minutes=avg_resp,
             avg_completion_minutes=avg_comp,
-            recent_breaches=[to_list_row(t) for t in recent_breaches[:10]],
-            at_risk_trackers=[to_list_row(t) for t in at_risk_list[:10]],
+            recent_breaches=[_tracker_to_list_row(t) for t in recent_breaches[:10]],
+            at_risk_trackers=[_tracker_to_list_row(t) for t in at_risk_list[:10]],
         )
 
     @staticmethod
@@ -607,6 +874,7 @@ class SLAService:
 
         resp = SLATrackerResponse.model_validate(tracker)
         resp.department_name = tracker.department.name if tracker.department else None
+        resp.location_name = tracker.location.name if tracker.location else None
         resp.policy_name = tracker.policy.name if tracker.policy else None
         resp.escalation_logs = [SLAEscalationLogResponse.model_validate(l) for l in logs]
         return resp
@@ -619,10 +887,12 @@ class SLAService:
         status: Optional[str] = None,
         health: Optional[str] = None,
         resource_type: Optional[str] = None,
+        request_type: Optional[str] = None,
         search_query: Optional[str] = None,
         limit: int = 100,
         offset: int = 0,
     ) -> List[SLATrackerListResponse]:
+        from sqlalchemy import or_
         query = select(SLATracker)
         if department_id:
             query = query.where(SLATracker.department_id == department_id)
@@ -634,6 +904,8 @@ class SLAService:
             query = query.where(SLATracker.health == health.upper().strip())
         if resource_type:
             query = query.where(SLATracker.resource_type == resource_type.upper().strip())
+        if request_type:
+            query = query.where(SLATracker.request_type == request_type.upper().strip())
 
         if search_query:
             p = f"%{search_query.strip()}%"
@@ -647,27 +919,4 @@ class SLAService:
         query = query.order_by(SLATracker.created_at.desc()).limit(limit).offset(offset)
         res = await db.execute(query)
         trackers = res.scalars().all()
-
-        results = []
-        for t in trackers:
-            results.append(
-                SLATrackerListResponse(
-                    id=t.id,
-                    resource_type=t.resource_type,
-                    resource_id=t.resource_id,
-                    resource_reference=t.resource_reference,
-                    title=t.title,
-                    priority=t.priority,
-                    status=t.status,
-                    health=t.health,
-                    target_response_at=t.target_response_at,
-                    target_completion_at=t.target_completion_at,
-                    actual_response_at=t.actual_response_at,
-                    actual_completion_at=t.actual_completion_at,
-                    current_escalation_level=t.current_escalation_level,
-                    department_name=t.department.name if t.department else None,
-                    policy_name=t.policy.name if t.policy else None,
-                    created_at=t.created_at,
-                )
-            )
-        return results
+        return [_tracker_to_list_row(t) for t in trackers]

@@ -8,7 +8,9 @@ import asyncio
 from pathlib import Path
 from typing import Optional, Any
 from datetime import datetime, timezone
+
 from sqlalchemy import text, select
+from sqlalchemy.dialects import sqlite
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.core.config import settings
@@ -169,6 +171,32 @@ class SetupManager:
             }
 
     @classmethod
+    async def ensure_legacy_schema_compatibility(cls) -> None:
+        """Add missing columns for upgraded user models on existing SQLite databases."""
+        from app.db.session import engine
+        from app.modules.iam.models import User
+
+        if engine.dialect.name != "sqlite":
+            return
+
+        async with engine.begin() as conn:
+            pragma_rows = await conn.execute(text("PRAGMA table_info(users)"))
+            existing_columns = {row[1] for row in pragma_rows.fetchall()}
+
+            for column in User.__table__.columns:
+                if column.name in existing_columns:
+                    continue
+
+                column_sql = column.type.compile(dialect=sqlite.dialect())
+                if not column.nullable:
+                    column_sql = f"{column_sql} NOT NULL"
+
+                try:
+                    await conn.execute(text(f"ALTER TABLE users ADD COLUMN {column.name} {column_sql}"))
+                except Exception:
+                    continue
+
+    @classmethod
     async def finalize_setup(cls, config: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """
         Executes Step 8 verification and provisioning pipeline:
@@ -259,6 +287,7 @@ class SetupManager:
 
             async with engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
+            await cls.ensure_legacy_schema_compatibility()
         except Exception as e:
             raise RuntimeError(f"DATABASE INITIALIZATION FAILURE: Unable to initialize database schema: {e}\nRecovery Instructions: Verify database container status with 'ops status' or check DB credentials in Step 3.")
 

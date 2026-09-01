@@ -280,6 +280,7 @@ from app.modules.iam.location_api import location_router
 from app.modules.jobs.api import job_router, wp_router
 from app.modules.fleet.api import fleet_router
 from app.modules.dashboard.api import dashboard_router
+from app.modules.search.api import search_router
 from app.modules.approvals.api import approvals_router
 from app.modules.notifications.api import router as notifications_router
 from app.modules.audit.api import audit_router
@@ -305,6 +306,7 @@ app.include_router(job_router)
 app.include_router(wp_router)
 app.include_router(fleet_router)
 app.include_router(dashboard_router)
+app.include_router(search_router)
 app.include_router(approvals_router)
 app.include_router(notifications_router)
 app.include_router(audit_router)

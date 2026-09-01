@@ -1,12 +1,18 @@
-from typing import List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException
+from uuid import UUID as UUIDType
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, select
 
 from app.db.session import get_db
 from app.main import get_current_user
 from app.modules.iam.models import User
-from app.modules.dashboard.schemas import DashboardFilterParams, DashboardDataResponse
+from app.modules.dashboard.schemas import (
+    DashboardFilterParams,
+    DashboardDataResponse,
+    DashboardConfigResponse,
+    DashboardSavedViewCreate,
+    DashboardSavedViewResponse,
+)
 from app.modules.dashboard.service import DashboardService
 
 dashboard_router = APIRouter(prefix="/api/v1/dashboard", tags=["dashboard"])
@@ -22,6 +28,41 @@ async def get_dashboard_metrics(
     Get operational dashboard metrics respecting user scope and applying filters.
     """
     return await DashboardService.get_dashboard_data(db, filters, current_user)
+
+
+@dashboard_router.get("/config", response_model=DashboardConfigResponse)
+async def get_dashboard_config(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the default dashboard config and the saved views visible to the current user."""
+    return await DashboardService.get_dashboard_config(db, current_user)
+
+
+@dashboard_router.get("/views", response_model=list[DashboardSavedViewResponse])
+async def list_dashboard_views(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await DashboardService.list_saved_views(db, current_user)
+
+
+@dashboard_router.post("/views", response_model=DashboardSavedViewResponse)
+async def create_dashboard_view(
+    payload: DashboardSavedViewCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await DashboardService.create_saved_view(db, current_user, payload)
+
+
+@dashboard_router.get("/views/{view_id}", response_model=DashboardSavedViewResponse)
+async def get_dashboard_view(
+    view_id: UUIDType,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await DashboardService.get_saved_view(db, current_user, view_id)
 
 
 @dashboard_router.get("/analytics")
@@ -42,7 +83,6 @@ async def get_analytics_summary(
         )
     )
 
-    # Scope active jobs to the user's department if they are not a superuser
     if not getattr(current_user, "is_superuser", False) and current_user.department_id:
         active_count = await db.scalar(
             select(func.count(JobCard.id)).where(
@@ -55,7 +95,6 @@ async def get_analytics_summary(
         select(func.count(ApprovalStep.id)).where(ApprovalStep.status == "PENDING")
     )
 
-    # Recent activity: last 10 job cards visible to this user
     q = select(JobCard).order_by(JobCard.created_at.desc()).limit(10)
     if not getattr(current_user, "is_superuser", False) and current_user.department_id:
         q = q.where(JobCard.department_id == current_user.department_id)

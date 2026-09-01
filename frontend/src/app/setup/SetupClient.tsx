@@ -61,9 +61,9 @@ export function SetupClient() {
     cors_origins: 'https://dwrms.bikita.com,http://localhost:3000,tauri://localhost',
 
     // Step 3: Database
-    db_engine: 'mysql',
+    db_engine: 'postgresql',
     db_host: 'db',
-    db_port: 3306,
+    db_port: 5432,
     db_name: 'dwrms',
     db_user: 'user',
     db_password: '',
@@ -204,8 +204,8 @@ export function SetupClient() {
       });
       setCurrentStep((prev) => Math.min(prev + 1, 8));
     } catch (err) {
-      // Continue anyway for local testing
-      setCurrentStep((prev) => Math.min(prev + 1, 8));
+      setStatusMessage({ type: 'error', text: 'Failed to save step. Please retry.' });
+      return;
     } finally {
       setLoading(false);
     }
