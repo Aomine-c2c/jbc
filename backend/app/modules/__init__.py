@@ -48,3 +48,6 @@ from app.modules.contractors.models import (
 
 # Priority, SLA and Escalation models
 from app.modules.sla.models import SLAPolicy, SLATracker, SLAEscalationLog
+
+# Configurable Workflow Engine models
+from app.modules.workflow.models import WorkflowTemplate, WorkflowInstance, WorkflowTransitionLog
