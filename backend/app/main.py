@@ -288,6 +288,7 @@ from app.modules.assets.api import router as assets_router
 from app.modules.requests.api import router as requests_router
 from app.modules.materials.api import router as materials_router
 from app.modules.contractors.api import router as contractors_router
+from app.modules.sla.api import router as sla_router
 
 app.include_router(system_router)
 app.include_router(storage_router)
@@ -311,3 +312,4 @@ app.include_router(assets_router, prefix="/api/v1")
 app.include_router(requests_router, prefix="/api/v1")
 app.include_router(materials_router, prefix="/api/v1")
 app.include_router(contractors_router, prefix="/api/v1")
+app.include_router(sla_router, prefix="/api/v1")

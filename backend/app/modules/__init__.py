@@ -45,3 +45,6 @@ from app.modules.contractors.models import (
     ContractorWorkerAssignment,
     ContractorDocument,
 )
+
+# Priority, SLA and Escalation models
+from app.modules.sla.models import SLAPolicy, SLATracker, SLAEscalationLog

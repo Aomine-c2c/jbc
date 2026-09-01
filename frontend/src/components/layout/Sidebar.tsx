@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Protect } from "@/components/auth/Protect";
-import { LayoutDashboard, Wrench, Truck, Users, Settings, Database, HardHat, ShieldAlert, ShieldCheck, Server, Building2, MapPin, Layers, Boxes, FileText } from "lucide-react";
+import { LayoutDashboard, Wrench, Truck, Users, Settings, Database, HardHat, ShieldAlert, ShieldCheck, Server, Building2, MapPin, Layers, Boxes, FileText, Package, Briefcase, Timer } from "lucide-react";
 import { getPendingApprovals } from "@/lib/approvals";
 
 interface SidebarProps {
@@ -28,6 +28,9 @@ export function Sidebar({ onOpenServerConfig }: SidebarProps = {}) {
     { name: "Work Hub", href: "/work", icon: Layers, capability: "job_card:read" },
     { name: "Asset Registry", href: "/assets", icon: Boxes, capability: "job_card:read" },
     { name: "Requisitions Hub", href: "/requests", icon: FileText, capability: "job_card:read" },
+    { name: "Materials & Stores", href: "/materials", icon: Package, capability: "job_card:read" },
+    { name: "Contractors", href: "/contractors", icon: Briefcase, capability: "job_card:read" },
+    { name: "SLA & Escalations", href: "/sla", icon: Timer, capability: "job_card:read" },
     { name: "Home", href: "/", icon: LayoutDashboard, exact: true },
     { name: "Ops Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Approvals Inbox", href: "/approvals", icon: ShieldCheck, badge: pendingCount !== null && pendingCount > 0 ? pendingCount : null },

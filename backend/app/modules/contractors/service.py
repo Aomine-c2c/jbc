@@ -381,13 +381,7 @@ class ContractorService:
         if not assignment:
             raise HTTPException(status_code=404, detail="Contractor assignment not found")
 
-        resp = ContractorAssignmentResponse.model_validate(assignment)
-        resp.company_name = assignment.company.name if assignment.company else None
-        resp.work_item_reference = assignment.work_item.reference_number if assignment.work_item else None
-        resp.supervisor_name = f"{assignment.supervisor.first_name} {assignment.supervisor.last_name}" if assignment.supervisor else None
-        resp.verified_by_name = f"{assignment.verified_by.first_name} {assignment.verified_by.last_name}" if assignment.verified_by else None
-
-        resp.assigned_workers = [
+        assigned_workers = [
             ContractorWorkerListResponse(
                 id=w_link.worker.id,
                 worker_code=w_link.worker.worker_code,
@@ -403,7 +397,32 @@ class ContractorService:
             for w_link in assignment.assigned_workers
             if w_link.worker
         ]
-        return resp
+
+        return ContractorAssignmentResponse(
+            id=assignment.id,
+            assignment_number=assignment.assignment_number,
+            contractor_company_id=assignment.contractor_company_id,
+            company_name=assignment.company.name if assignment.company else None,
+            work_item_id=assignment.work_item_id,
+            work_item_reference=assignment.work_item.reference_number if assignment.work_item else None,
+            job_card_id=assignment.job_card_id,
+            work_scope=assignment.work_scope,
+            assignment_date=assignment.assignment_date,
+            start_date=assignment.start_date,
+            completion_date=assignment.completion_date,
+            supervisor_id=assignment.supervisor_id,
+            supervisor_name=f"{assignment.supervisor.first_name} {assignment.supervisor.last_name}" if assignment.supervisor else None,
+            verified_by_id=assignment.verified_by_id,
+            verified_by_name=f"{assignment.verified_by.first_name} {assignment.verified_by.last_name}" if assignment.verified_by else None,
+            verified_at=assignment.verified_at,
+            verification_status=assignment.verification_status,
+            performance_rating=assignment.performance_rating,
+            performance_notes=assignment.performance_notes,
+            cost_agreed=assignment.cost_agreed,
+            actual_cost=assignment.actual_cost,
+            assigned_workers=assigned_workers,
+            created_at=assignment.created_at,
+        )
 
     @staticmethod
     async def list_assignments(
