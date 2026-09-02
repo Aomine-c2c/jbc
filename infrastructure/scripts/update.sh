@@ -46,9 +46,8 @@ if [ "$LOCAL_HASH" != "$REMOTE_HASH" ] && [ "$REMOTE_HASH" != "UNKNOWN" ]; then
     tailscale serve --bg 80 >/dev/null 2>&1 || true
 
     # 4. Rebuild & Launch Docker Compose containers
-    docker compose -f "${INSTALL_DIR}/docker-compose.yml" stop >/dev/null 2>&1 || true
-    docker compose -f "${INSTALL_DIR}/docker-compose.yml" down --remove-orphans >/dev/null 2>&1 || true
-    docker rm -f dwrms-db-1 dwrms-redis-1 dwrms-backend-1 dwrms-frontend-1 dwrms-worker-1 >/dev/null 2>&1 || true
+    docker compose -f "${INSTALL_DIR}/docker-compose.yml" down -v --remove-orphans >/dev/null 2>&1 || true
+    docker ps -a --filter "name=dwrms" -q | xargs -r docker rm -f >/dev/null 2>&1 || true
     docker compose -f "${INSTALL_DIR}/docker-compose.yml" build >/dev/null 2>&1 || true
     docker compose -f "${INSTALL_DIR}/docker-compose.yml" up -d
 
