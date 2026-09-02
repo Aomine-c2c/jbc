@@ -46,12 +46,13 @@ if [ "$LOCAL_HASH" != "$REMOTE_HASH" ] && [ "$REMOTE_HASH" != "UNKNOWN" ]; then
     tailscale serve --bg 80 >/dev/null 2>&1 || true
 
     # 4. Rebuild & Launch Docker Compose containers
-    docker compose -f "${INSTALL_DIR}/docker-compose.yml" down --remove-orphans >/dev/null 2>&1 || true
-    docker compose -f "${INSTALL_DIR}/docker-compose.yml" build >/dev/null 2>&1 || true
-    docker compose -f "${INSTALL_DIR}/docker-compose.yml" up -d
+    docker compose -p dwrms -f "${INSTALL_DIR}/docker-compose.yml" down --remove-orphans >/dev/null 2>&1 || true
+    docker ps -a --filter "name=dwrms" -q | xargs -r docker rm -f >/dev/null 2>&1 || true
+    docker compose -p dwrms -f "${INSTALL_DIR}/docker-compose.yml" build >/dev/null 2>&1 || true
+    docker compose -p dwrms -f "${INSTALL_DIR}/docker-compose.yml" up -d
     sleep 8
-    docker compose -f "${INSTALL_DIR}/docker-compose.yml" exec -T backend python init_db_all.py >/dev/null 2>&1 || true
-    docker compose -f "${INSTALL_DIR}/docker-compose.yml" exec -T backend python seed_faker.py >/dev/null 2>&1 || true
+    docker compose -p dwrms -f "${INSTALL_DIR}/docker-compose.yml" exec -T backend python init_db_all.py >/dev/null 2>&1 || true
+    docker compose -p dwrms -f "${INSTALL_DIR}/docker-compose.yml" exec -T backend python seed_faker.py >/dev/null 2>&1 || true
 
     NEW_HASH=$(git rev-parse HEAD)
     echo "[$(date -u)] [AUTONOMOUS SYNC] Application updated and verified live on commit ${NEW_HASH}."
