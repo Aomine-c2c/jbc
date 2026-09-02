@@ -2,6 +2,7 @@ name: dwrms
 
 services:
   db:
+    container_name: dwrms-db
     image: postgres:16
     restart: always
     environment:
@@ -17,12 +18,14 @@ services:
       retries: 5
 
   redis:
+    container_name: dwrms-redis
     image: redis:7
     restart: always
     volumes:
       - redis_data:/data
 
   backend:
+    container_name: dwrms-backend
     build: ./backend
     restart: always
     ports:
@@ -46,6 +49,7 @@ services:
              uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
   worker:
+    container_name: dwrms-worker
     build: ./backend
     restart: always
     command: celery -A app.core.celery_app.celery_app worker --loglevel=info
@@ -63,6 +67,7 @@ services:
       - DEBUG=True
 
   frontend:
+    container_name: dwrms-frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile
