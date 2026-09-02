@@ -21,6 +21,9 @@ from datetime import datetime, timedelta, timezone
 from faker import Faker
 from sqlalchemy import select
 
+def now_utc():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
 from app.db.session import SessionLocal, engine, Base
 from app.core.security import get_password_hash
 
@@ -285,6 +288,19 @@ async def seed_faker_data():
             depts_map[d_code] = dept
             depts_map[d_name] = dept
 
+        # Aliases for robust lookups
+        depts_map["Mechanical"] = depts_map.get("MECH")
+        depts_map["Electrical"] = depts_map.get("ELEC")
+        depts_map["Mining"] = depts_map.get("MINE")
+        depts_map["Plant"] = depts_map.get("PLANT")
+        depts_map["HSE"] = depts_map.get("HSE")
+        depts_map["Safety"] = depts_map.get("HSE")
+        depts_map["Supply Chain"] = depts_map.get("SUPPLY")
+        depts_map["Civil"] = depts_map.get("CIVIL")
+        depts_map["ICT"] = depts_map.get("ICT")
+        depts_map["Admin"] = depts_map.get("ADMIN")
+        depts_map["Reliability"] = depts_map.get("RELIABILITY")
+
         # ── 4. Sections & Teams under Departments ──
         sections_data = [
             ("MECH", "SEC-MECH-FIX", "Fixed Plant Maintenance", "Crushing, screening, and milling maintenance"),
@@ -430,7 +446,7 @@ async def seed_faker_data():
                     serial_number=fake.bothify(text='SN-#######'),
                     purchase_cost=round(random.uniform(45000.0, 850000.0), 2),
                     current_value=round(random.uniform(25000.0, 700000.0), 2),
-                    commissioned_date=datetime.now(timezone.utc) - timedelta(days=random.randint(200, 1800)),
+                    commissioned_date=now_utc() - timedelta(days=random.randint(200, 1800)),
                     specifications={"voltage": "33kV / 400V", "duty_cycle": "Continuous 24/7", "design_capacity_tph": random.randint(150, 600)}
                 )
                 session.add(ast)
@@ -474,7 +490,7 @@ async def seed_faker_data():
                     contact_phone=c_data["phone"],
                     service_categories=[c_data["service"]],
                     status=ContractorCompanyStatus.ACTIVE.value,
-                    safety_induction_valid_until=datetime.now(timezone.utc) + timedelta(days=365),
+                    safety_induction_valid_until=now_utc() + timedelta(days=365),
                     notes="Approved mining services provider with valid mine safety clearance."
                 )
                 session.add(contractor)
@@ -510,7 +526,7 @@ async def seed_faker_data():
                 status = job_statuses[idx % len(job_statuses)]
                 loc = random.choice(list(locations.values()))
                 mach = random.choice(machines_list) if machines_list else None
-                created_dt = datetime.now(timezone.utc) - timedelta(days=random.randint(1, 20), hours=random.randint(1, 23))
+                created_dt = now_utc() - timedelta(days=random.randint(1, 20), hours=random.randint(1, 23))
 
                 jc = JobCard(
                     id=uuid.uuid4(),
@@ -682,7 +698,7 @@ async def seed_faker_data():
                     supervisor_id=supervisor_user.id,
                     estimated_hours=w_hrs,
                     estimated_cost=w_cost,
-                    due_date=datetime.now(timezone.utc) + timedelta(days=2),
+                    due_date=now_utc() + timedelta(days=2),
                     sla_status="WITHIN_SLA" if w_prio < 3 else "AT_RISK"
                 )
                 session.add(wi)
@@ -694,7 +710,7 @@ async def seed_faker_data():
             res = await session.execute(select(OperationalRequest).where(OperationalRequest.request_number == req_num))
             if not res.scalars().first():
                 loc = random.choice(list(locations.values()))
-                created_dt = datetime.now(timezone.utc) - timedelta(days=random.randint(1, 15))
+                created_dt = now_utc() - timedelta(days=random.randint(1, 15))
                 dept_keys = ["MINE", "MECH", "ELEC", "PLANT", "CIVIL", "GEO"]
                 chosen_dept = depts_map[dept_keys[i % len(dept_keys)]]
                 op_req = OperationalRequest(
@@ -724,7 +740,7 @@ async def seed_faker_data():
             res = await session.execute(select(MachineRequisition).where(MachineRequisition.requisition_number == req_no))
             if not res.scalars().first():
                 loc = random.choice(list(locations.values()))
-                start_t = datetime.now(timezone.utc) + timedelta(days=random.randint(1, 4))
+                start_t = now_utc() + timedelta(days=random.randint(1, 4))
                 end_t = start_t + timedelta(hours=12)
                 req_status = "PENDING_APPROVAL" if i < 3 else "ALLOCATED"
 
