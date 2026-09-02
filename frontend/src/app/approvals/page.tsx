@@ -80,13 +80,13 @@ export default function ApprovalsInboxPage() {
   const handleRowClick = (resourceType: string, resourceId: string) => {
     if (resourceType === "job_card") {
       router.push(`/jobs/${resourceId}`);
-    } else if (resourceType === "machine_requisition") {
-      router.push(`/fleet/${resourceId}`);
+    } else {
+      router.push(`/fleet/requisitions/${resourceId}`);
     }
   };
 
   return (
-    <Protect>
+    <Protect capability="approvals:view" isPageGuard moduleName="Approvals Inbox">
       <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-4 md:space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
@@ -195,7 +195,12 @@ export default function ApprovalsInboxPage() {
                     </div>
 
                     <div className="pt-1">
-                      <Button size="sm" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs">
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs"
+                        onClick={() => handleRowClick(item.approval_request.resource_type, item.approval_request.resource_id)}
+                      >
                         Review & Authorize <ArrowRight className="size-3.5 ml-1.5" />
                       </Button>
                     </div>

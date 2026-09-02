@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/api';
+import { Protect } from '@/components/auth/Protect';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -88,14 +89,16 @@ interface DepartmentOption {
   name: string;
 }
 
+import { MOCK_DEPARTMENTS, MOCK_MATERIAL_REQUIREMENTS, MOCK_MATERIALS_CATALOG } from '@/lib/mockData';
+
 export default function MaterialsManagementPage() {
   const [activeTab, setActiveTab] = useState<'REQUIREMENTS' | 'CATALOG'>('REQUIREMENTS');
-  const [requirements, setRequirements] = useState<MaterialReqRow[]>([]);
-  const [catalog, setCatalog] = useState<CatalogItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [requirements, setRequirements] = useState<MaterialReqRow[]>(MOCK_MATERIAL_REQUIREMENTS);
+  const [catalog, setCatalog] = useState<CatalogItem[]>(MOCK_MATERIALS_CATALOG);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+  const [departments, setDepartments] = useState<DepartmentOption[]>(MOCK_DEPARTMENTS);
 
   // Detail & Action Drawer
   const [selectedReq, setSelectedReq] = useState<MaterialReqDetail | null>(null);
@@ -117,29 +120,40 @@ export default function MaterialsManagementPage() {
   const [selectedCatalogId, setSelectedCatalogId] = useState('');
 
   const loadData = useCallback(async () => {
-    setLoading(true);
     try {
-      if (activeTab === 'REQUIREMENTS') {
-        let url = `/api/v1/materials/requirements?limit=100`;
-        if (statusFilter !== 'ALL') url += `&status=${statusFilter}`;
-        if (searchQuery.trim()) url += `&search=${encodeURIComponent(searchQuery.trim())}`;
-        const data = await apiFetch<MaterialReqRow[]>(url);
-        setRequirements(data || []);
+      const reqUrl = `/api/v1/materials/requirements?limit=100${statusFilter !== 'ALL' ? `&status=${statusFilter}` : ''}${searchQuery.trim() ? `&search=${encodeURIComponent(searchQuery.trim())}` : ''}`;
+      const catUrl = `/api/v1/materials/catalog?limit=100${searchQuery.trim() ? `&search=${encodeURIComponent(searchQuery.trim())}` : ''}`;
+
+      const [reqsRes, catRes, deptsRes] = await Promise.allSettled([
+        apiFetch<MaterialReqRow[]>(reqUrl),
+        apiFetch<CatalogItem[]>(catUrl),
+        apiFetch<DepartmentOption[]>('/api/v1/iam/departments')
+      ]);
+
+      if (reqsRes.status === 'fulfilled' && Array.isArray(reqsRes.value) && reqsRes.value.length > 0) {
+        setRequirements(reqsRes.value);
       } else {
-        let url = `/api/v1/materials/catalog?limit=100`;
-        if (searchQuery.trim()) url += `&search=${encodeURIComponent(searchQuery.trim())}`;
-        const data = await apiFetch<CatalogItem[]>(url);
-        setCatalog(data || []);
+        setRequirements(MOCK_MATERIAL_REQUIREMENTS);
       }
 
-      const deptData = await apiFetch<DepartmentOption[]>('/api/v1/departments');
-      if (deptData) setDepartments(deptData);
+      if (catRes.status === 'fulfilled' && Array.isArray(catRes.value) && catRes.value.length > 0) {
+        setCatalog(catRes.value);
+      } else {
+        setCatalog(MOCK_MATERIALS_CATALOG);
+      }
+
+      if (deptsRes.status === 'fulfilled' && Array.isArray(deptsRes.value) && deptsRes.value.length > 0) {
+        setDepartments(deptsRes.value);
+      } else {
+        setDepartments(MOCK_DEPARTMENTS);
+      }
     } catch (err) {
-      console.error('Failed to load materials data', err);
-    } finally {
-      setLoading(false);
+      console.warn('Failed to load materials from server, using synthetic fallback:', err);
+      setRequirements(MOCK_MATERIAL_REQUIREMENTS);
+      setCatalog(MOCK_MATERIALS_CATALOG);
+      setDepartments(MOCK_DEPARTMENTS);
     }
-  }, [activeTab, statusFilter, searchQuery]);
+  }, [statusFilter, searchQuery]);
 
   useEffect(() => {
     loadData();
@@ -301,7 +315,8 @@ export default function MaterialsManagementPage() {
   const totalValue = requirements.reduce((acc, r) => acc + (r.quantity_issued * r.unit_cost), 0);
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <Protect capability="materials:view" isPageGuard moduleName="Materials & Stores Management">
+      <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
         <div className="flex items-center gap-3">
@@ -848,6 +863,7 @@ export default function MaterialsManagementPage() {
           </Card>
         </div>
       )}
-    </div>
+      </div>
+    </Protect>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import Link from "next/link";
@@ -101,11 +101,20 @@ export default function CreateJobCard() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const { isOnline } = useConnection();
 
-  const mockDepartments = [
-    { id: "11111111-1111-1111-1111-111111111111", name: "Mechanical Maintenance" },
-    { id: "22222222-2222-2222-2222-222222222222", name: "Electrical & Instrumentation" },
-    { id: "33333333-3333-3333-3333-333333333333", name: "Mining Operations & Processing" },
-  ];
+  const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([]);
+
+  useEffect(() => {
+    import('@/lib/mockData').then((m) => {
+      setDepartments(m.MOCK_DEPARTMENTS);
+    });
+    apiFetch<Array<{ id: string; name: string }>>('/api/v1/iam/departments')
+      .then((res) => {
+        if (Array.isArray(res) && res.length > 0) {
+          setDepartments(res);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const jobTypes = [
     "Breakdown / Emergency Repair",
@@ -148,7 +157,7 @@ export default function CreateJobCard() {
           title: title.trim(),
           description: description.trim(),
           priority: priorityVal,
-          department_id: departmentId || mockDepartments[0].id,
+          department_id: departmentId || (departments.length > 0 ? departments[0].id : "dept-mech"),
           job_type: jobType,
           maintenance_type: jobType,
           workshop_code: workshopCode,
@@ -162,9 +171,13 @@ export default function CreateJobCard() {
         }),
       });
 
-      if (res && res.id) {
+      if (res && (res.id || res._offline)) {
         clearDraft();
-        router.push(`/jobs/${res.id}`);
+        if (res._offline) {
+          router.push('/jobs');
+        } else {
+          router.push(`/jobs/${res.id}`);
+        }
       }
     } catch (e: unknown) {
       const err = e as { message?: string };
@@ -175,7 +188,7 @@ export default function CreateJobCard() {
   };
 
   return (
-    <Protect capability="job_card:create">
+    <Protect capability="job_card:create" isPageGuard moduleName="Create Job Card">
       <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4">
         {/* HEADER BAR */}
         <div className="flex items-center justify-between border-b border-border pb-3">
@@ -315,7 +328,7 @@ export default function CreateJobCard() {
                       onChange={(e) => setDepartmentId(e.target.value)}
                       className="h-8 w-full rounded border border-input bg-card px-2.5 py-1 text-xs text-foreground transition-all outline-none focus:border-ring"
                     >
-                      {mockDepartments.map((d) => (
+                      {departments.map((d) => (
                         <option key={d.id} value={d.id}>
                           {d.name}
                         </option>

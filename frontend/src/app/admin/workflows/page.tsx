@@ -289,8 +289,8 @@ export default function WorkflowsAdminPage() {
     }
   };
 
-  const handleCreateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreateSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     const parsed = parseJsonFields();
     if (!parsed) return;
     setCreating(true);
@@ -318,7 +318,7 @@ export default function WorkflowsAdminPage() {
   };
 
   return (
-    <Protect capability="settings:manage">
+    <Protect capability="workflows:manage" isPageGuard moduleName="Workflow Configuration">
       <div className="p-6 space-y-6 max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
@@ -611,7 +611,7 @@ export default function WorkflowsAdminPage() {
                 </Button>
               </div>
 
-              <form onSubmit={handleCreateSubmit} className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+              <form id="workflow-template-form" onSubmit={handleCreateSubmit} className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
                 {/* Presets */}
                 <div className="space-y-1.5 p-3 rounded-lg border border-border bg-muted/20">
                   <div className="text-[11px] font-semibold text-foreground flex items-center justify-between">
@@ -764,10 +764,9 @@ export default function WorkflowsAdminPage() {
                 </Button>
                 <Button
                   type="submit"
-                  form=""
+                  form="workflow-template-form"
                   size="sm"
                   disabled={creating || !newName.trim() || validation === null || !validation.valid}
-                  onClick={handleCreateSubmit}
                   className="text-xs"
                 >
                   {creating ? 'Saving...' : 'Save Template'}

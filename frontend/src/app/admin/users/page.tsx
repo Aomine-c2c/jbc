@@ -83,8 +83,28 @@ export default function UsersPage() {
     loadData();
   };
 
+  const handleDeactivateUser = async (user: User) => {
+    if (user.is_active === false) return; // already inactive
+    const confirmed =
+      typeof window === "undefined" ||
+      window.confirm(`Deactivate ${user.first_name} ${user.last_name}? They will no longer be able to sign in.`);
+    if (!confirmed) return;
+    try {
+      await apiFetch(`/api/v1/iam/users/${user.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ is_active: false }),
+      });
+      loadData();
+    } catch (err) {
+      console.error("Failed to deactivate user", err);
+      if (typeof window !== "undefined") {
+        window.alert("Failed to deactivate user. See console for details.");
+      }
+    }
+  };
+
   return (
-    <Protect capability="users:manage">
+    <Protect capability="users:manage" isPageGuard moduleName="User Directory & IAM">
       <div className="space-y-6 p-4 md:p-6 max-w-7xl mx-auto">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-foreground">User Management</h1>
@@ -130,10 +150,20 @@ export default function UsersPage() {
                   )}
                 </div>
 
-                <div className="pt-2 border-t border-border/50 flex justify-end">
+                <div className="pt-2 border-t border-border/50 flex justify-end gap-2">
                   <Button variant="outline" size="sm" onClick={() => handleEditUser(user)} className="text-xs">
                     Edit User
                   </Button>
+                  {user.is_active && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs text-red-500 border-red-500/40 hover:bg-red-500/10"
+                      onClick={() => handleDeactivateUser(user)}
+                    >
+                      Deactivate
+                    </Button>
+                  )}
                 </div>
               </div>
             ))
@@ -191,9 +221,21 @@ export default function UsersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="xs" onClick={() => handleEditUser(user)}>
-                        Edit
-                      </Button>
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="xs" onClick={() => handleEditUser(user)}>
+                          Edit
+                        </Button>
+                        {user.is_active && (
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            className="text-red-500 hover:text-red-400"
+                            onClick={() => handleDeactivateUser(user)}
+                          >
+                            Deactivate
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

@@ -323,7 +323,7 @@ export default function PlatformAdminPage() {
   });
 
   return (
-    <Protect capability="settings:manage">
+    <Protect capability="platform:manage" isPageGuard moduleName="Platform Infrastructure">
       <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6 text-slate-100">
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">

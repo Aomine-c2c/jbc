@@ -170,7 +170,7 @@ export default function UniversalRequestsPage() {
       const data = await apiFetch<RequestRow[]>(url);
       setRequests(data || []);
 
-      const deptData = await apiFetch<DepartmentOption[]>('/api/v1/departments');
+      const deptData = await apiFetch<DepartmentOption[]>('/api/v1/iam/departments');
       if (deptData) setDepartments(deptData);
     } catch (err) {
       console.error('Failed to load requests', err);
@@ -356,7 +356,8 @@ export default function UniversalRequestsPage() {
   const completedCount = requests.filter((r) => ['FULFILLED', 'CLOSED'].includes(r.status)).length;
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <Protect capability="requisition:create" isPageGuard moduleName="Requests & Requisitions Hub">
+      <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
         <div className="flex items-center gap-3">
@@ -981,6 +982,7 @@ export default function UniversalRequestsPage() {
           </Card>
         </div>
       )}
-    </div>
+      </div>
+    </Protect>
   );
 }

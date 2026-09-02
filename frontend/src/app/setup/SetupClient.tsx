@@ -99,7 +99,7 @@ export function SetupClient() {
     // Check initial setup status from backend
     async function checkStatus() {
       try {
-        const res = await apiClient.get('/setup/status');
+        const res = await apiClient.get('/api/v1/setup/status');
         if (res.data.is_completed) {
           setIsCompleted(true);
           setCurrentStep(8);
@@ -136,7 +136,7 @@ export function SetupClient() {
   const handleTestDatabase = async () => {
     setDbTestResult({ status: 'testing' });
     try {
-      const res = await apiClient.post('/setup/test-db', {
+      const res = await apiClient.post('/api/v1/setup/test-db', {
         engine: formData.db_engine,
         host: formData.db_host,
         port: Number(formData.db_port),
@@ -162,7 +162,7 @@ export function SetupClient() {
   const handleTestStorage = async () => {
     setStorageTestResult({ status: 'testing' });
     try {
-      const res = await apiClient.post('/setup/test-storage', {
+      const res = await apiClient.post('/api/v1/setup/test-storage', {
         path: formData.storage_path,
       });
       setStorageTestResult({
@@ -199,7 +199,7 @@ export function SetupClient() {
     // Save step progress to backend
     try {
       setLoading(true);
-      await apiClient.post(`/setup/step/${currentStep}`, {
+      await apiClient.post(`/api/v1/setup/step/${currentStep}`, {
         step_data: formData,
       });
       setCurrentStep((prev) => Math.min(prev + 1, 8));
@@ -266,7 +266,7 @@ export function SetupClient() {
         },
       };
 
-      const res = await apiClient.post('/setup/finalize', { config: payload });
+      const res = await apiClient.post('/api/v1/setup/finalize', { config: payload });
       setFinalReport(res.data);
       setIsCompleted(true);
     } catch (err: unknown) {

@@ -111,8 +111,8 @@ export async function apiFetch(endpoint: string, options: ApiRequestInit = {}) {
     } catch (err: unknown) {
       attempt++;
 
-      // If offline queueing is enabled and client is offline
-      if (options.syncable && typeof window !== 'undefined' && !navigator.onLine) {
+      // If offline queueing is enabled and network fails or client is offline
+      if (options.syncable && typeof window !== 'undefined') {
         const syncId = crypto.randomUUID();
         const plainHeaders: Record<string, string> = {};
         headers.forEach((val, key) => plainHeaders[key] = val);
@@ -136,7 +136,7 @@ export async function apiFetch(endpoint: string, options: ApiRequestInit = {}) {
           status: 'PENDING'
         });
         
-        return { _offline: true, syncId };
+        return { _offline: true, syncId, id: `offline-${syncId.slice(0, 8)}` };
       }
 
       // If we have retries remaining for GET request, wait with backoff

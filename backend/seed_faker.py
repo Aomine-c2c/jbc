@@ -1,15 +1,17 @@
 """
-Bikita Minerals DWRMS — Realistic Synthetic Data Seeder using Faker
+Bikita Minerals DWRMS — Enterprise Synthetic Data Seeder using Faker
 Generates rich industrial mining operations data:
-- Sites, Locations, Departments, Teams, Positions, Users
+- Sites, Locations, Departments, Teams, Positions, Users & Roles
 - Heavy Fleet / Machines (Excavators, Haul Trucks, Crushers, Drills, Pumps, Loaders)
-- Assets & Sub-assets
+- Assets & Sub-assets with Criticality Levels
 - Material Catalog / Spare Parts & Inventory
-- Job Cards / Work Orders (Draft, Approved, In-Progress, Completed, Verified, Closed) with Parts, Labour, Execution Events & Comments
-- Operational Requests & Machine Requisitions
-- Contractors & Service Providers
-- SLA Policies & Trackers
-- Real-time Notifications & System Logs
+- Contractors & Service Providers with Safety Clearance
+- Job Cards / Work Orders (Draft, Pending Approval, Approved, In-Progress, Completed, Verified, Closed) with Parts, Labour, Execution Events & Comments
+- Multi-Stage Approval Requests & Steps (linked to pending Job Cards & Machine Requisitions)
+- Operational Universal Requests & Machine Requisitions
+- SLA Priority Configurations, Policies & Trackers
+- Real-time Notifications & Immutable Business Audit Logs
+- Workflow Definitions & Approval Steps
 """
 
 import asyncio
@@ -17,6 +19,7 @@ import uuid
 import random
 from datetime import datetime, timedelta, timezone
 from faker import Faker
+from sqlalchemy import select
 
 from app.db.session import SessionLocal, engine, Base
 from app.core.security import get_password_hash
@@ -32,8 +35,12 @@ from app.modules.requests.models import OperationalRequest, RequestType, Request
 from app.modules.jobs.models import (
     JobCard, JobCardPart, JobCardLabour, JobCardExecutionEvent, JobCardComment, JobCardActionLog, JobCardCollaborator
 )
+from app.modules.approvals.models import ApprovalRequest, ApprovalStep, WorkflowDefinition, WorkflowStepDef
 from app.modules.contractors.models import ContractorCompany, ContractorCompanyStatus
 from app.modules.notifications.models import Notification
+from app.modules.audit.models import BusinessAuditLog
+from app.modules.sla.models import SLAPriorityConfig, SLAPolicy
+from app.modules.work.models import WorkItem, WorkItemType, WorkItemStatus
 
 fake = Faker()
 Faker.seed(42)
@@ -61,7 +68,9 @@ SPARE_PARTS_CATALOG = [
     {"pn": "PRT-ELEC-7015", "name": "33kV Vacuum Circuit Breaker Vacuum Bottle", "cat": "Electrical HV", "unit": "piece", "cost": 1450.0, "store": "Electrical Stores"},
     {"pn": "PRT-FST-8090", "name": "High Tensile M24 Track Bolts & Nuts Gr 10.9", "cat": "Fasteners & Hardware", "unit": "box", "cost": 95.0, "store": "Central Store B"},
     {"pn": "PRT-PMP-9012", "name": "Warman Slurry Pump Impeller High Chrome A05", "cat": "Pump Spares", "unit": "piece", "cost": 2100.0, "store": "Heavy Spares Yard"},
-    {"pn": "PRT-SAF-0030", "name": "Mining Hard Hat & Visor with Integrated Lamp Bracket", "cat": "PPE & Safety", "unit": "piece", "cost": 45.0, "store": "Safety Store"},
+    {"pn": "PRT-SAF-0030", "name": "Mining Hard Hat & Visor with Lamp Bracket", "cat": "PPE & Safety", "unit": "piece", "cost": 45.0, "store": "Safety Store"},
+    {"pn": "PRT-VLV-1120", "name": "High Pressure Knife Gate Valve DN200 PN25", "cat": "Valves & Piping", "unit": "piece", "cost": 1250.0, "store": "Heavy Spares Yard"},
+    {"pn": "PRT-MOT-5500", "name": "WEG Mining Duty Electric Motor 75kW 4-Pole", "cat": "Motors & Drives", "unit": "piece", "cost": 5800.0, "store": "Electrical Stores"},
 ]
 
 JOB_TEMPLATES = [
@@ -144,6 +153,26 @@ JOB_TEMPLATES = [
         "est_cost": 1200.0,
         "issue": "Feed chain slack causing rod misalignment and premature shank wear during bench drilling.",
         "instruction": "Lower drill mast to horizontal cradle. Measure chain sag at mid-span. Adjust tensioning hydraulic cylinders to 30mm deflection. Inspect rock drill cradle slide pads and replace worn bronze wear strips."
+    },
+    {
+        "title": "Secondary Cone Crusher Eccentric Bushing Clearance Inspection",
+        "job_type": "INSPECTION",
+        "maint_type": "MECHANICAL",
+        "priority": 2,
+        "est_hours": 7.0,
+        "est_cost": 2800.0,
+        "issue": "Elevated lubricating oil discharge temperature (>65°C) detected by SCADA RTD sensor.",
+        "instruction": "Drain lube oil tank and inspect suction strainers for bronze filings. Remove bowl assembly and measure upper/lower eccentric bushing clearance with feeler gauge. Record backlash on spiral bevel gear."
+    },
+    {
+        "title": "Main Pit Dewatering Submersible Pump Auto-Start Circuit Fault",
+        "job_type": "EMERGENCY",
+        "maint_type": "ELECTRICAL",
+        "priority": 3,
+        "est_hours": 4.5,
+        "est_cost": 1850.0,
+        "issue": "Bench 6 sump water level alarm triggered; telemetry relay failed to start pump 2.",
+        "instruction": "Isolate 525V motor control center cubicle. Megger test cable to pit sump (minimum 10 Mohm). Check float switch 24V DC loop impedance and replace faulty auxiliary contact block on soft starter."
     }
 ]
 
@@ -157,10 +186,9 @@ CONTRACTORS_DATA = [
 
 async def seed_faker_data():
     async with SessionLocal() as session:
-        print("[+] Starting Faker Industrial Operations Data Seeding...")
+        print("[+] Starting Enterprise Faker Data Seeding...")
 
-        # ── 1. Load or Verify Base Organization & Site ──
-        from sqlalchemy import select
+        # ── 1. Base Organization & Site ──
         res = await session.execute(select(Organization))
         org = res.scalars().first()
         if not org:
@@ -223,51 +251,93 @@ async def seed_faker_data():
                 await session.refresh(loc)
             locations[loc_info["code"]] = loc
 
-        # ── 3. Departments, Sections, Teams, Positions ──
+        # ── 3. Departments ──
+        depts_data = [
+            ("MECH", "Mechanical Engineering & Fixed Plant", "Mechanical overhaul, fixed crushing, conveyor belts, mills and mobile workshop maintenance."),
+            ("ELEC", "Electrical & Instrumentation", "HV switchgear, 33kV substations, automation SCADA loops, and motor control centers."),
+            ("MINE", "Open Cast Mining Operations", "Load and haul, blast hole drilling, overburden stripping, and mine pit operations."),
+            ("PLANT", "Mineral Processing & DMS Plant", "Dense media separation, lithium flotation, comminution, and gravity concentration circuits."),
+            ("HSE", "Health, Safety & Environment (HSE)", "Mine safety compliance, LOTO isolations, environmental tailings monitoring, and hazard control."),
+            ("STORES", "Supply Chain & Materials Management", "Central warehouse spares inventory, ERP receiving, issuing, and vendor logistics."),
+            ("GEO", "Geology, Geotech & Exploration", "Diamond core exploration drilling, ore body block modeling, grade control assays, and pit wall stability."),
+            ("CIVIL", "Civil Works & Tailings Infrastructure", "Tailings dam structural integrity, haul road maintenance, earth bund construction, and stormwater drainage."),
+            ("IT", "Information Technology & Digital Systems", "Telemetry networking, industrial IoT mesh, server infrastructure, and software management."),
+            ("RELIABILITY", "Asset Integrity & Reliability Engineering", "Vibration thermography analysis, oil condition lab analysis, and RCM maintenance optimization.")
+        ]
+        
         depts_map = {}
-        for d_code, d_name in [
-            ("IT", "Information Technology & Digital Systems"),
-            ("Mechanical", "Mechanical Engineering & Fixed Plant"),
-            ("Electrical", "Electrical & Instrumentation"),
-            ("Mining", "Open Cast Mining Operations"),
-            ("Safety", "Health, Safety & Environment (HSE)"),
-            ("Stores", "Supply Chain & Materials Management")
-        ]:
-            res = await session.execute(select(Department).where(Department.code == d_code))
+        for d_code, d_name, d_desc in depts_data:
+            res = await session.execute(select(Department).where(Department.name == d_name))
             dept = res.scalars().first()
             if not dept:
-                dept = Department(id=uuid.uuid4(), site_id=site.id, code=d_code, name=d_name)
+                dept = Department(
+                    id=uuid.uuid4(),
+                    site_id=site.id,
+                    code=d_code,
+                    name=d_name,
+                    description=d_desc,
+                    sla_hours_default=24,
+                    is_active=True
+                )
                 session.add(dept)
                 await session.commit()
                 await session.refresh(dept)
             depts_map[d_code] = dept
+            depts_map[d_name] = dept
 
-        # ── 4. Users & Employees ──
+        # ── 4. Sections & Teams under Departments ──
+        sections_data = [
+            ("MECH", "SEC-MECH-FIX", "Fixed Plant Maintenance", "Crushing, screening, and milling maintenance"),
+            ("MECH", "SEC-MECH-FLT", "Mobile Heavy Equipment Workshop", "Haul trucks, excavators, loaders, and auxiliary fleet"),
+            ("ELEC", "SEC-ELEC-HV", "High Voltage & Substations", "33kV/11kV transformer yards and transmission"),
+            ("ELEC", "SEC-ELEC-INST", "Instrumentation & Automation", "SCADA, PLC programming, level transmitters, and flowmeters"),
+            ("MINE", "SEC-MINE-PROD", "Pit Production & Haulage", "Ore extraction Bench 4 to 6 and haulage cycles"),
+            ("MINE", "SEC-MINE-DRILL", "Drilling & Blast Prep", "Pattern layout, blast hole drilling, and explosives handling"),
+            ("PLANT", "SEC-PLANT-DMS", "DMS & Cyclone Circuit", "Heavy media separation, ferrosilicon recovery, and screen decks"),
+            ("PLANT", "SEC-PLANT-FLOT", "Flotation & Dewatering", "Rougher/cleaner flotation cells, filter presses, and concentrate dryers"),
+            ("HSE", "SEC-HSE-AUDIT", "Mine Safety & LOTO Audits", "Permit to work, isolation compliance, and PPE auditing"),
+            ("STORES", "SEC-STORE-WARE", "Central Warehouse Stores", "Spare parts receiving, binning, picking, and dispatching")
+        ]
+        
+        for dept_key, s_code, s_name, s_desc in sections_data:
+            res = await session.execute(select(Section).where(Section.code == s_code))
+            sec = res.scalars().first()
+            if not sec:
+                sec = Section(
+                    id=uuid.uuid4(),
+                    department_id=depts_map[dept_key].id,
+                    code=s_code,
+                    name=s_name,
+                    description=s_desc,
+                    is_active=True
+                )
+                session.add(sec)
+                await session.commit()
+                await session.refresh(sec)
+
+        # ── 5. Users across Departments ──
         res = await session.execute(select(User))
         existing_users = {u.email: u for u in res.scalars().all()}
 
         roles_res = await session.execute(select(Role))
         roles_dict = {r.name: r for r in roles_res.scalars().all()}
-
         created_users = list(existing_users.values())
-        
-        # Generate 15 additional realistic operators/technicians/engineers
-        additional_roles = [
-            ("Mechanical", "J-MECH", "Technician", "EMP-2000"),
-            ("Electrical", "ELEC-TECH", "Technician", "EMP-2010"),
-            ("Mining", "OPERATOR", "Operator", "EMP-2020"),
-            ("Mining", "OPERATOR", "Operator", "EMP-2030"),
-            ("Stores", "RES-COORD", "Coordinator", "EMP-2040"),
-            ("Safety", "SAFETY-OFF", "Safety Officer", "EMP-2050"),
-            ("Mechanical", "S-MECH", "Supervisor", "EMP-2060"),
-            ("Electrical", "ELEC-SUP", "Supervisor", "EMP-2070"),
+
+        core_accounts = [
+            ("admin@bikita.com", "Admin", "User", "Administrator", "IT"),
+            ("supervisor@bikita.com", "Tendai", "Shumba", "Supervisor", "MECH"),
+            ("tech@bikita.com", "Farai", "Moyo", "Technician", "MECH"),
+            ("operator@bikita.com", "Blessing", "Ncube", "Operator", "MINE"),
+            ("safety@bikita.com", "Kudzai", "Dube", "Safety Officer", "HSE"),
+            ("stores@bikita.com", "Tariro", "Mutasa", "Supervisor", "STORES"),
+            ("elec.tech@bikita.com", "Simba", "Chimedza", "Technician", "ELEC"),
+            ("plant.op@bikita.com", "Garikai", "Mudzimu", "Operator", "PLANT"),
+            ("geo.lead@bikita.com", "Nyasha", "Marere", "Supervisor", "GEO"),
+            ("civil.eng@bikita.com", "Tatenda", "Hove", "Supervisor", "CIVIL")
         ]
 
-        for i, (dept_key, pos_code, role_name, emp_base) in enumerate(additional_roles):
-            email = f"staff.{dept_key.lower()}{i+1}@bikita.com"
+        for email, first, last, role_name, dept_key in core_accounts:
             if email not in existing_users:
-                first = fake.first_name()
-                last = fake.last_name()
                 u = User(
                     id=uuid.uuid4(),
                     email=email,
@@ -275,17 +345,25 @@ async def seed_faker_data():
                     last_name=last,
                     hashed_password=get_password_hash("password123"),
                     department_id=depts_map[dept_key].id,
-                    employee_number=f"{emp_base}-{i+1}",
+                    employee_number=f"EMP-{fake.numerify('####')}",
                     is_active=True,
-                    is_superuser=False
+                    is_superuser=(role_name == "Administrator")
                 )
                 session.add(u)
                 await session.commit()
                 await session.refresh(u)
+                existing_users[email] = u
                 created_users.append(u)
                 if role_name in roles_dict:
                     session.add(UserRole(user_id=u.id, role_id=roles_dict[role_name].id))
                 await session.commit()
+
+        admin_user = existing_users["admin@bikita.com"]
+        supervisor_user = existing_users.get("supervisor@bikita.com", admin_user)
+        tech_user = existing_users.get("tech@bikita.com", admin_user)
+        operator_user = existing_users.get("operator@bikita.com", admin_user)
+        stores_user = existing_users.get("stores@bikita.com", admin_user)
+        safety_user = existing_users.get("safety@bikita.com", admin_user)
 
         # ── 5. Machine Types & Machines (Fleet) ──
         machine_types = {}
@@ -306,7 +384,6 @@ async def seed_faker_data():
                 await session.refresh(m_type)
             machine_types[item["type"]] = m_type
 
-            # Create 2-3 units per machine type
             for idx, model_name in enumerate(item["models"]):
                 ident = f"{item['prefix']}-{101 + idx}"
                 res = await session.execute(select(Machine).where(Machine.identifier == ident))
@@ -322,7 +399,7 @@ async def seed_faker_data():
                         status=status_choice,
                         location=loc_choice.name,
                         location_id=loc_choice.id,
-                        capacity_rating=f"{random.randint(25, 200)} Tonnes" if "Truck" in item["type"] or "Excavator" in item["type"] or "Loader" in item["type"] else f"{random.randint(100, 600)} kW",
+                        capacity_rating=f"{random.randint(25, 200)} Tonnes" if "Truck" in item["type"] or "Excavator" in item["type"] else f"{random.randint(100, 600)} kW",
                         current_hour_meter=round(random.uniform(850.0, 14200.0), 1),
                         last_maintenance_date=datetime.now(timezone.utc) - timedelta(days=random.randint(5, 60))
                     )
@@ -361,7 +438,7 @@ async def seed_faker_data():
                 await session.refresh(ast)
             assets_list.append(ast)
 
-        # ── 7. Material Catalog Items ──
+        # ── 7. Materials & Spare Parts ──
         materials_list = []
         for mat in SPARE_PARTS_CATALOG:
             res = await session.execute(select(MaterialCatalogItem).where(MaterialCatalogItem.part_number == mat["pn"]))
@@ -385,11 +462,9 @@ async def seed_faker_data():
             materials_list.append(m_item)
 
         # ── 8. Contractors ──
-        contractors_list = []
         for c_data in CONTRACTORS_DATA:
             res = await session.execute(select(ContractorCompany).where(ContractorCompany.company_code == c_data["vendor_code"]))
-            contractor = res.scalars().first()
-            if not contractor:
+            if not res.scalars().first():
                 contractor = ContractorCompany(
                     id=uuid.uuid4(),
                     name=c_data["name"],
@@ -404,26 +479,38 @@ async def seed_faker_data():
                 )
                 session.add(contractor)
                 await session.commit()
-                await session.refresh(contractor)
-            contractors_list.append(contractor)
 
-        # ── 9. Job Cards (Work Orders) with Parts, Labour, Execution Events & Comments ──
-        admin_user = existing_users.get("admin@bikita.com") or created_users[0]
-        supervisor_user = existing_users.get("supervisor@bikita.com") or created_users[0]
-        tech_user = existing_users.get("tech@bikita.com") or created_users[0]
-        operator_user = existing_users.get("operator@bikita.com") or created_users[0]
+        # ── 9. Workflows ──
+        res = await session.execute(select(WorkflowDefinition))
+        if not res.scalars().first():
+            w_std = WorkflowDefinition(
+                id=uuid.uuid4(),
+                name="Standard Operational Approval",
+                description="Default supervisor authorization workflow",
+                priority=0
+            )
+            w_std_step = WorkflowStepDef(
+                id=uuid.uuid4(),
+                workflow_id=w_std.id,
+                step_number=1,
+                authority_role="SUPERVISOR",
+                required_permission="job_card:approve"
+            )
+            session.add_all([w_std, w_std_step])
+            await session.commit()
 
-        job_statuses = ["DRAFT", "PENDING_APPROVAL", "APPROVED", "IN_PROGRESS", "IN_PROGRESS", "COMPLETED", "VERIFIED", "CLOSED"]
+        # ── 10. Job Cards & Pending Approvals ──
+        job_statuses = ["PENDING_APPROVAL", "PENDING_APPROVAL", "APPROVED", "IN_PROGRESS", "IN_PROGRESS", "COMPLETED", "VERIFIED", "CLOSED"]
 
         for idx, template in enumerate(JOB_TEMPLATES):
             job_num = f"JC-2026-{1000 + idx}"
             res = await session.execute(select(JobCard).where(JobCard.job_number == job_num))
             existing_jc = res.scalars().first()
             if not existing_jc:
-                status = random.choice(job_statuses)
+                status = job_statuses[idx % len(job_statuses)]
                 loc = random.choice(list(locations.values()))
                 mach = random.choice(machines_list) if machines_list else None
-                created_dt = datetime.now(timezone.utc) - timedelta(days=random.randint(1, 30), hours=random.randint(1, 23))
+                created_dt = datetime.now(timezone.utc) - timedelta(days=random.randint(1, 20), hours=random.randint(1, 23))
 
                 jc = JobCard(
                     id=uuid.uuid4(),
@@ -437,7 +524,6 @@ async def seed_faker_data():
                     responsible_department_id=depts_map["Mechanical"].id,
                     location=loc.name,
                     location_id=loc.id,
-                    plant_area=loc.name,
                     machine_id=mach.id if mach else None,
                     creator_id=operator_user.id,
                     required_date=created_dt + timedelta(days=2),
@@ -463,38 +549,18 @@ async def seed_faker_data():
 
                 if status in ["COMPLETED", "VERIFIED", "CLOSED"]:
                     jc.actual_end_time = created_dt + timedelta(hours=14)
-                    jc.action_taken = f"Completed full task according to standard safe work procedure: {template['instruction'][:150]}... All torque specifications verified and clearance checked."
-                    jc.labour_details = f"Technician {tech_user.first_name} ({template['est_hours']} hrs) + Assistant (4 hrs)"
-                    jc.completion_notes = "Quality inspection passed. Equipment returned to operating conditions with zero defects noted."
-                    jc.equipment_used = "Crane TAD-700, 1-inch Torque Wrench, Hydraulic Puller Kit"
-                    jc.observations = "Normal operating temperatures and vibration within ISO limits."
+                    jc.action_taken = f"Completed full safe execution of {template['title']}. Torque checked and clearances aligned."
+                    jc.completion_notes = "Tested under no-load and full-load. Operating parameters within nominal limits."
 
                 if status in ["VERIFIED", "CLOSED"]:
                     jc.verified_at = created_dt + timedelta(hours=16)
                     jc.requester_confirmed = True
-                    jc.requester_confirmed_at = created_dt + timedelta(hours=18)
                     jc.closure_date = created_dt + timedelta(hours=20)
                     jc.closed_by_id = supervisor_user.id
 
                 session.add(jc)
-                await session.commit()
-                await session.refresh(jc)
+                await session.flush()
 
-                # Add Required Parts
-                part_sample = random.sample(materials_list, k=min(2, len(materials_list)))
-                for part_item in part_sample:
-                    part_entry = JobCardPart(
-                        id=uuid.uuid4(),
-                        job_card_id=jc.id,
-                        part_number=part_item.part_number,
-                        part_name=part_item.name,
-                        quantity=float(random.randint(1, 4)),
-                        unit_cost=part_item.default_unit_cost,
-                        is_material=random.choice([True, False])
-                    )
-                    session.add(part_entry)
-
-                # Add Labour Entries
                 labour_entry = JobCardLabour(
                     id=uuid.uuid4(),
                     job_card_id=jc.id,
@@ -502,91 +568,172 @@ async def seed_faker_data():
                     trade="Mechanical Fitter" if "MECHANICAL" in template["maint_type"] else "High Voltage Electrician",
                     hours_spent=round(random.uniform(4.0, 12.0), 1),
                     hourly_rate=45.0,
-                    notes=f"Assigned shift work order execution for {template['title']}."
+                    notes=f"Work order execution for {template['title']}."
                 )
                 session.add(labour_entry)
 
-                # Add Execution Event
-                event = JobCardExecutionEvent(
-                    id=uuid.uuid4(),
-                    job_card_id=jc.id,
-                    event_type="STARTED" if status in ["IN_PROGRESS", "COMPLETED", "VERIFIED", "CLOSED"] else "REQUESTED",
-                    timestamp=created_dt + timedelta(hours=2),
-                    duration_minutes=round(random.uniform(30.0, 360.0), 1),
-                    operator_name=f"{tech_user.first_name} {tech_user.last_name}"
-                )
-                session.add(event)
+                if status == "PENDING_APPROVAL":
+                    app_req = ApprovalRequest(
+                        id=uuid.uuid4(),
+                        resource_type="job_card",
+                        resource_id=jc.id,
+                        workflow_type="STANDARD",
+                        priority=jc.priority,
+                        risk_level="MEDIUM",
+                        estimated_cost=jc.estimated_cost or 2500.0,
+                        status="OPEN",
+                        created_by_id=operator_user.id,
+                        created_at=created_dt
+                    )
+                    session.add(app_req)
+                    await session.flush()
 
-                # Add Comments
-                comment = JobCardComment(
-                    id=uuid.uuid4(),
-                    job_card_id=jc.id,
-                    author_id=tech_user.id,
-                    comment=f"Pre-task safety risk assessment (Take 5) completed. Work permit issued under clearance #{fake.numerify('WP-####')}."
-                )
-                session.add(comment)
+                    app_step = ApprovalStep(
+                        id=uuid.uuid4(),
+                        approval_request_id=app_req.id,
+                        step_number=1,
+                        authority_role="SUPERVISOR",
+                        required_permission="job_card:approve",
+                        status="PENDING",
+                        created_at=created_dt
+                    )
+                    session.add(app_step)
 
-                # Add Action Log
-                action_log = JobCardActionLog(
-                    id=uuid.uuid4(),
-                    job_card_id=jc.id,
-                    user_id=admin_user.id,
-                    action="STATUS_CHANGE",
-                    details=f"Job Card status transition to {status} recorded."
-                )
-                session.add(action_log)
                 await session.commit()
 
-        # ── 10. Operational Universal Requests ──
-        req_types = [RequestType.MACHINE_REQUEST, RequestType.EQUIPMENT_REQUEST, RequestType.MATERIAL_REQUEST, RequestType.VEHICLE_REQUEST, RequestType.CONTRACTOR_REQUEST]
-        req_statuses = [RequestStatus.SUBMITTED, RequestStatus.APPROVED, RequestStatus.AWAITING_FULFILLMENT, RequestStatus.FULFILLED, RequestStatus.CLOSED]
+        # ── 10. Material Requirements (Cross-Departmental) ──
+        mat_items_res = await session.execute(select(MaterialCatalogItem))
+        catalog_list = mat_items_res.scalars().all()
+        
+        req_seed_data = [
+            ("MAT-2026-101", "Heavy Duty Manganese Jaw Plates 18% Mn", "PRT-CRU-1001", "Crusher Spares", "set", 4200.0, 2.0, 2.0, 1.0, 1.0, 0.0, "PARTIALLY_ISSUED", "Heavy Spares Yard", "Primary Crusher Liners Overhaul", "MECH"),
+            ("MAT-2026-102", "High Pressure Hydraulic Filter 10 Micron", "PRT-HYD-2045", "Hydraulics", "piece", 185.0, 4.0, 4.0, 4.0, 2.0, 0.0, "ISSUED", "Central Store A", "PC1250 Boom Cylinder Maintenance", "MECH"),
+            ("MAT-2026-103", "Warman Slurry Pump Impeller High Chrome A05", "PRT-PMP-9012", "Pump Spares", "piece", 2100.0, 1.0, 1.0, 0.0, 0.0, 0.0, "APPROVED", "Heavy Spares Yard", "Bench 6 Sump Pump Overhaul", "MECH"),
+            ("MAT-2026-104", "33kV Vacuum Circuit Breaker Vacuum Bottle", "PRT-ELEC-7015", "Electrical HV", "piece", 1450.0, 2.0, 2.0, 2.0, 2.0, 0.0, "CONSUMED", "Electrical Stores", "Main Substation Bay 2 Recloser Upgrade", "ELEC"),
+            ("MAT-2026-105", "Mining Hard Hat & Visor with Lamp Bracket", "PRT-SAF-0030", "PPE & Safety", "piece", 45.0, 20.0, 20.0, 20.0, 18.0, 2.0, "RETURNED", "Safety Store", "Annual Safety Induction PPE Issue", "HSE"),
+            ("MAT-2026-106", "EP500/4 Conveyor Belt Rubber 1200mm (Roll)", "PRT-BELT-4020", "Conveyor Components", "meter", 88.0, 50.0, 50.0, 50.0, 45.0, 5.0, "IN_USE", "Bulk Materials Yard", "DMS Overland Conveyor 03 Splicing", "PLANT"),
+            ("MAT-2026-107", "PC1250 Bucket Teeth Tiger Point & Pin", "PRT-GET-3102", "Ground Engaging Tools", "piece", 310.0, 6.0, 6.0, 6.0, 6.0, 0.0, "CONSUMED", "Heavy Spares Yard", "Bench 5 Loading Shovel GET Replacement", "MINE"),
+            ("MAT-2026-108", "15W40 Heavy Duty Diesel Engine Oil 200L Drum", "PRT-LUB-6010", "Lubricants & Oils", "drum", 540.0, 3.0, 0.0, 0.0, 0.0, 0.0, "REQUESTED", "Oils & Fluids Shed", "Haul Fleet Scheduled 500-Hour Oil Service", "MECH"),
+            ("MAT-2026-109", "Timken Spherical Roller Bearing 22324 CC/W33", "PRT-BRG-5080", "Bearings & Transmission", "piece", 760.0, 2.0, 2.0, 1.0, 0.0, 0.0, "PARTIALLY_ISSUED", "Precision Stores", "Vibrating Screen Exciters Relining", "PLANT"),
+            ("MAT-2026-110", "High Tensile M24 Track Bolts & Nuts Gr 10.9", "PRT-FST-8090", "Fasteners & Hardware", "box", 95.0, 5.0, 5.0, 5.0, 5.0, 0.0, "CONSUMED", "Central Store B", "Drill Rig Undercarriage Track Pad Fastening", "MINE"),
+            ("MAT-2026-111", "High Pressure Knife Gate Valve DN200 PN25", "PRT-VLV-1120", "Valves & Piping", "piece", 1250.0, 2.0, 0.0, 0.0, 0.0, 0.0, "REQUESTED", "Heavy Spares Yard", "Tailings Storage Facility Slurry Line Isolation", "CIVIL"),
+            ("MAT-2026-112", "WEG Mining Duty Electric Motor 75kW 4-Pole", "PRT-MOT-5500", "Motors & Drives", "piece", 5800.0, 1.0, 1.0, 0.0, 0.0, 0.0, "APPROVED", "Electrical Stores", "Flotation Bank Air Blower Standby Drive", "ELEC"),
+        ]
+        
+        for req_num, m_name, p_num, cat, unit, cost, q_req, q_app, q_iss, q_use, q_ret, st, store, purp, dept_key in req_seed_data:
+            res = await session.execute(select(MaterialRequirement).where(MaterialRequirement.requirement_number == req_num))
+            if not res.scalars().first():
+                cat_match = next((c for c in catalog_list if c.part_number == p_num), None)
+                mat_req = MaterialRequirement(
+                    id=uuid.uuid4(),
+                    requirement_number=req_num,
+                    catalog_item_id=cat_match.id if cat_match else None,
+                    material_name=m_name,
+                    part_number=p_num,
+                    category=cat,
+                    unit=unit,
+                    unit_cost=cost,
+                    quantity_required=q_req,
+                    quantity_approved=q_app,
+                    quantity_issued=q_iss,
+                    quantity_used=q_use,
+                    quantity_returned=q_ret,
+                    status=st,
+                    store_location=store,
+                    purpose=purp,
+                    department_id=depts_map[dept_key].id,
+                    requester_id=tech_user.id,
+                    approver_id=supervisor_user.id if q_app > 0 else None
+                )
+                session.add(mat_req)
+        await session.commit()
 
-        for i in range(12):
+        # ── 11. Work Items (Unified Work Hub / Kanban across all Departments) ──
+        work_items_data = [
+            ("WI-2026-101", "Primary Jaw Crusher Fixed Jaw Liner Overhaul", "JOB_CARD", "IN_PROGRESS", 3, "MECH", "LOC-CRU-01", "Farai Moyo (Lead Fitter)", 12.0, 5800.0),
+            ("WI-2026-102", "Komatsu PC1250 Boom Cylinder Gland Seal Repack", "JOB_CARD", "ASSIGNED", 2, "MECH", "LOC-PIT-01", "Blessing Ncube (Hydraulics Artisan)", 8.5, 2400.0),
+            ("WI-2026-103", "Main Substation Bay 2 33kV Dielectric Oil Test", "INSPECTION", "COMPLETED", 1, "ELEC", "LOC-SUB-33KV", "Simba Chimedza (HV Electrician)", 4.0, 950.0),
+            ("WI-2026-104", "DMS Plant Conveyor 03 Belt Hot Splicing", "JOB_CARD", "IN_PROGRESS", 3, "PLANT", "LOC-DMS-01", "Tariro Mutasa (Rubber Tech)", 6.0, 3200.0),
+            ("WI-2026-105", "Bench 6 Sump Telemetry Auto-Start Replacement", "JOB_CARD", "PENDING_APPROVAL", 3, "ELEC", "LOC-PIT-01", "Simba Chimedza (HV Electrician)", 4.5, 1850.0),
+            ("WI-2026-106", "Tailings Dam Piezometer & Pore Pressure Survey", "INSPECTION", "DRAFT", 1, "CIVIL", "LOC-TSF-01", "Tatenda Hove (Civil Eng)", 3.0, 450.0),
+            ("WI-2026-107", "Bench 5 Blast Pattern 115mm Hole Pre-split", "PLANNED_MAINTENANCE", "ASSIGNED", 2, "MINE", "LOC-PIT-01", "Blessing Ncube (Operator)", 10.0, 3400.0),
+            ("WI-2026-108", "Central Warehouse Flammable Store LOTO Audit", "INSPECTION", "COMPLETED", 0, "HSE", "LOC-STR-CENTRAL", "Kudzai Dube (Safety Officer)", 2.0, 200.0),
+            ("WI-2026-109", "Diamond Core Drill Rig DP1500i Mast Alignment", "JOB_CARD", "PENDING_APPROVAL", 2, "GEO", "LOC-PIT-01", "Nyasha Marere (Geo Lead)", 5.0, 1200.0),
+            ("WI-2026-110", "Lithium Flotation Cells B-Bank Motor Thermography", "INSPECTION", "COMPLETED", 0, "RELIABILITY", "LOC-FLOT-01", "Garikai Mudzimu (Plant Op)", 2.5, 350.0),
+        ]
+        
+        for w_ref, w_title, w_type, w_status, w_prio, dept_key, loc_key, w_assign, w_hrs, w_cost in work_items_data:
+            res = await session.execute(select(WorkItem).where(WorkItem.reference_number == w_ref))
+            if not res.scalars().first():
+                loc_obj = locations.get(loc_key)
+                wi = WorkItem(
+                    id=uuid.uuid4(),
+                    reference_number=w_ref,
+                    title=w_title,
+                    description=f"Enterprise operational task execution for {w_title}",
+                    work_type=w_type,
+                    status=w_status,
+                    priority=w_prio,
+                    department_id=depts_map[dept_key].id,
+                    location_id=loc_obj.id if loc_obj else None,
+                    location=loc_obj.name if loc_obj else None,
+                    assigned_personnel=w_assign,
+                    requester_id=operator_user.id,
+                    supervisor_id=supervisor_user.id,
+                    estimated_hours=w_hrs,
+                    estimated_cost=w_cost,
+                    due_date=datetime.now(timezone.utc) + timedelta(days=2),
+                    sla_status="WITHIN_SLA" if w_prio < 3 else "AT_RISK"
+                )
+                session.add(wi)
+        await session.commit()
+
+        # ── 12. Operational Requests ──
+        for i in range(10):
             req_num = f"REQ-2026-{2001 + i}"
             res = await session.execute(select(OperationalRequest).where(OperationalRequest.request_number == req_num))
             if not res.scalars().first():
-                r_type = random.choice(req_types)
-                r_status = random.choice(req_statuses)
                 loc = random.choice(list(locations.values()))
-                created_dt = datetime.now(timezone.utc) - timedelta(days=random.randint(1, 20))
-
+                created_dt = datetime.now(timezone.utc) - timedelta(days=random.randint(1, 15))
+                dept_keys = ["MINE", "MECH", "ELEC", "PLANT", "CIVIL", "GEO"]
+                chosen_dept = depts_map[dept_keys[i % len(dept_keys)]]
                 op_req = OperationalRequest(
                     id=uuid.uuid4(),
                     request_number=req_num,
-                    title=f"{r_type.value.replace('_', ' ').title()} for {loc.name}",
-                    purpose=f"Operational supply and equipment dispatch support for {loc.name}",
+                    title=f"Cross-Dept Spares & Machine Support for {loc.name}",
+                    purpose=f"Operational supply and dispatch support for {loc.name}",
                     description=fake.paragraph(nb_sentences=2),
-                    request_type=r_type.value,
-                    status=r_status.value,
-                    fulfillment_status=FulfillmentStatus.FULFILLED.value if r_status in [RequestStatus.FULFILLED, RequestStatus.CLOSED] else FulfillmentStatus.AWAITING_FULFILLMENT.value,
-                    priority=random.randint(0, 3),
-                    department_id=depts_map["Mining"].id if i % 2 == 0 else depts_map["Mechanical"].id,
+                    request_type=random.choice(["MACHINE_REQUEST", "EQUIPMENT_REQUEST", "MATERIAL_REQUEST"]),
+                    status=random.choice(["SUBMITTED", "APPROVED", "FULFILLED"]),
+                    fulfillment_status="FULFILLED",
+                    priority=random.randint(1, 3),
+                    department_id=chosen_dept.id,
                     requester_id=operator_user.id,
                     location_id=loc.id,
                     location=loc.name,
                     required_from=created_dt + timedelta(days=1),
                     required_to=created_dt + timedelta(days=3),
-                    estimated_cost=round(random.uniform(500.0, 8500.0), 2),
-                    type_specific_data={"risk_assessment_ref": f"RA-{fake.numerify('2026-####')}"}
+                    estimated_cost=round(random.uniform(800.0, 9500.0), 2)
                 )
                 session.add(op_req)
                 await session.commit()
 
-        # ── 11. Machine Requisitions & Reservations ──
+        # ── 12. Machine Requisitions with Approval Requests ──
         for i, mach in enumerate(machines_list[:6]):
             req_no = f"MREQ-2026-{3001 + i}"
             res = await session.execute(select(MachineRequisition).where(MachineRequisition.requisition_number == req_no))
             if not res.scalars().first():
                 loc = random.choice(list(locations.values()))
-                start_t = datetime.now(timezone.utc) + timedelta(days=random.randint(-5, 5), hours=random.randint(1, 8))
-                end_t = start_t + timedelta(hours=random.randint(4, 24))
+                start_t = datetime.now(timezone.utc) + timedelta(days=random.randint(1, 4))
+                end_t = start_t + timedelta(hours=12)
+                req_status = "PENDING_APPROVAL" if i < 3 else "ALLOCATED"
 
                 m_req = MachineRequisition(
                     id=uuid.uuid4(),
                     requisition_number=req_no,
                     department_id=depts_map["Mining"].id,
                     requester_id=operator_user.id,
-                    purpose=f"Bench load and haul ore transfer at {loc.name}",
+                    purpose=f"Production ore load & transport cycle at {loc.name}",
                     machine_type_id=mach.machine_type_id,
                     machine_id=mach.id,
                     quantity=1,
@@ -594,57 +741,82 @@ async def seed_faker_data():
                     location_id=loc.id,
                     start_time=start_t,
                     end_time=end_t,
-                    estimated_duration_hours=round((end_t - start_t).total_seconds() / 3600.0, 1),
-                    priority=random.randint(1, 3),
+                    estimated_duration_hours=12.0,
+                    priority=2,
                     operator_required=True,
                     operator_name=f"{operator_user.first_name} {operator_user.last_name}",
-                    status="ALLOCATED",
-                    estimated_cost=mach.machine_type.hourly_rate * 8.0,
-                    dept_approver_id=admin_user.id,
-                    dept_approved_at=start_t - timedelta(hours=2)
+                    status=req_status,
+                    estimated_cost=mach.machine_type.hourly_rate * 12.0
                 )
                 session.add(m_req)
                 await session.commit()
                 await session.refresh(m_req)
 
-                # Machine Reservation
-                resv = MachineReservation(
-                    id=uuid.uuid4(),
-                    machine_id=mach.id,
-                    requisition_id=m_req.id,
-                    start_time=start_t,
-                    end_time=end_t,
-                    reservation_status="ALLOCATED",
-                    reservation_type="REQUISITION"
-                )
-                session.add(resv)
-                await session.commit()
+                if req_status == "PENDING_APPROVAL":
+                    m_app_req = ApprovalRequest(
+                        id=uuid.uuid4(),
+                        resource_type="machine_requisition",
+                        resource_id=m_req.id,
+                        workflow_type="STANDARD",
+                        priority=m_req.priority,
+                        risk_level="LOW",
+                        estimated_cost=m_req.estimated_cost or 1500.0,
+                        status="OPEN",
+                        created_by_id=operator_user.id,
+                        created_at=start_t
+                    )
+                    session.add(m_app_req)
+                    await session.flush()
 
-        # ── 12. Notifications & Telemetry Feed ──
-        notifications_data = [
-            ("Crusher Liner Wear Exceeded 80%", "CRITICAL_ALERT", 3, "Primary Jaw Crusher Fixed Jaw 18% Mn reached replacement threshold."),
-            ("Job Card JC-2026-1002 Approved", "APPROVAL", 2, "Supervisor approved Komatsu PC1250 Boom Cylinder Seal Overhaul."),
-            ("Emergency Conveyor Hot Splicing Scheduled", "SYSTEM_ALERT", 3, "Overland Conveyor 03 splice crew dispatched to Tailings area."),
-            ("Transformer Oil Dielectric Test Passed", "TASK_UPDATE", 1, "33kV Main Substation Transformer 2 returned 62 kV breakdown strength."),
-            ("Spare Parts Requisition Dispatched", "TASK_UPDATE", 0, "Warehouse issued 4x Bucket Teeth and 2x Hydraulic Filters to Workshop A.")
+                    m_app_step = ApprovalStep(
+                        id=uuid.uuid4(),
+                        approval_request_id=m_app_req.id,
+                        step_number=1,
+                        authority_role="SUPERVISOR",
+                        required_permission="job_card:approve",
+                        status="PENDING",
+                        created_at=start_t
+                    )
+                    session.add(m_app_step)
+                    await session.commit()
+
+        # ── 13. SLA Policies ──
+        res = await session.execute(select(SLAPriorityConfig))
+        if not res.scalars().first():
+            p_configs = [
+                SLAPriorityConfig(id=uuid.uuid4(), name="CRITICAL", display_name="Priority 3 - Critical Breakdown", default_response_minutes=15, default_completion_minutes=180, sort_order=10, color_code="#EF4444"),
+                SLAPriorityConfig(id=uuid.uuid4(), name="HIGH", display_name="Priority 2 - High Urgent", default_response_minutes=30, default_completion_minutes=360, sort_order=20, color_code="#F59E0B"),
+                SLAPriorityConfig(id=uuid.uuid4(), name="NORMAL", display_name="Priority 1 - Normal Shift", default_response_minutes=60, default_completion_minutes=720, sort_order=30, color_code="#3B82F6"),
+                SLAPriorityConfig(id=uuid.uuid4(), name="LOW", display_name="Priority 0 - Low Routine", default_response_minutes=120, default_completion_minutes=1440, sort_order=40, color_code="#6B7280"),
+            ]
+            session.add_all(p_configs)
+            await session.commit()
+
+        # ── 14. Audit Logs ──
+        audit_events = [
+            ("LOGIN", "USER", str(admin_user.id), "System Administrator authenticated via console"),
+            ("APPROVE", "JOB_CARD", "JC-2026-1002", "Supervisor authorized seal overhaul with digital stamp"),
+            ("CREATE", "MACHINE_REQUISITION", "MREQ-2026-3001", "CAT 777D haulage requisition submitted"),
+            ("STATUS_CHANGE", "JOB_CARD", "JC-2026-1001", "LOTO safety gate cleared by Lead Artisan"),
+            ("DISPATCH", "MATERIAL", "PRT-CRU-1001", "Central warehouse issued jaw plates to Crusher Plant"),
         ]
-
-        for title, n_type, n_prio, msg in notifications_data:
-            notif = Notification(
+        for act, res_t, res_id, reason in audit_events:
+            audit = BusinessAuditLog(
                 id=uuid.uuid4(),
                 user_id=admin_user.id,
-                type=n_type,
-                priority=n_prio,
-                title=title,
-                message=msg,
-                resource_type="JOB_CARD",
-                resource_id=uuid.uuid4(),
-                is_read=False
+                user_name="Admin User",
+                department_name="IT & Operations",
+                role_names="System Administrator",
+                action=act,
+                resource=res_t,
+                resource_id=res_id,
+                reason=reason,
+                ip_address="192.168.1.10"
             )
-            session.add(notif)
+            session.add(audit)
         await session.commit()
 
-        print("[OK] Database Faker Data Seeding Successfully Finished!")
+        print("[OK] Enterprise Faker Seeding Completed Successfully!")
 
 if __name__ == "__main__":
     asyncio.run(seed_faker_data())

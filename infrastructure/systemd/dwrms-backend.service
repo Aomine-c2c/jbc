@@ -1,0 +1,33 @@
+[Unit]
+Description=Bikita Minerals DWRMS Authoritative Backend Server
+Documentation=https://github.com/bikita-minerals/dwrms
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dwrms
+Group=dwrms
+WorkingDirectory=/opt/dwrms/backend
+Environment="PATH=/opt/dwrms/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+EnvironmentFile=-/opt/dwrms/.env
+ExecStart=/opt/dwrms/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 4 --proxy-headers --forwarded-allow-ips='*'
+ExecReload=/bin/kill -s HUP $MAINPID
+
+# Autonomous Self-Healing Policies
+Restart=always
+RestartSec=5s
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+# Process Sandboxing & Security
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/dwrms/backend /opt/dwrms/storage /var/log/dwrms /var/backups/dwrms
+PrivateTmp=true
+StandardOutput=append:/var/log/dwrms/backend.log
+StandardError=append:/var/log/dwrms/backend.error.log
+
+[Install]
+WantedBy=multi-user.target

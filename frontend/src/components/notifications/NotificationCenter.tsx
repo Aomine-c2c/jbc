@@ -30,8 +30,8 @@ export function NotificationCenter() {
     // Route based on resource type
     if (notification.resource_type === 'job_card') {
       router.push(`/jobs/${notification.resource_id}`);
-    } else if (notification.resource_type === 'machine_requisition') {
-      router.push(`/fleet/${notification.resource_id}`);
+    } else if (notification.resource_type === 'machine_requisition' || notification.resource_type === 'requisition') {
+      router.push(`/fleet/requisitions/${notification.resource_id}`);
     }
   };
 

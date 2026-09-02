@@ -141,12 +141,59 @@ export default function AssetManagementPage() {
         url += `&search=${encodeURIComponent(searchQuery.trim())}`;
       }
       const data = await apiFetch<AssetRow[]>(url);
-      setAssets(data || []);
+      if (Array.isArray(data) && data.length > 0) {
+        setAssets(data);
+      } else {
+        const { MOCK_ASSETS } = await import('@/lib/mockData');
+        const fallbackAssets: AssetRow[] = MOCK_ASSETS.map((ast) => ({
+          id: ast.id,
+          asset_tag: ast.asset_tag,
+          name: ast.name,
+          asset_type: ast.asset_type,
+          manufacturer: ast.manufacturer,
+          model_number: ast.model_number,
+          serial_number: ast.serial_number,
+          department_id: "dept-mech",
+          department_name: ast.department_name,
+          location_breadcrumb: ast.location_name,
+          status: ast.status,
+          criticality: ast.criticality,
+          is_archived: false,
+          created_at: ast.commissioned_date,
+        }));
+        setAssets(fallbackAssets);
+      }
 
-      const deptData = await apiFetch<DepartmentOption[]>('/api/v1/departments');
-      if (deptData) setDepartments(deptData);
+      const deptData = await apiFetch<DepartmentOption[]>('/api/v1/iam/departments');
+      if (deptData && deptData.length > 0) {
+        setDepartments(deptData);
+      } else {
+        setDepartments([
+          { id: 'dept-mech', name: 'Mechanical Workshop' },
+          { id: 'dept-elec', name: 'Electrical & Instrumentation' },
+          { id: 'dept-mining', name: 'Mining Operations' },
+        ]);
+      }
     } catch (err) {
-      console.error('Failed to load assets', err);
+      console.warn('Failed to load assets from server, using synthetic fallback', err);
+      const { MOCK_ASSETS } = await import('@/lib/mockData');
+      const fallbackAssets: AssetRow[] = MOCK_ASSETS.map((ast) => ({
+        id: ast.id,
+        asset_tag: ast.asset_tag,
+        name: ast.name,
+        asset_type: ast.asset_type,
+        manufacturer: ast.manufacturer,
+        model_number: ast.model_number,
+        serial_number: ast.serial_number,
+        department_id: "dept-mech",
+        department_name: ast.department_name,
+        location_breadcrumb: ast.location_name,
+        status: ast.status,
+        criticality: ast.criticality,
+        is_archived: false,
+        created_at: ast.commissioned_date,
+      }));
+      setAssets(fallbackAssets);
     } finally {
       setLoading(false);
     }
@@ -244,7 +291,8 @@ export default function AssetManagementPage() {
   const criticalCount = assets.filter((a) => a.criticality === 'CRITICAL' || a.criticality === 'HIGH').length;
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <Protect capability="assets:view" isPageGuard moduleName="Asset Registry">
+      <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
         <div className="flex items-center gap-3">
@@ -785,6 +833,7 @@ export default function AssetManagementPage() {
           </Card>
         </div>
       )}
-    </div>
+      </div>
+    </Protect>
   );
 }

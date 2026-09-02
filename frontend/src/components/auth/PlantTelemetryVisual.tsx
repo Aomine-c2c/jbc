@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { animate, stagger } from 'animejs';
-import { HardHat, Activity, Layers, Truck, Factory } from 'lucide-react';
+import { HardHat, Activity, Layers, Truck, Factory, ShieldCheck } from 'lucide-react';
 
 export function PlantTelemetryVisual() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -10,34 +10,20 @@ export function PlantTelemetryVisual() {
   useEffect(() => {
     // 1. Conveyor Belt Motion (Stroke Dash Offset)
     const conveyorAnim = animate('.conveyor-path', {
-      strokeDashoffset: [0, -40],
+      strokeDashoffset: [0, -48],
       ease: 'linear',
-      duration: 2000,
+      duration: 1800,
       loop: true,
     });
 
     // 2. Ore Particle Flow Animation across conveyors
-    const oreParticles = animate('.ore-particle-1', {
-      translateX: [0, 110],
-      translateY: [0, 40],
+    const oreParticles1 = animate('.ore-particle-1', {
+      translateX: [0, 135],
+      translateY: [0, 55],
       opacity: [
-        { to: 1, duration: 200 },
-        { to: 1, duration: 1200 },
-        { to: 0, duration: 200 },
-      ],
-      ease: 'inOutSine',
-      duration: 2400,
-      delay: stagger(400),
-      loop: true,
-    });
-
-    const oreParticles2 = animate('.ore-particle-2', {
-      translateX: [0, 120],
-      translateY: [0, 30],
-      opacity: [
-        { to: 1, duration: 200 },
-        { to: 1, duration: 1200 },
-        { to: 0, duration: 200 },
+        { to: 1, duration: 150 },
+        { to: 1, duration: 1300 },
+        { to: 0, duration: 150 },
       ],
       ease: 'inOutSine',
       duration: 2200,
@@ -45,37 +31,51 @@ export function PlantTelemetryVisual() {
       loop: true,
     });
 
-    const oreParticles3 = animate('.ore-particle-3', {
-      translateX: [0, 100],
-      translateY: [0, 80],
+    const oreParticles2 = animate('.ore-particle-2', {
+      translateX: [0, 155],
+      translateY: [0, -10],
       opacity: [
-        { to: 1, duration: 200 },
-        { to: 1, duration: 1100 },
-        { to: 0, duration: 200 },
+        { to: 1, duration: 150 },
+        { to: 1, duration: 1300 },
+        { to: 0, duration: 150 },
       ],
       ease: 'inOutSine',
-      duration: 2000,
+      duration: 2100,
       delay: stagger(300),
+      loop: true,
+    });
+
+    const oreParticles3 = animate('.ore-particle-3', {
+      translateX: [0, -50],
+      translateY: [0, 110],
+      opacity: [
+        { to: 1, duration: 150 },
+        { to: 1, duration: 1200 },
+        { to: 0, duration: 150 },
+      ],
+      ease: 'inOutSine',
+      duration: 1900,
+      delay: stagger(280),
       loop: true,
     });
 
     // 3. Excavator Arm Oscillation
     const boomAnim = animate('#excavator-arm', {
-      rotate: [-4, 6],
-      transformOrigin: '20px 80px',
+      rotate: [-5, 7],
+      transformOrigin: '28px 105px',
       alternate: true,
       ease: 'inOutQuad',
-      duration: 3200,
+      duration: 3000,
       loop: true,
     });
 
     // 4. Crusher Jaw Oscillation
     const crusherAnim = animate('#crusher-jaw', {
-      scaleY: [1, 0.92],
-      translateY: [0, 4],
+      scaleY: [1, 0.90],
+      translateY: [0, 6],
       alternate: true,
       ease: 'inOutSine',
-      duration: 600,
+      duration: 550,
       loop: true,
     });
 
@@ -84,69 +84,80 @@ export function PlantTelemetryVisual() {
       rotate: 360,
       transformOrigin: 'center center',
       ease: 'linear',
-      duration: 6000,
+      duration: 5000,
       loop: true,
     });
 
     // 6. Haul Truck Vibration
     const truckAnim = animate('#haul-truck', {
-      translateY: [-0.5, 0.5],
+      translateY: [-0.8, 0.8],
       alternate: true,
       ease: 'inOutSine',
-      duration: 400,
+      duration: 350,
+      loop: true,
+    });
+
+    // 7. HUD Radar Pulse
+    const radarAnim = animate('.radar-pulse', {
+      scale: [1, 2.2],
+      opacity: [0.8, 0],
+      ease: 'outExpo',
+      duration: 1800,
+      delay: stagger(450),
       loop: true,
     });
 
     return () => {
       conveyorAnim.pause?.();
-      oreParticles.pause?.();
+      oreParticles1.pause?.();
       oreParticles2.pause?.();
       oreParticles3.pause?.();
       boomAnim.pause?.();
       crusherAnim.pause?.();
       gearAnim.pause?.();
       truckAnim.pause?.();
+      radarAnim.pause?.();
     };
   }, []);
 
   return (
     <div
       ref={containerRef}
-      className="relative flex flex-col justify-between h-full w-full bg-zinc-100 p-6 md:p-10 overflow-hidden text-zinc-900 select-none border-r border-zinc-200"
+      className="relative flex flex-col justify-between h-full w-full bg-zinc-100/90 p-6 md:p-8 lg:p-10 overflow-hidden text-zinc-900 select-none border-r border-zinc-200"
     >
       {/* TECHNICAL SCHEMATIC BACKGROUND GRID */}
       <div
-        className="absolute inset-0 opacity-[0.45] pointer-events-none"
+        className="absolute inset-0 opacity-[0.55] pointer-events-none"
         style={{
           backgroundImage: `linear-gradient(#e4e4e7 1px, transparent 1px), linear-gradient(90deg, #e4e4e7 1px, transparent 1px)`,
           backgroundSize: '24px 24px',
         }}
       />
 
-      {/* TOP BRAND HEADER */}
-      <div className="relative z-10 space-y-1.5">
-        <div className="flex items-center gap-2 text-xs font-mono text-zinc-700 font-semibold tracking-wider uppercase">
-          <span className="relative flex size-2">
+      {/* TOP BRAND HEADER & DWRMS SYSTEM IDENTITY */}
+      <div className="relative z-10 space-y-1">
+        <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-700 font-semibold tracking-wider uppercase">
+          <span className="relative flex size-2.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
-            <span className="relative inline-flex rounded-full size-2 bg-emerald-600"></span>
+            <span className="relative inline-flex rounded-full size-2.5 bg-emerald-600"></span>
           </span>
-          <Activity className="size-3.5" />
-          <span>Bikita Mining & Concentrator Flow</span>
+          <Activity className="size-3.5 text-zinc-800" />
+          <span>Bikita DWRMS • Operations & Asset Control Hub</span>
         </div>
 
         <h2 className="text-xl md:text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2 font-mono uppercase">
-          Plant Process Schematic
+          Plant Telemetry & Work Execution
         </h2>
         <p className="text-xs text-zinc-500 font-mono">
-          Stage 1 Extraction → Stage 2 Crushing → Stage 3 Concentrator → Stage 4 Dispatch
+          Integrated Work Cards, Real-Time Asset Health & Concentrator Circuit
         </p>
       </div>
 
-      {/* CENTER: ANIMATED MINING SVG SCHEMATIC */}
-      <div className="relative z-10 my-auto flex items-center justify-center py-4">
-        <div className="relative w-full max-w-[560px] aspect-[16/11]">
+      {/* CENTER: ENLARGED ANIMATED DWRMS MINING SVG SCHEMATIC */}
+      <div className="relative z-10 my-auto flex items-center justify-center py-2">
+        <div className="relative w-full max-w-[680px] aspect-[16/10.5]">
           <svg
-            viewBox="0 0 560 385"
+            viewBox="0 0 720 460"
             className="w-full h-full overflow-visible"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
@@ -162,220 +173,300 @@ export function PlantTelemetryVisual() {
               </pattern>
             </defs>
 
-            {/* STAGE 1: OPEN-PIT EXTRACTION (TOP-LEFT) */}
-            <g id="stage-pit" transform="translate(20, 30)">
-              {/* Pit Bench Background */}
-              <path d="M 0 95 L 70 95 L 90 120 L 130 120" stroke="#d4d4d8" strokeWidth="2" fill="url(#diagonalHatch)" />
+            {/* ========================================================================= */}
+            {/* STAGE 1: ASSET EXC-01 (PIT EXTRACTION) */}
+            {/* ========================================================================= */}
+            <g id="stage-pit" transform="translate(15, 20)">
+              {/* Pit Rock Strata Terrace */}
+              <path d="M 0 135 L 90 135 L 115 165 L 170 165" stroke="#d4d4d8" strokeWidth="2.5" fill="url(#diagonalHatch)" />
               
-              {/* Stage Tag */}
-              <rect x="0" y="0" width="115" height="18" rx="3" fill="#18181b" />
-              <text x="6" y="12" fill="#ffffff" className="font-mono text-[9px] font-bold tracking-wider">01. PIT EXTRACTION</text>
-
-              {/* Mining Excavator */}
-              <g id="excavator" transform="translate(10, 25)">
-                {/* Tracks */}
-                <rect x="10" y="58" width="55" height="12" rx="4" fill="#27272a" stroke="#18181b" strokeWidth="1.5" />
-                <circle cx="20" cy="64" r="3" fill="#71717a" />
-                <circle cx="37" cy="64" r="3" fill="#71717a" />
-                <circle cx="55" cy="64" r="3" fill="#71717a" />
-                {/* Body & Cab */}
-                <rect x="15" y="38" width="38" height="20" rx="3" fill="#ffffff" stroke="#18181b" strokeWidth="1.5" />
-                <rect x="35" y="42" width="14" height="10" rx="1" fill="#e4e4e7" stroke="#18181b" strokeWidth="1" />
-                <circle cx="24" cy="46" r="4" fill="#18181b" />
+              {/* DWRMS HUD CARD: EXC-01 */}
+              <g transform="translate(0, 0)">
+                <rect x="0" y="0" width="180" height="38" rx="4" fill="#ffffff" stroke="#18181b" strokeWidth="1.5" className="shadow-xs" />
+                <rect x="0" y="0" width="4" height="38" rx="2" fill="#10b981" />
                 
-                {/* Moving Boom Arm & Bucket */}
+                {/* Asset Tag & Status */}
+                <text x="10" y="14" fill="#18181b" className="font-mono text-[10px] font-bold">ASSET: EXC-01 (CAT 6020B)</text>
+                <rect x="118" y="5" width="54" height="12" rx="2" fill="#ecfdf5" stroke="#a7f3d0" strokeWidth="0.8" />
+                <text x="122" y="14" fill="#047857" className="font-mono text-[7.5px] font-bold">● SIGNED OFF</text>
+                
+                {/* DWRMS Job Card Detail */}
+                <text x="10" y="26" fill="#52525b" className="font-mono text-[8.5px]">JC-1042 • Pre-Start Sign-off</text>
+                <text x="10" y="34" fill="#a1a1aa" className="font-mono text-[7.5px]">Op: T. Mukamuri • Shift A</text>
+              </g>
+
+              {/* Connecting HUD Radar Signal Line */}
+              <line x1="85" y1="38" x2="85" y2="70" stroke="#18181b" strokeWidth="1" strokeDasharray="2 2" />
+              <circle cx="85" cy="70" r="3" fill="#10b981" />
+              <circle cx="85" cy="70" r="3" fill="none" stroke="#10b981" strokeWidth="1.5" className="radar-pulse" />
+
+              {/* Mining Excavator Machine */}
+              <g id="excavator" transform="translate(15, 60)">
+                {/* Crawler Tracks */}
+                <rect x="10" y="72" width="75" height="16" rx="5" fill="#27272a" stroke="#18181b" strokeWidth="1.5" />
+                <circle cx="22" cy="80" r="4.5" fill="#71717a" />
+                <circle cx="37" cy="80" r="4.5" fill="#71717a" />
+                <circle cx="52" cy="80" r="4.5" fill="#71717a" />
+                <circle cx="68" cy="80" r="4.5" fill="#71717a" />
+                {/* Body & Operator Cabin */}
+                <rect x="18" y="46" width="50" height="28" rx="4" fill="#ffffff" stroke="#18181b" strokeWidth="1.5" />
+                <rect x="44" y="50" width="20" height="14" rx="2" fill="#e4e4e7" stroke="#18181b" strokeWidth="1" />
+                <circle cx="30" cy="56" r="5" fill="#18181b" />
+                
+                {/* Moving Hydraulic Boom Arm & Bucket */}
                 <g id="excavator-arm">
-                  <path d="M 45 42 L 72 20 L 92 40" stroke="#18181b" strokeWidth="3" strokeLinecap="round" />
-                  <path d="M 92 40 L 98 52 L 86 54 Z" fill="#27272a" stroke="#18181b" strokeWidth="1.5" />
-                  <circle cx="45" cy="42" r="2.5" fill="#18181b" />
-                  <circle cx="72" cy="20" r="2.5" fill="#18181b" />
+                  <path d="M 58 52 L 95 24 L 122 52" stroke="#18181b" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M 122 52 L 132 68 L 115 72 Z" fill="#27272a" stroke="#18181b" strokeWidth="1.8" />
+                  <circle cx="58" cy="52" r="3.5" fill="#18181b" />
+                  <circle cx="95" cy="24" r="3.5" fill="#18181b" />
                 </g>
               </g>
 
-              {/* Hopper Feeder */}
-              <path d="M 95 65 L 125 65 L 115 88 L 105 88 Z" fill="#ffffff" stroke="#18181b" strokeWidth="1.5" />
+              {/* Pit Surge Hopper Feeder */}
+              <path d="M 130 95 L 168 95 L 155 125 L 142 125 Z" fill="#ffffff" stroke="#18181b" strokeWidth="1.8" />
             </g>
 
-            {/* CONVEYOR 1: PIT TO CRUSHER */}
+            {/* ========================================================================= */}
+            {/* CONVEYOR 1: PIT TO PRIMARY CRUSHER */}
+            {/* ========================================================================= */}
             <g id="conveyor-1">
               <path
-                d="M 140 115 L 210 145"
+                d="M 185 145 L 320 200"
                 stroke="#a1a1aa"
-                strokeWidth="4"
+                strokeWidth="5"
                 strokeLinecap="round"
               />
               <path
-                d="M 140 115 L 210 145"
+                d="M 185 145 L 320 200"
                 className="conveyor-path"
                 stroke="#18181b"
-                strokeWidth="2"
-                strokeDasharray="6 6"
+                strokeWidth="2.5"
+                strokeDasharray="8 8"
               />
-              {/* Ore particles */}
-              <circle cx="140" cy="115" r="3.5" fill="#27272a" className="ore-particle-1" />
-              <circle cx="140" cy="115" r="2.5" fill="#52525b" className="ore-particle-1" />
-              <circle cx="140" cy="115" r="3" fill="#18181b" className="ore-particle-1" />
+              {/* Large Ore Particles Traveling */}
+              <circle cx="185" cy="145" r="4.5" fill="#27272a" className="ore-particle-1" />
+              <circle cx="185" cy="145" r="3.5" fill="#52525b" className="ore-particle-1" />
+              <circle cx="185" cy="145" r="4" fill="#18181b" className="ore-particle-1" />
             </g>
 
-            {/* STAGE 2: CRUSHING & SCREENING (CENTER-LEFT) */}
-            <g id="stage-crushing" transform="translate(195, 105)">
-              {/* Stage Tag */}
-              <rect x="10" y="0" width="130" height="18" rx="3" fill="#18181b" />
-              <text x="16" y="12" fill="#ffffff" className="font-mono text-[9px] font-bold tracking-wider">02. PRIMARY CRUSHER</text>
+            {/* ========================================================================= */}
+            {/* STAGE 2: ASSET CRU-01 (PRIMARY JAW CRUSHER & SCREEN) */}
+            {/* ========================================================================= */}
+            <g id="stage-crushing" transform="translate(255, 140)">
+              {/* DWRMS HUD CARD: CRU-01 */}
+              <g transform="translate(0, -50)">
+                <rect x="0" y="0" width="185" height="38" rx="4" fill="#ffffff" stroke="#18181b" strokeWidth="1.5" className="shadow-xs" />
+                <rect x="0" y="0" width="4" height="38" rx="2" fill="#f59e0b" />
+                
+                {/* Asset Tag & Status */}
+                <text x="10" y="14" fill="#18181b" className="font-mono text-[10px] font-bold">ASSET: CRU-01 (METSO C160)</text>
+                <rect x="118" y="5" width="58" height="12" rx="2" fill="#fffbeb" stroke="#fde68a" strokeWidth="0.8" />
+                <text x="122" y="14" fill="#b45309" className="font-mono text-[7.5px] font-bold">● IN PROGRESS</text>
+                
+                {/* DWRMS Job Card Detail */}
+                <text x="10" y="26" fill="#52525b" className="font-mono text-[8.5px]">JC-1088 • 250hr Liner Service</text>
+                <text x="10" y="34" fill="#a1a1aa" className="font-mono text-[7.5px]">Tech: C. Moyo • Priority 2</text>
+              </g>
 
-              {/* Jaw Crusher Housing */}
-              <rect x="15" y="24" width="70" height="60" rx="4" fill="url(#zincGradient)" stroke="#18181b" strokeWidth="1.5" />
+              {/* Connecting HUD Signal Line */}
+              <line x1="90" y1="-12" x2="90" y2="20" stroke="#18181b" strokeWidth="1" strokeDasharray="2 2" />
+              <circle cx="90" cy="20" r="3" fill="#f59e0b" />
+              <circle cx="90" cy="20" r="3" fill="none" stroke="#f59e0b" strokeWidth="1.5" className="radar-pulse" />
+
+              {/* Primary Jaw Crusher Housing Frame */}
+              <rect x="25" y="20" width="90" height="78" rx="5" fill="url(#zincGradient)" stroke="#18181b" strokeWidth="1.8" />
               
-              {/* Crusher Hopper Throat */}
-              <path d="M 25 24 L 75 24 L 65 44 L 35 44 Z" fill="#e4e4e7" stroke="#18181b" strokeWidth="1" />
+              {/* Crusher Feed Chute */}
+              <path d="M 38 20 L 102 20 L 90 48 L 50 48 Z" fill="#e4e4e7" stroke="#18181b" strokeWidth="1.2" />
               
-              {/* Oscillating Crusher Jaw Plate */}
+              {/* Moving Jaw Crusher Plate */}
               <g id="crusher-jaw">
-                <rect x="42" y="44" width="16" height="18" rx="1" fill="#27272a" stroke="#18181b" strokeWidth="1" />
-                <line x1="44" y1="48" x2="56" y2="48" stroke="#ffffff" strokeWidth="1" />
-                <line x1="44" y1="52" x2="56" y2="52" stroke="#ffffff" strokeWidth="1" />
+                <rect x="58" y="48" width="24" height="24" rx="2" fill="#27272a" stroke="#18181b" strokeWidth="1.5" />
+                <line x1="62" y1="54" x2="78" y2="54" stroke="#ffffff" strokeWidth="1.2" />
+                <line x1="62" y1="60" x2="78" y2="60" stroke="#ffffff" strokeWidth="1.2" />
+                <line x1="62" y1="66" x2="78" y2="66" stroke="#ffffff" strokeWidth="1.2" />
               </g>
 
-              {/* Sizing Vibrating Screen */}
-              <g transform="translate(55, 60)">
-                <line x1="0" y1="0" x2="35" y2="18" stroke="#18181b" strokeWidth="3" />
-                <line x1="0" y1="4" x2="32" y2="20" stroke="#71717a" strokeWidth="1.5" strokeDasharray="3 3" />
+              {/* Vibrating Sizing Screen */}
+              <g transform="translate(75, 70)">
+                <line x1="0" y1="0" x2="45" y2="24" stroke="#18181b" strokeWidth="3.5" />
+                <line x1="0" y1="5" x2="42" y2="27" stroke="#71717a" strokeWidth="2" strokeDasharray="4 4" />
               </g>
 
-              {/* Telemetry Indicator */}
-              <rect x="15" y="88" width="55" height="14" rx="2" fill="#f4f4f5" stroke="#d4d4d8" strokeWidth="1" />
-              <text x="20" y="98" fill="#52525b" className="font-mono text-[8px] font-semibold">P80: 12.4mm</text>
+              {/* Sensor Badge */}
+              <rect x="25" y="104" width="70" height="15" rx="2" fill="#f4f4f5" stroke="#d4d4d8" strokeWidth="1" />
+              <text x="30" y="115" fill="#52525b" className="font-mono text-[9px] font-bold">P80: 12.4mm</text>
             </g>
 
-            {/* CONVEYOR 2: CRUSHER TO CONCENTRATOR */}
+            {/* ========================================================================= */}
+            {/* CONVEYOR 2: CRUSHER TO CONCENTRATOR PLANT */}
+            {/* ========================================================================= */}
             <g id="conveyor-2">
               <path
-                d="M 285 180 L 375 205"
+                d="M 390 230 L 545 220"
                 stroke="#a1a1aa"
-                strokeWidth="4"
+                strokeWidth="5"
                 strokeLinecap="round"
               />
               <path
-                d="M 285 180 L 375 205"
+                d="M 390 230 L 545 220"
                 className="conveyor-path"
                 stroke="#18181b"
-                strokeWidth="2"
-                strokeDasharray="6 6"
+                strokeWidth="2.5"
+                strokeDasharray="8 8"
               />
               {/* Crushed Ore particles */}
-              <circle cx="285" cy="180" r="2.5" fill="#18181b" className="ore-particle-2" />
-              <circle cx="285" cy="180" r="2" fill="#52525b" className="ore-particle-2" />
-              <circle cx="285" cy="180" r="2.5" fill="#27272a" className="ore-particle-2" />
+              <circle cx="390" cy="230" r="3" fill="#18181b" className="ore-particle-2" />
+              <circle cx="390" cy="230" r="2.5" fill="#52525b" className="ore-particle-2" />
+              <circle cx="390" cy="230" r="3" fill="#27272a" className="ore-particle-2" />
             </g>
 
-            {/* STAGE 3: CONCENTRATOR & FLOTATION PLANT (CENTER-RIGHT) */}
-            <g id="stage-concentrator" transform="translate(365, 90)">
-              {/* Stage Tag */}
-              <rect x="0" y="0" width="145" height="18" rx="3" fill="#18181b" />
-              <text x="6" y="12" fill="#ffffff" className="font-mono text-[9px] font-bold tracking-wider">03. SPODUMENE PLANT</text>
+            {/* ========================================================================= */}
+            {/* STAGE 3: ASSET PLANT-01 (SPODUMENE CONCENTRATOR & FLOTATION) */}
+            {/* ========================================================================= */}
+            <g id="stage-concentrator" transform="translate(485, 20)">
+              {/* DWRMS HUD CARD: PLANT-01 */}
+              <g transform="translate(0, 0)">
+                <rect x="0" y="0" width="200" height="38" rx="4" fill="#ffffff" stroke="#18181b" strokeWidth="1.5" className="shadow-xs" />
+                <rect x="0" y="0" width="4" height="38" rx="2" fill="#10b981" />
+                
+                {/* Asset Tag & Status */}
+                <text x="10" y="14" fill="#18181b" className="font-mono text-[10px] font-bold">ASSET: PLANT-01 (CONCENTRATOR)</text>
+                <rect x="142" y="5" width="50" height="12" rx="2" fill="#ecfdf5" stroke="#a7f3d0" strokeWidth="0.8" />
+                <text x="146" y="14" fill="#047857" className="font-mono text-[7.5px] font-bold">● VERIFIED</text>
+                
+                {/* DWRMS Job Card Detail */}
+                <text x="10" y="26" fill="#52525b" className="font-mono text-[8.5px]">JC-1102 • Flotation Reagent Setup</text>
+                <text x="10" y="34" fill="#a1a1aa" className="font-mono text-[7.5px]">Tech: K. Sibanda • Grade: 5.8% Li₂O</text>
+              </g>
 
-              {/* Concentrator Building Outline */}
-              <path d="M 10 105 L 10 40 L 45 24 L 95 24 L 95 105 Z" fill="url(#zincGradient)" stroke="#18181b" strokeWidth="1.5" />
-              
-              {/* Rotating Ball Mill Drum & Gear */}
-              <g transform="translate(32, 60)">
-                <rect x="-16" y="-12" width="32" height="24" rx="3" fill="#27272a" stroke="#18181b" strokeWidth="1" />
-                <g className="mill-gear">
-                  <circle cx="0" cy="0" r="8" fill="#ffffff" stroke="#18181b" strokeWidth="1.5" />
-                  <line x1="-8" y1="0" x2="8" y2="0" stroke="#18181b" strokeWidth="1.5" />
-                  <line x1="0" y1="-8" x2="0" y2="8" stroke="#18181b" strokeWidth="1.5" />
+              {/* Connecting HUD Signal Line */}
+              <line x1="100" y1="38" x2="100" y2="70" stroke="#18181b" strokeWidth="1" strokeDasharray="2 2" />
+              <circle cx="100" cy="70" r="3" fill="#10b981" />
+              <circle cx="100" cy="70" r="3" fill="none" stroke="#10b981" strokeWidth="1.5" className="radar-pulse" />
+
+              {/* Concentrator Plant Facility Frame */}
+              <g transform="translate(10, 65)">
+                <path d="M 0 135 L 0 50 L 50 30 L 120 30 L 120 135 Z" fill="url(#zincGradient)" stroke="#18181b" strokeWidth="1.8" />
+                
+                {/* Rotating Ball Mill Drum & Gear */}
+                <g transform="translate(40, 75)">
+                  <rect x="-22" y="-16" width="44" height="32" rx="4" fill="#27272a" stroke="#18181b" strokeWidth="1.5" />
+                  <g className="mill-gear">
+                    <circle cx="0" cy="0" r="10" fill="#ffffff" stroke="#18181b" strokeWidth="1.8" />
+                    <line x1="-10" y1="0" x2="10" y2="0" stroke="#18181b" strokeWidth="1.8" />
+                    <line x1="0" y1="-10" x2="0" y2="10" stroke="#18181b" strokeWidth="1.8" />
+                  </g>
                 </g>
-              </g>
 
-              {/* Flotation Column / Tank */}
-              <g transform="translate(68, 50)">
-                <rect x="0" y="0" width="22" height="42" rx="2" fill="#ffffff" stroke="#18181b" strokeWidth="1.5" />
-                <line x1="3" y1="12" x2="19" y2="12" stroke="#10b981" strokeWidth="1.5" />
-                <line x1="3" y1="20" x2="19" y2="20" stroke="#10b981" strokeWidth="1" strokeDasharray="2 2" />
-                <line x1="3" y1="28" x2="19" y2="28" stroke="#10b981" strokeWidth="1" strokeDasharray="2 2" />
-              </g>
+                {/* Flotation Column Tank */}
+                <g transform="translate(85, 60)">
+                  <rect x="0" y="0" width="28" height="55" rx="3" fill="#ffffff" stroke="#18181b" strokeWidth="1.8" />
+                  <line x1="4" y1="16" x2="24" y2="16" stroke="#10b981" strokeWidth="2" />
+                  <line x1="4" y1="26" x2="24" y2="26" stroke="#10b981" strokeWidth="1.5" strokeDasharray="3 3" />
+                  <line x1="4" y1="36" x2="24" y2="36" stroke="#10b981" strokeWidth="1.5" strokeDasharray="3 3" />
+                </g>
 
-              {/* Concentrate Storage Silo */}
-              <g transform="translate(102, 35)">
-                <path d="M 0 20 L 15 8 L 30 20 L 30 70 L 15 80 L 0 70 Z" fill="#ffffff" stroke="#18181b" strokeWidth="1.5" />
-                <line x1="5" y1="35" x2="25" y2="35" stroke="#e4e4e7" strokeWidth="1" />
-                <line x1="5" y1="50" x2="25" y2="50" stroke="#e4e4e7" strokeWidth="1" />
-              </g>
+                {/* Refined Spodumene Silo */}
+                <g transform="translate(130, 40)">
+                  <path d="M 0 25 L 20 10 L 40 25 L 40 95 L 20 110 L 0 95 Z" fill="#ffffff" stroke="#18181b" strokeWidth="1.8" />
+                  <line x1="6" y1="45" x2="34" y2="45" stroke="#e4e4e7" strokeWidth="1.5" />
+                  <line x1="6" y1="65" x2="34" y2="65" stroke="#e4e4e7" strokeWidth="1.5" />
+                </g>
 
-              {/* Telemetry Indicator */}
-              <rect x="10" y="112" width="60" height="14" rx="2" fill="#ecfdf5" stroke="#a7f3d0" strokeWidth="1" />
-              <text x="14" y="122" fill="#047857" className="font-mono text-[8px] font-bold">REC: 88.4% Li₂O</text>
+                {/* Telemetry Indicator */}
+                <rect x="0" y="142" width="80" height="15" rx="2" fill="#ecfdf5" stroke="#a7f3d0" strokeWidth="1" />
+                <text x="5" y="153" fill="#047857" className="font-mono text-[9px] font-bold">REC: 88.4% Li₂O</text>
+              </g>
             </g>
 
-            {/* CONVEYOR 3: SILO TO DISPATCH TRUCK */}
+            {/* ========================================================================= */}
+            {/* CONVEYOR 3: SILO TO DISPATCH WEIGHBRIDGE */}
+            {/* ========================================================================= */}
             <g id="conveyor-3">
               <path
-                d="M 480 205 L 430 270"
+                d="M 635 240 L 585 350"
                 stroke="#a1a1aa"
-                strokeWidth="4"
+                strokeWidth="5"
                 strokeLinecap="round"
               />
               <path
-                d="M 480 205 L 430 270"
+                d="M 635 240 L 585 350"
                 className="conveyor-path"
                 stroke="#18181b"
-                strokeWidth="2"
-                strokeDasharray="6 6"
+                strokeWidth="2.5"
+                strokeDasharray="8 8"
               />
               {/* Fine Concentrate particles */}
-              <circle cx="480" cy="205" r="2" fill="#047857" className="ore-particle-3" />
-              <circle cx="480" cy="205" r="2" fill="#18181b" className="ore-particle-3" />
-              <circle cx="480" cy="205" r="1.5" fill="#10b981" className="ore-particle-3" />
+              <circle cx="635" cy="240" r="3" fill="#047857" className="ore-particle-3" />
+              <circle cx="635" cy="240" r="2.5" fill="#18181b" className="ore-particle-3" />
+              <circle cx="635" cy="240" r="2" fill="#10b981" className="ore-particle-3" />
             </g>
 
-            {/* STAGE 4: DISPATCH & HAULAGE (BOTTOM-RIGHT) */}
-            <g id="stage-dispatch" transform="translate(310, 260)">
-              {/* Stage Tag */}
-              <rect x="0" y="0" width="135" height="18" rx="3" fill="#18181b" />
-              <text x="6" y="12" fill="#ffffff" className="font-mono text-[9px] font-bold tracking-wider">04. PRODUCT DISPATCH</text>
-
-              {/* Weighbridge Ground Line */}
-              <line x1="-15" y1="80" x2="160" y2="80" stroke="#d4d4d8" strokeWidth="2" />
-              <rect x="0" y="76" width="140" height="4" fill="#18181b" />
-
-              {/* Haul Truck */}
-              <g id="haul-truck" transform="translate(15, 25)">
-                {/* Cab */}
-                <path d="M 80 25 L 105 25 L 112 40 L 112 50 L 80 50 Z" fill="#ffffff" stroke="#18181b" strokeWidth="1.5" />
-                <rect x="94" y="29" width="12" height="9" rx="1" fill="#e4e4e7" stroke="#18181b" strokeWidth="1" />
+            {/* ========================================================================= */}
+            {/* STAGE 4: ASSET TRK-05 (HAULAGE & EXPORT DISPATCH) */}
+            {/* ========================================================================= */}
+            <g id="stage-dispatch" transform="translate(390, 275)">
+              {/* DWRMS HUD CARD: TRK-05 */}
+              <g transform="translate(0, 0)">
+                <rect x="0" y="0" width="185" height="38" rx="4" fill="#ffffff" stroke="#18181b" strokeWidth="1.5" className="shadow-xs" />
+                <rect x="0" y="0" width="4" height="38" rx="2" fill="#10b981" />
                 
-                {/* Dump Bed with Mineral Concentrate */}
-                <path d="M 10 20 L 75 20 L 78 50 L 15 50 Z" fill="#27272a" stroke="#18181b" strokeWidth="1.5" />
-                <path d="M 16 20 Q 42 12 70 20 Z" fill="#10b981" />
-
-                {/* Chassis Frame */}
-                <rect x="15" y="48" width="90" height="4" fill="#18181b" />
-
-                {/* Wheels */}
-                <circle cx="28" cy="54" r="8" fill="#18181b" />
-                <circle cx="28" cy="54" r="4" fill="#ffffff" />
-                <circle cx="48" cy="54" r="8" fill="#18181b" />
-                <circle cx="48" cy="54" r="4" fill="#ffffff" />
-                <circle cx="98" cy="54" r="8" fill="#18181b" />
-                <circle cx="98" cy="54" r="4" fill="#ffffff" />
+                {/* Asset Tag & Status */}
+                <text x="10" y="14" fill="#18181b" className="font-mono text-[10px] font-bold">ASSET: TRK-05 (KOMATSU HD785)</text>
+                <rect x="136" y="5" width="42" height="12" rx="2" fill="#ecfdf5" stroke="#a7f3d0" strokeWidth="0.8" />
+                <text x="140" y="14" fill="#047857" className="font-mono text-[7.5px] font-bold">● READY</text>
+                
+                {/* DWRMS Job Card Detail */}
+                <text x="10" y="26" fill="#52525b" className="font-mono text-[8.5px]">REQ-042 • Spodumene Haulage</text>
+                <text x="10" y="34" fill="#a1a1aa" className="font-mono text-[7.5px]">Driver: R. Ndlovu • Gate Pass #88</text>
               </g>
 
-              {/* Dispatch Badge */}
-              <rect x="0" y="90" width="75" height="14" rx="2" fill="#f4f4f5" stroke="#d4d4d8" strokeWidth="1" />
-              <text x="5" y="100" fill="#52525b" className="font-mono text-[8px] font-semibold">OUT: 2,400 T/DAY</text>
+              {/* Connecting HUD Signal Line */}
+              <line x1="90" y1="38" x2="90" y2="70" stroke="#18181b" strokeWidth="1" strokeDasharray="2 2" />
+              <circle cx="90" cy="70" r="3" fill="#10b981" />
+              <circle cx="90" cy="70" r="3" fill="none" stroke="#10b981" strokeWidth="1.5" className="radar-pulse" />
+
+              {/* Weighbridge Platform Bed */}
+              <line x1="-20" y1="140" x2="200" y2="140" stroke="#d4d4d8" strokeWidth="3" />
+              <rect x="0" y="135" width="180" height="5" fill="#18181b" />
+
+              {/* 100-Ton Heavy Haul Truck */}
+              <g id="haul-truck" transform="translate(15, 65)">
+                {/* Driver Cabin */}
+                <path d="M 105 32 L 138 32 L 146 52 L 146 64 L 105 64 Z" fill="#ffffff" stroke="#18181b" strokeWidth="1.8" />
+                <rect x="122" y="36" width="16" height="12" rx="1.5" fill="#e4e4e7" stroke="#18181b" strokeWidth="1" />
+                
+                {/* Dump Bed Filled with Refined Lithium Concentrate */}
+                <path d="M 15 26 L 98 26 L 102 64 L 20 64 Z" fill="#27272a" stroke="#18181b" strokeWidth="1.8" />
+                <path d="M 22 26 Q 58 14 92 26 Z" fill="#10b981" />
+
+                {/* Heavy Chassis Beam */}
+                <rect x="20" y="62" width="120" height="6" fill="#18181b" />
+
+                {/* Massive Mining Wheels */}
+                <circle cx="38" cy="70" r="11" fill="#18181b" />
+                <circle cx="38" cy="70" r="5" fill="#ffffff" />
+                <circle cx="65" cy="70" r="11" fill="#18181b" />
+                <circle cx="65" cy="70" r="5" fill="#ffffff" />
+                <circle cx="128" cy="70" r="11" fill="#18181b" />
+                <circle cx="128" cy="70" r="5" fill="#ffffff" />
+              </g>
+
+              {/* Dispatch Rate Badge */}
+              <rect x="0" y="148" width="90" height="15" rx="2" fill="#f4f4f5" stroke="#d4d4d8" strokeWidth="1" />
+              <text x="6" y="159" fill="#52525b" className="font-mono text-[9px] font-bold">OUT: 2,400 T/DAY</text>
             </g>
 
-            {/* FLOW CONNECTION ARROWS */}
-            <path d="M 120 185 L 140 185 L 140 250 L 260 250" stroke="#e4e4e7" strokeWidth="1.5" strokeDasharray="4 4" />
           </svg>
         </div>
       </div>
 
       {/* BOTTOM TELEMETRY STATUS CARDS */}
-      <div className="relative z-10 space-y-3 pt-3 border-t border-zinc-200">
+      <div className="relative z-10 space-y-2.5 pt-2 border-t border-zinc-200">
         <div className="grid grid-cols-3 gap-2.5">
           <div className="rounded-md border border-zinc-200 bg-white p-2.5 shadow-2xs text-center">
-            <div className="text-[10px] font-mono text-zinc-500 flex items-center justify-center gap-1">
+            <div className="text-[10px] font-mono text-zinc-500 flex items-center justify-center gap-1 font-semibold">
               <Layers className="size-3 text-zinc-700" />
               <span>FEED RATE</span>
             </div>
@@ -383,7 +474,7 @@ export function PlantTelemetryVisual() {
           </div>
 
           <div className="rounded-md border border-zinc-200 bg-white p-2.5 shadow-2xs text-center">
-            <div className="text-[10px] font-mono text-zinc-500 flex items-center justify-center gap-1">
+            <div className="text-[10px] font-mono text-zinc-500 flex items-center justify-center gap-1 font-semibold">
               <Factory className="size-3 text-emerald-600" />
               <span>RECOVERY</span>
             </div>
@@ -391,7 +482,7 @@ export function PlantTelemetryVisual() {
           </div>
 
           <div className="rounded-md border border-zinc-200 bg-white p-2.5 shadow-2xs text-center">
-            <div className="text-[10px] font-mono text-zinc-500 flex items-center justify-center gap-1">
+            <div className="text-[10px] font-mono text-zinc-500 flex items-center justify-center gap-1 font-semibold">
               <Truck className="size-3 text-zinc-700" />
               <span>DISPATCH</span>
             </div>
@@ -400,11 +491,14 @@ export function PlantTelemetryVisual() {
         </div>
 
         <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500">
-          <span className="flex items-center gap-1">
-            <HardHat className="size-3 text-zinc-700" />
+          <span className="flex items-center gap-1.5 font-semibold text-zinc-700">
+            <HardHat className="size-3 text-zinc-800" />
             Bikita Minerals (Pvt) Ltd
           </span>
-          <span>DWRMS Core v2.8</span>
+          <span className="flex items-center gap-1 text-emerald-600 font-semibold">
+            <ShieldCheck className="size-3" />
+            DWRMS Authoritative Core v2.8
+          </span>
         </div>
       </div>
     </div>

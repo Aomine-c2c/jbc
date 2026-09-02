@@ -105,7 +105,7 @@ export function FilterPanel({ onFilter, departments }: FilterPanelProps) {
           <>
             <div>
               <label className="block text-[11px] font-medium text-zinc-600 mb-1">Priority</label>
-              <select 
+              <select
                 className="w-full text-xs h-8 border border-zinc-200 rounded-md bg-white text-zinc-900 px-2 focus:ring-1 focus:ring-zinc-400 focus:border-zinc-400 outline-none"
                 value={filters.priority !== undefined ? filters.priority : ''}
                 onChange={(e) => setFilters({...filters, priority: e.target.value ? parseInt(e.target.value) : undefined})}
@@ -117,15 +117,43 @@ export function FilterPanel({ onFilter, departments }: FilterPanelProps) {
                 <option value="3">Critical (3)</option>
               </select>
             </div>
-            
+
             <div>
               <label className="block text-[11px] font-medium text-zinc-600 mb-1">Location</label>
-              <input 
+              <input
                 type="text"
                 placeholder="Search location..."
                 className="w-full text-xs h-8 border border-zinc-200 rounded-md bg-white text-zinc-900 px-2 focus:ring-1 focus:ring-zinc-400 focus:border-zinc-400 outline-none"
                 value={filters.location || ''}
                 onChange={(e) => setFilters({...filters, location: e.target.value || undefined})}
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-medium text-zinc-600 mb-1">Job Type</label>
+              <select
+                className="w-full text-xs h-8 border border-zinc-200 rounded-md bg-white text-zinc-900 px-2 focus:ring-1 focus:ring-zinc-400 focus:border-zinc-400 outline-none"
+                value={filters.job_type || ''}
+                onChange={(e) => setFilters({...filters, job_type: e.target.value || undefined})}
+              >
+                <option value="">Any</option>
+                <option value="CORRECTIVE">Corrective</option>
+                <option value="PREVENTIVE">Preventive</option>
+                <option value="EMERGENCY">Emergency</option>
+                <option value="INSPECTION">Inspection</option>
+                <option value="INSTALLATION">Installation</option>
+                <option value="CALIBRATION">Calibration</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-medium text-zinc-600 mb-1">Cost Centre</label>
+              <input
+                type="text"
+                placeholder="e.g. CC-1042"
+                className="w-full text-xs h-8 border border-zinc-200 rounded-md bg-white text-zinc-900 px-2 focus:ring-1 focus:ring-zinc-400 focus:border-zinc-400 outline-none"
+                value={filters.cost_centre || ''}
+                onChange={(e) => setFilters({...filters, cost_centre: e.target.value || undefined})}
               />
             </div>
           </>

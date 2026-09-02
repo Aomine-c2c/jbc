@@ -155,7 +155,7 @@ export default function OrgAdminPage() {
   };
 
   return (
-    <Protect capability="users:manage">
+    <Protect capability="org:manage" isPageGuard moduleName="Organization & Governance">
       <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
         {/* HEADER */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-4">

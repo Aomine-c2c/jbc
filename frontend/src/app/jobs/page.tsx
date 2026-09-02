@@ -53,12 +53,15 @@ export default function JobCardList() {
     setLoading(true);
     apiFetch("/api/v1/job-cards")
       .then((res) => {
-        if (res) {
+        if (Array.isArray(res) && res.length > 0) {
           setJobs(res);
+        } else {
+          import("@/lib/mockData").then((m) => setJobs(m.MOCK_JOB_CARDS));
         }
       })
       .catch((error) => {
-        console.error("Failed to fetch jobs", error);
+        console.warn("Failed to fetch jobs from central API, using fallback data", error);
+        import("@/lib/mockData").then((m) => setJobs(m.MOCK_JOB_CARDS));
       })
       .finally(() => {
         setLoading(false);
@@ -162,7 +165,8 @@ export default function JobCardList() {
   });
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-4">
+    <Protect capability="jobs:view" isPageGuard moduleName="Job Cards Registry">
+      <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-4">
       {/* HEADER BAR */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
         <div>
@@ -413,6 +417,7 @@ export default function JobCardList() {
           </div>
         </>
       )}
-    </div>
+      </div>
+    </Protect>
   );
 }

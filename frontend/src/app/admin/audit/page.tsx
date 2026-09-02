@@ -8,7 +8,7 @@ export const metadata = {
 
 export default function AuditPage() {
   return (
-    <Protect capability="settings:manage">
+    <Protect capability="audit:view" isPageGuard moduleName="Audit Logs & Compliance">
       <div className="h-full flex flex-col">
         <div className="p-6 border-b border-border shrink-0">
           <h1 className="text-2xl font-bold tracking-tight">Audit Logs</h1>

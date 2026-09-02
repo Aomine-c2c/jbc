@@ -74,24 +74,27 @@ export default function LoginPage() {
       </div>
 
       {/* RIGHT 50% PANEL: INDUSTRIAL AUTHENTICATION PORTAL */}
-      <div className="relative w-full lg:w-1/2 min-h-[600px] lg:min-h-screen flex items-center justify-center p-6 md:p-12 bg-zinc-50">
+      <div className="relative w-full lg:w-1/2 min-h-[600px] lg:min-h-screen flex items-center justify-center p-6 md:p-10 lg:p-12 bg-zinc-50/60">
         {/* TOP RIGHT CONTROLS */}
         <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
-          <select
-            value={activeProfileId}
-            onChange={handleProfileChange}
-            className="h-8 rounded-md border border-zinc-200 bg-white px-2.5 text-[11px] font-mono text-zinc-800 outline-none focus:border-zinc-400 shadow-2xs"
-          >
-            {profiles.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} {p.isDefault ? '(Default)' : ''}
-              </option>
-            ))}
-          </select>
+          <div className="flex items-center gap-1.5 bg-white border border-zinc-200 rounded-md px-2 py-1 shadow-2xs">
+            <span className="size-2 rounded-full bg-emerald-500 inline-block" />
+            <select
+              value={activeProfileId}
+              onChange={handleProfileChange}
+              className="h-6 bg-transparent text-[11px] font-mono text-zinc-800 outline-none cursor-pointer"
+            >
+              {profiles.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} {p.isDefault ? '(Default)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
           <ThemeToggle />
         </div>
 
-        <div className="w-full max-w-md space-y-6 rounded-lg border border-zinc-200 bg-white p-6 md:p-8 shadow-sm">
+        <div className="w-full max-w-md space-y-5 rounded-xl border border-zinc-200/80 bg-white p-6 md:p-8 shadow-sm">
           {/* BRAND HEADER */}
           <div className="text-center space-y-2">
             <div className="mx-auto flex size-12 items-center justify-center rounded-lg bg-zinc-900 text-white shadow-xs">

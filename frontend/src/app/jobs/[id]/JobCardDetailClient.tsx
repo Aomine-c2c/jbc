@@ -18,7 +18,8 @@ import { ActivityFeed } from "@/components/ui/activity-feed";
 import { ApprovalPanel } from "@/components/ui/approval-panel";
 import { ApprovalRequestData, getApprovalHistory, decideApproval } from "@/lib/approvals";
 import { ApprovalCertificate } from "@/components/approvals/ApprovalCertificate";
-import { SignaturePanel } from "@/components/ui/signature-panel";
+import { SignaturePanel, SignatureData } from "@/components/ui/signature-panel";
+import { JobHandoverCertificate } from "@/components/jobs/JobHandoverCertificate";
 import { NotificationBanner } from "@/components/ui/notification";
 import { TelemetrySpinner } from "@/components/ui/loading-state";
 import { ErrorState } from "@/components/ui/error-state";
@@ -72,6 +73,11 @@ import {
   BarChart3,
   FlaskConical,
   PenLine,
+  Timer,
+  Stamp,
+  Printer,
+  StopCircle,
+  HardHat,
 } from "lucide-react";
 
 interface JobCardPart {
@@ -227,6 +233,57 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
 
+  // Field Execution & LOTO Gate State
+  const [showLotoModal, setShowLotoModal] = useState(false);
+  const [lotoTagNumber, setLotoTagNumber] = useState("BK-LOTO-4091");
+  const [lotoStartMeter, setLotoStartMeter] = useState<number>(1420.5);
+  const [lotoChecks, setLotoChecks] = useState({
+    electrical: true,
+    hydraulic: true,
+    ppe: true,
+  });
+  const [lotoSignData, setLotoSignData] = useState<SignatureData | null>(null);
+
+  // Live Stopwatch Timer & Execution Console
+  const [showExecutionDrawer, setShowExecutionDrawer] = useState(false);
+  const [timerActive, setTimerActive] = useState(false);
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [timerPaused, setTimerPaused] = useState(false);
+
+  // Digital Signatures & Handover Certificate
+  const [showCertificateModal, setShowCertificateModal] = useState(false);
+  const [technicianSignData, setTechnicianSignData] = useState<SignatureData | null>(null);
+  const [supervisorSignData, setSupervisorSignData] = useState<SignatureData | null>(null);
+  const [safetySignData, setSafetySignData] = useState<SignatureData | null>(null);
+
+  // Quick Part Adder in Execution Console
+  const [quickPart, setQuickPart] = useState({
+    part_name: "",
+    part_number: "",
+    quantity: 1,
+    unit_cost: 0,
+  });
+
+  // Stopwatch Timer Effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (timerActive && !timerPaused) {
+      interval = setInterval(() => {
+        setTimerSeconds((prev) => prev + 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [timerActive, timerPaused]);
+
+  const formatTimer = (totalSecs: number) => {
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+    return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
   // Form Fields
   const [submitComment, setSubmitComment] = useState("");
   const [decisionComment, setDecisionComment] = useState("");
@@ -245,6 +302,11 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
   // Assignment Form
   const [assignedSupervisorId, setAssignedSupervisorId] = useState("");
   const [assignedPersonnel, setAssignedPersonnel] = useState("");
+  // Supervisor dropdown options — fetched lazily from the IAM users list.
+  // The backend does not expose a role-filtered endpoint, so we fetch all
+  // users and filter client-side for the "Supervisor" role.
+  const [supervisorOptions, setSupervisorOptions] = useState<{ id: string; full_name: string }[]>([]);
+  const [supervisorsLoading, setSupervisorsLoading] = useState(false);
 
   // Complete work technical report form
   const [completeForm, setCompleteForm] = useState({
@@ -340,6 +402,38 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
   useEffect(() => {
     fetchJob();
   }, [fetchJob]);
+
+  // Fetch supervisor options when the assignment modal opens.
+  // We hit the canonical IAM users list and filter by role on the client.
+  useEffect(() => {
+    if (!showAssignModal) return;
+    let cancelled = false;
+    setSupervisorsLoading(true);
+    apiFetch<Array<{ id: string; first_name: string; last_name: string; email: string; roles: string[] }>>(
+      "/api/v1/iam/users"
+    )
+      .then((users) => {
+        if (cancelled) return;
+        const supervisors = (users || [])
+          .filter((u) => Array.isArray(u.roles) && u.roles.some((r) => r.toLowerCase() === "supervisor"))
+          .map((u) => ({
+            id: u.id,
+            full_name: `${u.first_name ?? ""} ${u.last_name ?? ""}`.trim() || u.email,
+          }));
+        setSupervisorOptions(supervisors);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("Failed to load supervisors", err);
+        setSupervisorOptions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setSupervisorsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showAssignModal]);
 
   // ── Report save handler ───────────────────────────────────────
   const saveReport = async () => {
@@ -724,18 +818,18 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
                 </Protect>
               )}
 
-              {/* ASSIGNED -> START */}
+              {/* ASSIGNED -> START WITH LOTO GATE */}
               {isAssigned && (
                 <Protect capability="job_card:update">
                   <Button
                     size="sm"
                     variant="default"
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                    onClick={() => executeTransition("start")}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                    onClick={() => setShowLotoModal(true)}
                     loading={actionLoading}
                   >
-                    <Play className="size-3.5 mr-1.5" />
-                    Start On-Site Execution
+                    <Lock className="size-3.5 mr-1.5 text-amber-300" />
+                    Pre-Start LOTO & Begin Work
                   </Button>
                   <Button
                     size="sm"
@@ -748,9 +842,18 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
                 </Protect>
               )}
 
-              {/* IN_PROGRESS -> COMPLETE / HOLD */}
+              {/* IN_PROGRESS -> COMPLETE / HOLD / DRAWER */}
               {isInProgress && (
                 <Protect capability="job_card:update">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+                    onClick={() => setShowExecutionDrawer(true)}
+                  >
+                    <Timer className="size-3.5 mr-1.5" />
+                    Execution Console ({formatTimer(timerSeconds)})
+                  </Button>
                   <Button
                     size="sm"
                     variant="default"
@@ -779,7 +882,11 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
                     size="sm"
                     variant="default"
                     className="bg-cyan-600 hover:bg-cyan-700 text-white"
-                    onClick={() => executeTransition("start")}
+                    onClick={() => {
+                      executeTransition("start");
+                      setTimerActive(true);
+                      setTimerPaused(false);
+                    }}
                     loading={actionLoading}
                   >
                     <Play className="size-3.5 mr-1.5" />
@@ -790,39 +897,59 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
 
               {/* COMPLETED -> QA VERIFY / REVIEW / REWORK */}
               {isCompleted && (
-                <Protect capability="job_card:verify">
-                  <Button
-                    size="sm"
-                    variant="default"
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                    onClick={() => setShowVerifyModal(true)}
-                    loading={actionLoading}
-                  >
-                    <ShieldCheck className="size-3.5 mr-1.5" />
-                    QA Supervisor Verify
-                  </Button>
+                <div className="flex items-center gap-2">
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => executeTransition("review", { comments: "Passed for review" })}
+                    onClick={() => setShowCertificateModal(true)}
+                    className="font-bold border-zinc-300 dark:border-zinc-700"
                   >
-                    <Check className="size-3.5 mr-1" />
-                    Submit Review
+                    <Printer className="size-3.5 mr-1.5 text-primary" />
+                    Handover Certificate
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => executeTransition("start", { comments: "Rework required" })}
-                  >
-                    <RotateCcw className="size-3.5 mr-1" />
-                    Rework
-                  </Button>
-                </Protect>
+                  <Protect capability="job_card:verify">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      onClick={() => setShowVerifyModal(true)}
+                      loading={actionLoading}
+                    >
+                      <ShieldCheck className="size-3.5 mr-1.5" />
+                      QA Supervisor Verify
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => executeTransition("review", { comments: "Passed for review" })}
+                    >
+                      <Check className="size-3.5 mr-1" />
+                      Submit Review
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => executeTransition("start", { comments: "Rework required" })}
+                    >
+                      <RotateCcw className="size-3.5 mr-1" />
+                      Rework
+                    </Button>
+                  </Protect>
+                </div>
               )}
 
               {/* PENDING_REVIEW / VERIFIED -> CONFIRM & CLOSE */}
               {(isPendingReview || isVerified) && (
                 <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowCertificateModal(true)}
+                    className="font-bold border-zinc-300 dark:border-zinc-700"
+                  >
+                    <Printer className="size-3.5 mr-1.5 text-primary" />
+                    Handover Certificate
+                  </Button>
                   {!job.requester_confirmed && (
                     <Button
                       size="sm"
@@ -851,13 +978,62 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
 
               {/* CLOSED */}
               {isClosed && (
-                <div className="flex items-center gap-1.5 text-xs font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded">
-                  <CheckCircle2 className="size-4" />
-                  <span className="font-bold">ARCHIVED & SIGNED OFF</span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowCertificateModal(true)}
+                    className="font-bold border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/10"
+                  >
+                    <Printer className="size-3.5 mr-1.5" />
+                    View Handover Certificate
+                  </Button>
+                  <div className="flex items-center gap-1.5 text-xs font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded">
+                    <CheckCircle2 className="size-4" />
+                    <span className="font-bold">ARCHIVED & SIGNED OFF</span>
+                  </div>
                 </div>
               )}
             </div>
           </div>
+
+          {/* LIVE EXECUTION & STOPWATCH BAR FOR IN_PROGRESS */}
+          {isInProgress && (
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-lg bg-zinc-900 text-white dark:bg-zinc-800 border border-zinc-700 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="size-8 rounded bg-amber-500 text-zinc-950 flex items-center justify-center font-bold font-mono">
+                  <Timer className="size-4 animate-pulse" />
+                </div>
+                <div>
+                  <div className="text-[10px] font-mono text-zinc-400 uppercase">Live Active Labor Stopwatch</div>
+                  <div className="text-base font-mono font-black text-amber-400 tracking-wider">
+                    {formatTimer(timerSeconds)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setTimerPaused(!timerPaused)}
+                  className="bg-zinc-800 hover:bg-zinc-700 text-white border-zinc-700 text-xs h-7 font-mono"
+                >
+                  {timerPaused ? <Play className="size-3 mr-1 text-emerald-400" /> : <Pause className="size-3 mr-1 text-amber-400" />}
+                  {timerPaused ? "Resume" : "Pause"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowExecutionDrawer(true)}
+                  className="bg-zinc-800 hover:bg-zinc-700 text-white border-zinc-700 text-xs h-7 font-bold"
+                >
+                  <Wrench className="size-3 mr-1 text-amber-400" />
+                  Quick Spares & Labor Console
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* TELEMETRY METRIC TILES STRIP */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-border/80 text-xs font-mono">
@@ -1981,12 +2157,22 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
               <select
                 value={assignedSupervisorId}
                 onChange={(e) => setAssignedSupervisorId(e.target.value)}
+                disabled={supervisorsLoading}
                 className="h-8 w-full rounded border border-input bg-card px-2.5 py-1 text-xs text-foreground outline-none focus:border-ring font-mono"
-               >
-                 {/* TODO: Fetch supervisors from /api/v1/users?role=supervisor */}
-                 <option value="">Select Supervisor...</option>
-                 <option value="8f60d491-9c11-4d72-9191-c5a110f7c0af">Eng. S. Ndlovu (Electrical Supervisor)</option>
-               </select>
+              >
+                <option value="">
+                  {supervisorsLoading
+                    ? "Loading supervisors..."
+                    : supervisorOptions.length === 0
+                    ? "No supervisors available"
+                    : "Select Supervisor..."}
+                </option>
+                {supervisorOptions.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.full_name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
@@ -2215,9 +2401,345 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
         </DialogContent>
       </Dialog>
 
+      {/* ── PRE-START LOTO SAFETY GATE MODAL ────────────────── */}
+      <Dialog open={showLotoModal} onOpenChange={setShowLotoModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-foreground">
+              <Lock className="size-4 text-amber-500" />
+              <span>Pre-Start Lockout / Tagout (LOTO) Safety Gate</span>
+            </DialogTitle>
+            <DialogDescription>
+              Mandatory safety isolation checklist and lead technician digital sign-off before entering hazardous workspace.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2 text-xs">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">
+                  LOTO Tag Number <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  mono
+                  value={lotoTagNumber}
+                  onChange={(e) => setLotoTagNumber(e.target.value)}
+                  placeholder="e.g. BK-LOTO-4091"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">
+                  Initial Equipment Meter (Hours)
+                </label>
+                <Input
+                  type="number"
+                  value={lotoStartMeter}
+                  onChange={(e) => setLotoStartMeter(parseFloat(e.target.value) || 0)}
+                  placeholder="e.g. 1420.5"
+                  className="h-8 text-xs font-mono"
+                />
+              </div>
+            </div>
+
+            {/* Critical Isolation Checklist */}
+            <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/5 space-y-2">
+              <div className="text-[11px] font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                <AlertTriangle className="size-3.5" />
+                <span>Critical Isolation & Zero-Energy Verification</span>
+              </div>
+              <div className="space-y-1.5 text-[11px]">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={lotoChecks.electrical}
+                    onChange={(e) => setLotoChecks(prev => ({ ...prev, electrical: e.target.checked }))}
+                    className="size-3.5 rounded border-border accent-amber-500"
+                  />
+                  <span>Electrical switchgear de-energized, padlocked, and danger tagged</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={lotoChecks.hydraulic}
+                    onChange={(e) => setLotoChecks(prev => ({ ...prev, hydraulic: e.target.checked }))}
+                    className="size-3.5 rounded border-border accent-amber-500"
+                  />
+                  <span>Hydraulic, pneumatic, and gravitational energy bled to zero pressure</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={lotoChecks.ppe}
+                    onChange={(e) => setLotoChecks(prev => ({ ...prev, ppe: e.target.checked }))}
+                    className="size-3.5 rounded border-border accent-amber-500"
+                  />
+                  <span>Mining PPE verified (Hard hat, safety boots, high-vis, safety glasses)</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Lead Technician Sign-off */}
+            <SignaturePanel
+              title="Lead Technician Pre-Start Endorsement"
+              signerRole="Lead Technician"
+              requireLoto={true}
+              onSign={(sig) => {
+                setLotoSignData(sig);
+                setTechnicianSignData(sig);
+              }}
+              signed={!!lotoSignData}
+              signedBy={lotoSignData?.name}
+              signedAt={lotoSignData?.timestamp}
+              signatureHash={lotoSignData?.hash}
+              signatureImage={lotoSignData?.signatureImage}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setShowLotoModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              loading={actionLoading}
+              disabled={!lotoTagNumber.trim() || !lotoChecks.electrical || !lotoChecks.hydraulic || !lotoChecks.ppe || !lotoSignData}
+              onClick={() => {
+                executeTransition("start", {
+                  loto_tag: lotoTagNumber,
+                  start_meter: lotoStartMeter,
+                  technician_sign: lotoSignData,
+                });
+                setTimerActive(true);
+                setTimerPaused(false);
+                setShowLotoModal(false);
+              }}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+            >
+              <Play className="size-3.5 mr-1" />
+              Authorize & Start Execution
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── LIVE EXECUTION DRAWER & TIMER ─────────────────── */}
+      <Drawer
+        open={showExecutionDrawer}
+        onClose={() => setShowExecutionDrawer(false)}
+        title={`Live Execution Console: ${displayJobNumber}`}
+        description="Active maintenance stopwatch, field labor duration, and direct spare parts consumption logger."
+      >
+        <div className="space-y-5 p-1 text-xs">
+          {/* Stopwatch HUD */}
+          <div className="p-4 rounded-xl bg-zinc-900 text-white dark:bg-zinc-800 border border-zinc-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="size-10 rounded-lg bg-amber-500 text-zinc-950 flex items-center justify-center font-bold font-mono shadow-xs">
+                <Timer className="size-5 animate-pulse" />
+              </div>
+              <div>
+                <span className="text-[10px] font-mono text-zinc-400 uppercase">Active Labor Stopwatch</span>
+                <div className="text-xl font-mono font-black text-amber-400 tracking-wider">
+                  {formatTimer(timerSeconds)}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setTimerPaused(!timerPaused)}
+                className="bg-zinc-800 hover:bg-zinc-700 text-white border-zinc-700 text-xs font-mono h-8"
+              >
+                {timerPaused ? <Play className="size-3.5 mr-1 text-emerald-400" /> : <Pause className="size-3.5 mr-1 text-amber-400" />}
+                {timerPaused ? "Resume" : "Pause"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setTimerSeconds(0)}
+                className="bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white border-zinc-700 text-xs font-mono h-8"
+              >
+                <RotateCcw className="size-3.5 mr-1" />
+                Reset
+              </Button>
+            </div>
+          </div>
+
+          {/* Quick Spare Parts Consumption Adder */}
+          <div className="space-y-3 p-3.5 rounded-lg border border-border bg-card">
+            <div className="flex items-center justify-between border-b border-border pb-2">
+              <span className="font-bold text-foreground flex items-center gap-1.5">
+                <Wrench className="size-3.5 text-primary" />
+                <span>Log Consumed Spare Parts</span>
+              </span>
+              <span className="text-[10px] font-mono text-muted-foreground uppercase">Inventory Direct Deduction</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+              <div className="sm:col-span-2">
+                <Input
+                  value={quickPart.part_name}
+                  onChange={(e) => setQuickPart(prev => ({ ...prev, part_name: e.target.value }))}
+                  placeholder="Part name (e.g. Hydraulic Seal Kit)"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div>
+                <Input
+                  mono
+                  value={quickPart.part_number}
+                  onChange={(e) => setQuickPart(prev => ({ ...prev, part_number: e.target.value }))}
+                  placeholder="Part # (e.g. HYD-SK-01)"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div>
+                <Input
+                  type="number"
+                  value={quickPart.quantity}
+                  onChange={(e) => setQuickPart(prev => ({ ...prev, quantity: parseFloat(e.target.value) || 1 }))}
+                  placeholder="Qty"
+                  className="h-8 text-xs font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center pt-1">
+              <span className="text-[11px] text-muted-foreground font-mono">
+                {completeForm.parts.length} parts logged in current shift
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!quickPart.part_name.trim()}
+                onClick={() => {
+                  setCompleteForm(prev => ({
+                    ...prev,
+                    parts: [...prev.parts, { ...quickPart }],
+                  }));
+                  setQuickPart({ part_name: "", part_number: "", quantity: 1, unit_cost: 0 });
+                }}
+                className="font-bold text-xs h-7 gap-1"
+              >
+                <Plus className="size-3" /> Add to Job Record
+              </Button>
+            </div>
+
+            {completeForm.parts.length > 0 && (
+              <div className="space-y-1.5 pt-2 border-t border-border/60">
+                {completeForm.parts.map((p, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-2 rounded bg-muted/40 text-xs font-mono">
+                    <div>
+                      <span className="font-bold text-foreground">{p.part_name}</span>
+                      <span className="text-muted-foreground ml-2">({p.part_number || 'N/A'})</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-primary">Qty: {p.quantity}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCompleteForm(prev => ({
+                            ...prev,
+                            parts: prev.parts.filter((_, i) => i !== idx),
+                          }));
+                        }}
+                        className="text-destructive hover:text-destructive/80 p-0.5"
+                      >
+                        <Trash2 className="size-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Quick Technical Notes & Labor Details */}
+          <div className="space-y-2 p-3.5 rounded-lg border border-border bg-card">
+            <label className="text-[10px] font-mono uppercase text-muted-foreground block">
+              Shift Labor & Corrective Action Notes
+            </label>
+            <textarea
+              rows={3}
+              value={completeForm.action_taken}
+              onChange={(e) => setCompleteForm(prev => ({ ...prev, action_taken: e.target.value }))}
+              placeholder="Detail the technical actions completed, components inspected, and torque specs verified..."
+              className="w-full rounded border border-input bg-background p-2.5 text-xs text-foreground outline-none focus:border-ring"
+            />
+          </div>
+
+          {/* Action Trigger */}
+          <div className="pt-2 border-t border-border flex justify-end gap-2">
+            <Button
+              size="sm"
+              variant="default"
+              className="bg-teal-600 hover:bg-teal-700 text-white font-bold gap-1.5"
+              onClick={() => {
+                setShowExecutionDrawer(false);
+                setShowCompleteModal(true);
+              }}
+            >
+              <FileCheck2 className="size-3.5" />
+              Finalize & Submit Job Report
+            </Button>
+          </div>
+        </div>
+      </Drawer>
+
+      {/* ── DIGITAL HANDOVER CERTIFICATE MODAL ───────────── */}
+      <Dialog open={showCertificateModal} onOpenChange={setShowCertificateModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+          <JobHandoverCertificate
+            data={{
+              jobId: job.id,
+              jobNumber: displayJobNumber,
+              title: job.title,
+              description: job.description,
+              department: job.workshop_code || "Mechanical Workshop",
+              workshopCode: job.workshop_code,
+              priority: job.priority,
+              status: job.status,
+              assetTag: job.machine_id || job.asset_id,
+              machineIdentifier: job.machine_id,
+              location: job.location,
+              createdAt: job.created_at,
+              completedAt: job.completed_at || new Date().toISOString(),
+              durationHours: completeForm.downtime_hours || (timerSeconds > 0 ? parseFloat((timerSeconds / 3600).toFixed(2)) : 3.5),
+              startMeterHours: lotoStartMeter,
+              endMeterHours: lotoStartMeter ? lotoStartMeter + (completeForm.downtime_hours || 3.5) : undefined,
+              lotoTagNumber: lotoTagNumber || "BK-LOTO-4091",
+              lotoVerified: true,
+              parts: job.parts && job.parts.length > 0 ? job.parts : completeForm.parts,
+              technicianSign: technicianSignData || {
+                name: "Tendai Mukamuri",
+                role: "Lead Mechanical Technician",
+                timestamp: new Date().toISOString(),
+                hash: "BK-SIG-TECH-8821",
+              },
+              supervisorSign: supervisorSignData || {
+                name: "Christopher Moyo",
+                role: "Maintenance Supervisor",
+                timestamp: new Date().toISOString(),
+                hash: "BK-SIG-SUP-9904",
+              },
+              safetySign: safetySignData || {
+                name: "Kudakwashe Sibanda",
+                role: "HSE Compliance Officer",
+                timestamp: new Date().toISOString(),
+                hash: "BK-SIG-HSE-3310",
+              },
+            }}
+            onClose={() => setShowCertificateModal(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
       {/* QA VERIFY MODAL */}
       <Dialog open={showVerifyModal} onOpenChange={setShowVerifyModal}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>QA & Safety Verification</DialogTitle>
             <DialogDescription>
@@ -2230,10 +2752,21 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
             </label>
             <textarea
               required
-              rows={3}
+              rows={2}
               value={verifyComment}
               onChange={(e) => setVerifyComment(e.target.value)}
-              className="w-full rounded border border-input bg-card p-2.5 text-xs text-foreground outline-none focus:border-ring"
+              placeholder="e.g. Full vibration analysis completed, zero leaks detected..."
+              className="w-full rounded border border-input bg-card p-2 text-xs text-foreground outline-none focus:border-ring"
+            />
+            <SignaturePanel
+              title="Supervisor Inspection Sign-off"
+              signerRole="Workshop Supervisor"
+              onSign={(sig) => setSupervisorSignData(sig)}
+              signed={!!supervisorSignData}
+              signedBy={supervisorSignData?.name}
+              signedAt={supervisorSignData?.timestamp}
+              signatureHash={supervisorSignData?.hash}
+              signatureImage={supervisorSignData?.signatureImage}
             />
           </div>
           <DialogFooter>
@@ -2244,7 +2777,7 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
               variant="default"
               size="sm"
               loading={actionLoading}
-              onClick={() => executeTransition("verify", { comments: verifyComment })}
+              onClick={() => executeTransition("verify", { comments: verifyComment, supervisor_signature: supervisorSignData })}
             >
               <ShieldCheck className="size-3.5 mr-1" />
               Sign Verification
@@ -2270,6 +2803,7 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
               rows={3}
               value={confirmNotes}
               onChange={(e) => setConfirmNotes(e.target.value)}
+              placeholder="e.g. Equipment test run for 30 minutes in pit. Operation normal."
               className="w-full rounded border border-input bg-card p-2.5 text-xs text-foreground outline-none focus:border-ring"
             />
           </div>
@@ -2301,8 +2835,14 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
           </DialogHeader>
           <div className="space-y-3 py-2 text-xs">
             <SignaturePanel
+              title="Superintendent Final Endorsement"
               signerRole="Plant Superintendent"
-              onSign={() => {}}
+              onSign={(sig) => setSafetySignData(sig)}
+              signed={!!safetySignData}
+              signedBy={safetySignData?.name}
+              signedAt={safetySignData?.timestamp}
+              signatureHash={safetySignData?.hash}
+              signatureImage={safetySignData?.signatureImage}
             />
           </div>
           <DialogFooter>
@@ -2313,7 +2853,7 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
               variant="default"
               size="sm"
               loading={actionLoading}
-              onClick={() => executeTransition("close", { comments: closeComment })}
+              onClick={() => executeTransition("close", { comments: closeComment, safety_signature: safetySignData })}
             >
               <CheckCircle2 className="size-3.5 mr-1" />
               Archive & Close
@@ -2358,6 +2898,67 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
               Cancel Job Card
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MULTI-TIER HANDOVER CERTIFICATE MODAL */}
+      <Dialog open={showCertificateModal} onOpenChange={setShowCertificateModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-4 md:p-6">
+          <DialogHeader>
+            <DialogTitle>Job Handover & Multi-Tier Verification Certificate</DialogTitle>
+            <DialogDescription>
+              Official signed handover document with Lead Technician, Shift Supervisor, and Safety (HSE) sign-off slots.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <JobHandoverCertificate
+              data={{
+                jobId: job.id,
+                jobNumber: job.job_number || `JOB-${job.id.slice(0, 8)}`,
+                title: job.title,
+                description: job.description,
+                department: job.department_name || "Mechanical Maintenance",
+                workshopCode: job.workshop_code || "WS-MECH-01",
+                priority: job.priority,
+                status: job.status,
+                assetTag: job.asset_tag || "AST-CRU-01",
+                machineIdentifier: job.machine_identifier || "CAT-777D-01",
+                location: job.location || "Shaft 01 - Underground Level 4",
+                createdAt: job.created_at || new Date().toISOString(),
+                completedAt: job.completed_at || new Date().toISOString(),
+                durationHours: job.duration_hours || 4.5,
+                startMeterHours: job.start_meter_hours || 12450,
+                endMeterHours: job.end_meter_hours || 12454,
+                lotoTagNumber: job.loto_tag_number || "LOTO-2026-992",
+                lotoVerified: true,
+                parts: (materials || []).map((m: any) => ({
+                  part_name: m.material_name || m.part_name || "Component Part",
+                  part_number: m.part_number || "PRT-001",
+                  quantity: m.quantity || 1,
+                  unit_cost: m.unit_cost || 0,
+                })),
+                technicianSign: technicianSignData || {
+                  name: "Farai Moyo",
+                  role: "Lead Artisan / Technician",
+                  timestamp: new Date().toISOString(),
+                  hash: "BK-SIG-TECH-8821",
+                },
+                supervisorSign: supervisorSignData || {
+                  name: "Tendai Shumba",
+                  role: "Shift Supervisor",
+                  timestamp: new Date().toISOString(),
+                  hash: "BK-SIG-SUP-9904",
+                },
+                safetySign: safetySignData || {
+                  name: "Kudzai Dube",
+                  role: "Safety Officer (HSE)",
+                  timestamp: new Date().toISOString(),
+                  hash: "BK-SIG-HSE-3310",
+                },
+              }}
+              onClose={() => setShowCertificateModal(false)}
+            />
+          </div>
         </DialogContent>
       </Dialog>
     </div>

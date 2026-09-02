@@ -17,6 +17,8 @@ import { MobileBottomNav } from "./MobileBottomNav";
 import { MobileNavDrawer } from "./MobileNavDrawer";
 import { ServerConfigDialog } from "@/components/config/ServerConfigDialog";
 
+import { resolveUserRole, ROLE_CONFIGS } from "@/lib/rbac";
+
 interface UserProfile {
   name: string;
   role: string;
@@ -24,9 +26,9 @@ interface UserProfile {
 }
 
 const DEFAULT_PROFILE: UserProfile = {
-  name: "Maint Ops",
-  role: "Operations Role",
-  initials: "BK",
+  name: "Mine Operations",
+  role: "Operator Level",
+  initials: "OP",
 };
 
 function getUserProfile(): UserProfile {
@@ -34,13 +36,22 @@ function getUserProfile(): UserProfile {
     return DEFAULT_PROFILE;
   }
   try {
-    const email = localStorage.getItem("user_email");
-    if (email === "admin@bikita.com") {
-      return { name: "Admin User", role: "System Admin", initials: "AD" };
-    } else if (email === "supervisor@bikita.com") {
-      return { name: "Super Visor", role: "Supervisor Level", initials: "SV" };
-    } else if (email === "tech@bikita.com") {
-      return { name: "Tech User", role: "Technician Level", initials: "TC" };
+    const email = localStorage.getItem("user_email") || "";
+    const savedRole = localStorage.getItem("user_role");
+    const role = resolveUserRole(savedRole || email);
+
+    if (role === "Administrator") {
+      return { name: "System Admin", role: "System Administrator", initials: "AD" };
+    } else if (role === "Department Manager") {
+      return { name: "Dept Superintendent", role: "Dept Manager / Superintendent", initials: "DM" };
+    } else if (role === "Supervisor") {
+      return { name: "Shift Supervisor", role: "Supervisor / Shift Boss", initials: "SV" };
+    } else if (role === "Technician") {
+      return { name: "Lead Artisan", role: "Technician / Artisan", initials: "TC" };
+    } else if (role === "Safety Officer") {
+      return { name: "HSE Officer", role: "Safety Officer (HSE)", initials: "SO" };
+    } else if (role === "Operator") {
+      return { name: "Equipment Operator", role: "Operator / Driver", initials: "OP" };
     }
   } catch {
     // fallback

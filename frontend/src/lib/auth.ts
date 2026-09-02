@@ -1,4 +1,5 @@
 import { getApiUrl } from './api';
+import { resolveUserRole, getDefaultLandingRoute } from './rbac';
 
 export async function login(email: string, password: string) {
   try {
@@ -31,8 +32,12 @@ export async function login(email: string, password: string) {
       if (data?.csrf_token) {
         localStorage.setItem('csrf_token', data.csrf_token);
       }
+      const role = resolveUserRole(email);
       localStorage.setItem('user_email', email);
-      window.location.href = '/';
+      localStorage.setItem('user_role', role);
+
+      const targetRoute = getDefaultLandingRoute(role);
+      window.location.href = targetRoute;
     }
   } catch (e: unknown) {
     const err = e as { message?: string };
@@ -66,6 +71,7 @@ export function logout() {
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('csrf_token');
     localStorage.removeItem('user_email');
+    localStorage.removeItem('user_role');
     window.location.href = '/login';
   }
 }
