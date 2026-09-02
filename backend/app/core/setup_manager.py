@@ -102,9 +102,77 @@ class SetupManager:
     @classmethod
     def save_step(cls, step_number: int, data: dict[str, Any]):
         """Persists step configuration to setup state file."""
+        step_names = {
+            1: "step_1_platform",
+            2: "step_2_network",
+            3: "step_3_database",
+            4: "step_4_admin",
+            5: "step_5_storage",
+            6: "step_6_backups",
+            7: "step_7_remote",
+        }
         state = cls.get_setup_state()
         state["current_step"] = max(state.get("current_step", 1), step_number + 1)
         state[f"step_{step_number}"] = data
+        
+        # If payload contains step_data wrapper, unpack it
+        unpacked_data = data.get("step_data", data) if isinstance(data, dict) else data
+        step_key = step_names.get(step_number, f"step_{step_number}")
+        
+        if isinstance(unpacked_data, dict):
+            # Extract step-specific fields
+            if step_number == 1:
+                state["step_1_platform"] = {
+                    "organization_name": unpacked_data.get("organization_name", state.get("step_1_platform", {}).get("organization_name")),
+                    "installation_name": unpacked_data.get("installation_name", state.get("step_1_platform", {}).get("installation_name")),
+                    "primary_site": unpacked_data.get("primary_site", state.get("step_1_platform", {}).get("primary_site")),
+                    "server_name": unpacked_data.get("server_name", state.get("step_1_platform", {}).get("server_name")),
+                    "environment": unpacked_data.get("environment", state.get("step_1_platform", {}).get("environment")),
+                    "timezone": unpacked_data.get("timezone", state.get("step_1_platform", {}).get("timezone")),
+                }
+            elif step_number == 2:
+                state["step_2_network"] = {
+                    "primary_url": unpacked_data.get("primary_url", state.get("step_2_network", {}).get("primary_url")),
+                    "domain_name": unpacked_data.get("domain_name", state.get("step_2_network", {}).get("domain_name")),
+                    "internal_address": unpacked_data.get("internal_address", state.get("step_2_network", {}).get("internal_address")),
+                    "local_ip": unpacked_data.get("local_ip", state.get("step_2_network", {}).get("local_ip")),
+                    "https_enabled": unpacked_data.get("https_enabled", state.get("step_2_network", {}).get("https_enabled")),
+                    "cors_origins": unpacked_data.get("cors_origins", state.get("step_2_network", {}).get("cors_origins")),
+                }
+            elif step_number == 3:
+                state["step_3_database"] = {
+                    "engine": unpacked_data.get("db_engine") or unpacked_data.get("engine", "postgresql"),
+                    "host": unpacked_data.get("db_host") or unpacked_data.get("host", "db"),
+                    "port": int(unpacked_data.get("db_port") or unpacked_data.get("port", 5432)),
+                    "name": unpacked_data.get("db_name") or unpacked_data.get("name", "dwrms"),
+                    "user": unpacked_data.get("db_user") or unpacked_data.get("user", "postgres"),
+                    "password": unpacked_data.get("db_password") or unpacked_data.get("password", ""),
+                }
+            elif step_number == 4:
+                state["step_4_admin"] = {
+                    "email": unpacked_data.get("admin_email") or unpacked_data.get("email", "admin@bikita.com"),
+                    "first_name": unpacked_data.get("admin_fname") or unpacked_data.get("first_name", "System"),
+                    "last_name": unpacked_data.get("admin_lname") or unpacked_data.get("last_name", "Administrator"),
+                    "department": unpacked_data.get("admin_dept") or unpacked_data.get("department", "Maintenance"),
+                    "password": unpacked_data.get("admin_password") or unpacked_data.get("password", ""),
+                }
+            elif step_number == 5:
+                state["step_5_storage"] = {
+                    "path": unpacked_data.get("storage_path") or unpacked_data.get("path", "/var/dwrms/storage"),
+                    "max_upload_size_mb": int(unpacked_data.get("max_upload_size_mb", 25)),
+                }
+            elif step_number == 6:
+                state["step_6_backups"] = {
+                    "path": unpacked_data.get("backup_path") or unpacked_data.get("path", "/var/dwrms/backups"),
+                    "frequency": unpacked_data.get("backup_freq") or unpacked_data.get("frequency", "daily"),
+                    "retention_days": int(unpacked_data.get("retention_days", 30)),
+                }
+            elif step_number == 7:
+                state["step_7_remote"] = {
+                    "mode": unpacked_data.get("remote_mode") or unpacked_data.get("mode", "local_only"),
+                    "tailscale_auth_key": unpacked_data.get("tailscale_auth_key", ""),
+                }
+        
         state["updated_at"] = datetime.now(timezone.utc).isoformat()
         SETUP_STATE_FILE.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
@@ -229,7 +297,7 @@ class SetupManager:
         env_type = step2.get("environment") or step1.get("environment", "production")
         timezone_str = step1.get("timezone", "Africa/Harare")
         primary_url = step2.get("primary_url", "https://dwrms.bikita.com")
-        db_engine_type = step3.get("engine", "mysql")
+        db_engine_type = step3.get("engine", "postgresql")
         admin_email = step4.get("email", "admin@bikita.com")
         admin_pass = step4.get("password") or "BikitaAdmin123!"
 
@@ -251,9 +319,9 @@ class SetupManager:
             "CORS_ORIGINS": step2.get("cors_origins", f"{primary_url},tauri://localhost"),
             "DB_ENGINE": db_engine_type,
             "DB_HOST": step3.get("host", "db" if db_engine_type != "sqlite" else "localhost"),
-            "DB_PORT": str(step3.get("port", 3306 if db_engine_type == "mysql" else 5432)),
+            "DB_PORT": str(step3.get("port", 5432 if db_engine_type == "postgresql" else 3306)),
             "DB_NAME": step3.get("name", "dwrms"),
-            "DB_USER": step3.get("user", "user"),
+            "DB_USER": step3.get("user", "postgres" if db_engine_type == "postgresql" else "user"),
             "DB_PASSWORD": step3.get("password", ""),
             "STORAGE_PATH": step5.get("path", "/var/dwrms/storage"),
             "MAX_UPLOAD_SIZE_MB": str(step5.get("max_upload_size_mb", 25)),
@@ -270,7 +338,7 @@ class SetupManager:
             env_updates["MYSQL_ROOT_PASSWORD"] = step3.get("password", "")
         elif db_engine_type == "postgresql":
             env_updates["POSTGRES_DB"] = step3.get("name", "dwrms")
-            env_updates["POSTGRES_USER"] = step3.get("user", "dwrms_prod")
+            env_updates["POSTGRES_USER"] = step3.get("user", "postgres")
             env_updates["POSTGRES_PASSWORD"] = step3.get("password", "")
 
         # Generate secure secret key if not already present

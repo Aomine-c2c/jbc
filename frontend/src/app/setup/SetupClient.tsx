@@ -16,6 +16,7 @@ import {
   Lock,
   Globe,
   Radio,
+  Sparkles,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -65,8 +66,8 @@ export function SetupClient() {
     db_host: 'db',
     db_port: 5432,
     db_name: 'dwrms',
-    db_user: 'user',
-    db_password: '',
+    db_user: 'postgres',
+    db_password: 'postgres',
 
     // Step 4: Administrator
     admin_email: 'admin@bikita.com',
@@ -108,15 +109,35 @@ export function SetupClient() {
           if (res.data.state) {
             // merge saved state if any
             const s = res.data.state;
+            const p1 = s.step_1_platform || {};
+            const p2 = s.step_2_network || {};
+            const p3 = s.step_3_database || {};
+            const p4 = s.step_4_admin || {};
+            const p5 = s.step_5_storage || {};
+            const p6 = s.step_6_backups || {};
+            const p7 = s.step_7_remote || {};
+
             setFormData((prev) => ({
               ...prev,
-              ...(s.step_1_platform || {}),
-              ...(s.step_2_network || {}),
-              ...(s.step_3_database || {}),
-              ...(s.step_4_admin || {}),
-              ...(s.step_5_storage || {}),
-              ...(s.step_6_backups || {}),
-              ...(s.step_7_remote || {}),
+              ...p1,
+              ...p2,
+              db_engine: p3.db_engine || p3.engine || prev.db_engine,
+              db_host: p3.db_host || p3.host || prev.db_host,
+              db_port: p3.db_port || p3.port || prev.db_port,
+              db_name: p3.db_name || p3.name || prev.db_name,
+              db_user: p3.db_user || p3.user || prev.db_user,
+              db_password: p3.db_password || p3.password || prev.db_password,
+              admin_email: p4.admin_email || p4.email || prev.admin_email,
+              admin_fname: p4.admin_fname || p4.first_name || prev.admin_fname,
+              admin_lname: p4.admin_lname || p4.last_name || prev.admin_lname,
+              admin_dept: p4.admin_dept || p4.department || prev.admin_dept,
+              storage_path: p5.storage_path || p5.path || prev.storage_path,
+              max_upload_size_mb: p5.max_upload_size_mb ?? prev.max_upload_size_mb,
+              backup_path: p6.backup_path || p6.path || prev.backup_path,
+              backup_freq: p6.backup_freq || p6.frequency || prev.backup_freq,
+              retention_days: p6.retention_days ?? prev.retention_days,
+              remote_mode: p7.remote_mode || p7.mode || prev.remote_mode,
+              tailscale_auth_key: p7.tailscale_auth_key || prev.tailscale_auth_key,
             }));
           }
         }
@@ -126,6 +147,47 @@ export function SetupClient() {
     }
     checkStatus();
   }, []);
+
+  const handleQuickFillDefaults = () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://dwrms.bikita.com';
+    setFormData((prev) => ({
+      ...prev,
+      organization_name: 'Bikita Minerals DWRMS',
+      installation_name: 'Masvingo Lithium Operation',
+      primary_site: 'Bikita Mining Site 1',
+      server_name: 'masvingo-srv-01',
+      environment: 'production',
+      timezone: 'Africa/Harare',
+      primary_url: origin,
+      domain_name: 'dwrms.bikita.com',
+      internal_address: '100.107.114.86',
+      local_ip: '100.107.114.86',
+      https_enabled: true,
+      cors_origins: `${origin},https://dwrms.bikita.com,tauri://localhost`,
+      db_engine: 'postgresql',
+      db_host: 'db',
+      db_port: 5432,
+      db_name: 'dwrms',
+      db_user: 'postgres',
+      db_password: 'postgres',
+      admin_email: 'admin@bikita.com',
+      admin_fname: 'System',
+      admin_lname: 'Administrator',
+      admin_dept: 'Maintenance',
+      admin_password: 'BikitaAdmin123!',
+      admin_confirm_password: 'BikitaAdmin123!',
+      storage_path: '/var/dwrms/storage',
+      max_upload_size_mb: 25,
+      backup_path: '/var/dwrms/backups',
+      backup_freq: 'daily',
+      retention_days: 30,
+      remote_mode: 'local_only',
+    }));
+    setStatusMessage({
+      type: 'success',
+      text: 'Loaded recommended production configuration defaults. You can navigate through all steps or proceed to finalization.',
+    });
+  };
 
   const handleChange = (field: string, value: string | boolean | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -283,7 +345,7 @@ export function SetupClient() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4 md:p-8">
+    <div className="dark min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4 md:p-8">
       {/* Header Branding */}
       <div className="w-full max-w-4xl mb-6 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-full text-xs font-semibold uppercase tracking-wider mb-2">
@@ -361,58 +423,73 @@ export function SetupClient() {
           {/* ── STEP 1: PLATFORM CONFIGURATION ────────────────────────── */}
           {currentStep === 1 && (
             <div className="space-y-4">
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-between gap-3">
+                <div className="text-xs text-amber-300">
+                  <strong>Quick Start:</strong> Click the button to automatically pre-fill recommended production defaults for all 8 wizard steps.
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleQuickFillDefaults}
+                  className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold shrink-0 text-xs gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Quick Fill Production Defaults
+                </Button>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label>Organization Name</Label>
+                  <Label className="text-slate-200">Organization Name</Label>
                   <Input
                     value={formData.organization_name}
                     onChange={(e) => handleChange('organization_name', e.target.value)}
-                    className="bg-slate-950 border-slate-700"
+                    className="bg-slate-950 border-slate-700 text-slate-100 placeholder:text-slate-500"
                   />
-                  <p className="text-xs text-slate-500">Corporate entity or operational group name.</p>
+                  <p className="text-xs text-slate-400">Corporate entity or operational group name.</p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Installation / Mine Site Name</Label>
+                  <Label className="text-slate-200">Installation / Mine Site Name</Label>
                   <Input
                     value={formData.installation_name}
                     onChange={(e) => handleChange('installation_name', e.target.value)}
-                    className="bg-slate-950 border-slate-700"
+                    className="bg-slate-950 border-slate-700 text-slate-100 placeholder:text-slate-500"
                   />
-                  <p className="text-xs text-slate-500">Physical facility location or project zone.</p>
+                  <p className="text-xs text-slate-400">Physical facility location or project zone.</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
-                  <Label>Server Node Identifier</Label>
+                  <Label className="text-slate-200">Server Node Identifier</Label>
                   <Input
                     value={formData.server_name}
                     onChange={(e) => handleChange('server_name', e.target.value)}
-                    className="bg-slate-950 border-slate-700 font-mono text-sm"
+                    className="bg-slate-950 border-slate-700 font-mono text-sm text-slate-100 placeholder:text-slate-500"
                   />
-                  <p className="text-xs text-slate-500">Unique server host identifier.</p>
+                  <p className="text-xs text-slate-400">Unique server host identifier.</p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Deployment Environment</Label>
+                  <Label className="text-slate-200">Deployment Environment</Label>
                   <select
                     value={formData.environment}
                     onChange={(e) => handleChange('environment', e.target.value)}
-                    className="w-full h-10 px-3 rounded-md bg-slate-950 border border-slate-700 text-sm text-slate-100"
+                    className="w-full h-8 px-2.5 rounded border border-slate-700 bg-slate-950 text-xs text-slate-100 outline-none"
                   >
                     <option value="production">Production (Hardened)</option>
                     <option value="staging">Staging (Testing)</option>
                     <option value="development">Development (Debug)</option>
                   </select>
-                  <p className="text-xs text-slate-500">Security and logging profile.</p>
+                  <p className="text-xs text-slate-400">Security and logging profile.</p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Operational Timezone</Label>
+                  <Label className="text-slate-200">Operational Timezone</Label>
                   <Input
                     value={formData.timezone}
                     onChange={(e) => handleChange('timezone', e.target.value)}
-                    className="bg-slate-950 border-slate-700 font-mono text-sm"
+                    className="bg-slate-950 border-slate-700 font-mono text-sm text-slate-100 placeholder:text-slate-500"
                   />
-                  <p className="text-xs text-slate-500">e.g. Africa/Harare, UTC, CAT.</p>
+                  <p className="text-xs text-slate-400">e.g. Africa/Harare, UTC, CAT.</p>
                 </div>
               </div>
             </div>
@@ -428,43 +505,43 @@ export function SetupClient() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label>Primary Application URL</Label>
+                  <Label className="text-slate-200">Primary Application URL</Label>
                   <Input
                     value={formData.primary_url}
                     onChange={(e) => handleChange('primary_url', e.target.value)}
-                    className="bg-slate-950 border-slate-700 font-mono text-sm"
+                    className="bg-slate-950 border-slate-700 font-mono text-sm text-slate-100 placeholder:text-slate-500"
                   />
-                  <p className="text-xs text-slate-500">The authoritative URL used by operators and desktop clients.</p>
+                  <p className="text-xs text-slate-400">The authoritative URL used by operators and desktop clients.</p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Domain Name (where applicable)</Label>
+                  <Label className="text-slate-200">Domain Name (where applicable)</Label>
                   <Input
                     value={formData.domain_name}
                     onChange={(e) => handleChange('domain_name', e.target.value)}
-                    className="bg-slate-950 border-slate-700 font-mono text-sm"
+                    className="bg-slate-950 border-slate-700 font-mono text-sm text-slate-100 placeholder:text-slate-500"
                   />
-                  <p className="text-xs text-slate-500">Public or internal FQDN (e.g. dwrms.bikita.com).</p>
+                  <p className="text-xs text-slate-400">Public or internal FQDN (e.g. dwrms.bikita.com).</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label>Local LAN Binding IP</Label>
+                  <Label className="text-slate-200">Local LAN Binding IP</Label>
                   <Input
                     value={formData.local_ip}
                     onChange={(e) => handleChange('local_ip', e.target.value)}
-                    className="bg-slate-950 border-slate-700 font-mono text-sm"
+                    className="bg-slate-950 border-slate-700 font-mono text-sm text-slate-100 placeholder:text-slate-500"
                   />
-                  <p className="text-xs text-slate-500">Internal network interface IP address.</p>
+                  <p className="text-xs text-slate-400">Internal network interface IP address.</p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Trusted CORS Origins</Label>
+                  <Label className="text-slate-200">Trusted CORS Origins</Label>
                   <Input
                     value={formData.cors_origins}
                     onChange={(e) => handleChange('cors_origins', e.target.value)}
-                    className="bg-slate-950 border-slate-700 font-mono text-xs"
+                    className="bg-slate-950 border-slate-700 font-mono text-xs text-slate-100 placeholder:text-slate-500"
                   />
-                  <p className="text-xs text-slate-500">Comma-separated allowlist for API clients.</p>
+                  <p className="text-xs text-slate-400">Comma-separated allowlist for API clients.</p>
                 </div>
               </div>
             </div>
@@ -475,11 +552,11 @@ export function SetupClient() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
-                  <Label>Database Engine</Label>
+                  <Label className="text-slate-200">Database Engine</Label>
                   <select
                     value={formData.db_engine}
                     onChange={(e) => handleChange('db_engine', e.target.value)}
-                    className="w-full h-10 px-3 rounded-md bg-slate-950 border border-slate-700 text-sm text-slate-100"
+                    className="w-full h-8 px-2.5 rounded border border-slate-700 bg-slate-950 text-xs text-slate-100 outline-none"
                   >
                     <option value="postgresql">PostgreSQL 16 (Recommended)</option>
                     <option value="mysql">MySQL 8.0</option>
@@ -487,48 +564,48 @@ export function SetupClient() {
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Database Host</Label>
+                  <Label className="text-slate-200">Database Host</Label>
                   <Input
                     value={formData.db_host}
                     onChange={(e) => handleChange('db_host', e.target.value)}
-                    className="bg-slate-950 border-slate-700 font-mono text-sm"
+                    className="bg-slate-950 border-slate-700 font-mono text-sm text-slate-100 placeholder:text-slate-500"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Database Port</Label>
+                  <Label className="text-slate-200">Database Port</Label>
                   <Input
                     type="number"
                     value={formData.db_port}
                     onChange={(e) => handleChange('db_port', e.target.value)}
-                    className="bg-slate-950 border-slate-700 font-mono text-sm"
+                    className="bg-slate-950 border-slate-700 font-mono text-sm text-slate-100 placeholder:text-slate-500"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
-                  <Label>Database Name</Label>
+                  <Label className="text-slate-200">Database Name</Label>
                   <Input
                     value={formData.db_name}
                     onChange={(e) => handleChange('db_name', e.target.value)}
-                    className="bg-slate-950 border-slate-700 font-mono text-sm"
+                    className="bg-slate-950 border-slate-700 font-mono text-sm text-slate-100 placeholder:text-slate-500"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Database User</Label>
+                  <Label className="text-slate-200">Database User</Label>
                   <Input
                     value={formData.db_user}
                     onChange={(e) => handleChange('db_user', e.target.value)}
-                    className="bg-slate-950 border-slate-700 font-mono text-sm"
+                    className="bg-slate-950 border-slate-700 font-mono text-sm text-slate-100 placeholder:text-slate-500"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Database Password</Label>
+                  <Label className="text-slate-200">Database Password</Label>
                   <Input
                     type="password"
                     value={formData.db_password}
                     onChange={(e) => handleChange('db_password', e.target.value)}
-                    className="bg-slate-950 border-slate-700 font-mono text-sm"
+                    className="bg-slate-950 border-slate-700 font-mono text-sm text-slate-100 placeholder:text-slate-500"
                   />
                 </div>
               </div>
@@ -565,62 +642,62 @@ export function SetupClient() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label>Administrator Email</Label>
+                  <Label className="text-slate-200">Administrator Email</Label>
                   <Input
                     type="email"
                     value={formData.admin_email}
                     onChange={(e) => handleChange('admin_email', e.target.value)}
-                    className="bg-slate-950 border-slate-700"
+                    className="bg-slate-950 border-slate-700 text-slate-100 placeholder:text-slate-500"
                   />
-                  <p className="text-xs text-slate-500">Will be granted System Administrator role.</p>
+                  <p className="text-xs text-slate-400">Will be granted System Administrator role.</p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Primary Department</Label>
+                  <Label className="text-slate-200">Primary Department</Label>
                   <Input
                     value={formData.admin_dept}
                     onChange={(e) => handleChange('admin_dept', e.target.value)}
-                    className="bg-slate-950 border-slate-700"
+                    className="bg-slate-950 border-slate-700 text-slate-100 placeholder:text-slate-500"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label>First Name</Label>
+                  <Label className="text-slate-200">First Name</Label>
                   <Input
                     value={formData.admin_fname}
                     onChange={(e) => handleChange('admin_fname', e.target.value)}
-                    className="bg-slate-950 border-slate-700"
+                    className="bg-slate-950 border-slate-700 text-slate-100 placeholder:text-slate-500"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Last Name</Label>
+                  <Label className="text-slate-200">Last Name</Label>
                   <Input
                     value={formData.admin_lname}
                     onChange={(e) => handleChange('admin_lname', e.target.value)}
-                    className="bg-slate-950 border-slate-700"
+                    className="bg-slate-950 border-slate-700 text-slate-100 placeholder:text-slate-500"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                 <div className="space-y-1.5">
-                  <Label>Secure Administrator Password</Label>
+                  <Label className="text-slate-200">Secure Administrator Password</Label>
                   <Input
                     type="password"
                     value={formData.admin_password}
                     onChange={(e) => handleChange('admin_password', e.target.value)}
-                    className="bg-slate-950 border-slate-700 font-mono"
+                    className="bg-slate-950 border-slate-700 font-mono text-slate-100 placeholder:text-slate-500"
                   />
-                  <p className="text-xs text-slate-500">Minimum 8 characters with numbers and mixed case.</p>
+                  <p className="text-xs text-slate-400">Minimum 8 characters with numbers and mixed case.</p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Confirm Password</Label>
+                  <Label className="text-slate-200">Confirm Password</Label>
                   <Input
                     type="password"
                     value={formData.admin_confirm_password}
                     onChange={(e) => handleChange('admin_confirm_password', e.target.value)}
-                    className="bg-slate-950 border-slate-700 font-mono"
+                    className="bg-slate-950 border-slate-700 font-mono text-slate-100 placeholder:text-slate-500"
                   />
                 </div>
               </div>
@@ -632,21 +709,21 @@ export function SetupClient() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-2 space-y-1.5">
-                  <Label>Storage Directory Path</Label>
+                  <Label className="text-slate-200">Storage Directory Path</Label>
                   <Input
                     value={formData.storage_path}
                     onChange={(e) => handleChange('storage_path', e.target.value)}
-                    className="bg-slate-950 border-slate-700 font-mono text-sm"
+                    className="bg-slate-950 border-slate-700 font-mono text-sm text-slate-100 placeholder:text-slate-500"
                   />
-                  <p className="text-xs text-slate-500">Persistent path for job cards, inspection reports, and signatures.</p>
+                  <p className="text-xs text-slate-400">Persistent path for job cards, inspection reports, and signatures.</p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Max Attachment Size (MB)</Label>
+                  <Label className="text-slate-200">Max Attachment Size (MB)</Label>
                   <Input
                     type="number"
                     value={formData.max_upload_size_mb}
                     onChange={(e) => handleChange('max_upload_size_mb', e.target.value)}
-                    className="bg-slate-950 border-slate-700 font-mono text-sm"
+                    className="bg-slate-950 border-slate-700 font-mono text-sm text-slate-100 placeholder:text-slate-500"
                   />
                 </div>
               </div>
@@ -683,20 +760,20 @@ export function SetupClient() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-2 space-y-1.5">
-                  <Label>Backup Archive Directory</Label>
+                  <Label className="text-slate-200">Backup Archive Directory</Label>
                   <Input
                     value={formData.backup_path}
                     onChange={(e) => handleChange('backup_path', e.target.value)}
-                    className="bg-slate-950 border-slate-700 font-mono text-sm"
+                    className="bg-slate-950 border-slate-700 font-mono text-sm text-slate-100 placeholder:text-slate-500"
                   />
-                  <p className="text-xs text-slate-500">Destination for daily database dumps and storage tarballs.</p>
+                  <p className="text-xs text-slate-400">Destination for daily database dumps and storage tarballs.</p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Backup Frequency</Label>
+                  <Label className="text-slate-200">Backup Frequency</Label>
                   <select
                     value={formData.backup_freq}
                     onChange={(e) => handleChange('backup_freq', e.target.value)}
-                    className="w-full h-10 px-3 rounded-md bg-slate-950 border border-slate-700 text-sm text-slate-100"
+                    className="w-full h-8 px-2.5 rounded border border-slate-700 bg-slate-950 text-xs text-slate-100 outline-none"
                   >
                     <option value="daily">Daily (02:00 CAT)</option>
                     <option value="weekly">Weekly</option>
@@ -706,14 +783,14 @@ export function SetupClient() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Retention Policy Window (Days)</Label>
+                <Label className="text-slate-200">Retention Policy Window (Days)</Label>
                 <Input
                   type="number"
                   value={formData.retention_days}
                   onChange={(e) => handleChange('retention_days', e.target.value)}
-                  className="bg-slate-950 border-slate-700 font-mono text-sm w-48"
+                  className="bg-slate-950 border-slate-700 font-mono text-sm w-48 text-slate-100 placeholder:text-slate-500"
                 />
-                <p className="text-xs text-slate-500">Backups older than this retention window will be automatically pruned.</p>
+                <p className="text-xs text-slate-400">Backups older than this retention window will be automatically pruned.</p>
               </div>
             </div>
           )}
@@ -764,15 +841,15 @@ export function SetupClient() {
 
               {formData.remote_mode === 'tailscale' && (
                 <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
-                  <Label>Optional Tailscale Auth Key</Label>
+                  <Label className="text-slate-200">Optional Tailscale Auth Key</Label>
                   <Input
                     type="password"
                     placeholder="tskey-auth-..."
                     value={formData.tailscale_auth_key}
                     onChange={(e) => handleChange('tailscale_auth_key', e.target.value)}
-                    className="bg-slate-900 border-slate-700 font-mono text-sm"
+                    className="bg-slate-900 border-slate-700 font-mono text-sm text-slate-100 placeholder:text-slate-500"
                   />
-                  <p className="text-xs text-slate-500">Leave blank to authenticate manually via &apos;tailscale up&apos;.</p>
+                  <p className="text-xs text-slate-400">Leave blank to authenticate manually via &apos;tailscale up&apos;.</p>
                 </div>
               )}
 
