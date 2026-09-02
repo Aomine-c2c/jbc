@@ -42,8 +42,8 @@ if [ "$LOCAL_HASH" != "$REMOTE_HASH" ] && [ "$REMOTE_HASH" != "UNKNOWN" ]; then
         nginx -t >/dev/null 2>&1 && (systemctl reload nginx 2>/dev/null || systemctl restart nginx 2>/dev/null) || true
     fi
 
-    # 3. Ensure Tailscale HTTPS Serve is active on port 80
-    tailscale serve --bg 80 >/dev/null 2>&1 || true
+    # 3. Ensure Tailscale HTTPS Serve is active on port 80 (Unified Nginx Proxy)
+    tailscale serve --bg --https=443 http://127.0.0.1:80 >/dev/null 2>&1 || true
 
     # 4. Rebuild & Launch Docker Compose containers
     docker compose -p dwrms -f "${INSTALL_DIR}/docker-compose.yml" down --remove-orphans >/dev/null 2>&1 || true

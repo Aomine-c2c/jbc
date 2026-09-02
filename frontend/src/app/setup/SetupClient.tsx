@@ -203,8 +203,10 @@ export function SetupClient() {
         step_data: formData,
       });
       setCurrentStep((prev) => Math.min(prev + 1, 8));
-    } catch (err) {
-      setStatusMessage({ type: 'error', text: 'Failed to save step. Please retry.' });
+    } catch (err: unknown) {
+      const e = err as { message?: string; response?: { data?: { detail?: string } } };
+      const msg = e.response?.data?.detail || e.message || 'Failed to save step. Please retry.';
+      setStatusMessage({ type: 'error', text: msg });
       return;
     } finally {
       setLoading(false);
