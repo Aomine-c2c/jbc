@@ -355,21 +355,23 @@ async def update_user_roles(
 
 # ── Auth ────────────────────────────────────────────────────
 
-def _set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
+def _set_auth_cookies(response: Response, access_token: str, refresh_token: str, csrf_token: str | None = None) -> str:
     """Set browser credentials without exposing them to JavaScript storage."""
     secure = settings.ENVIRONMENT in {"production", "staging"}
     cookie_options = {"httponly": True, "secure": secure, "samesite": "lax", "path": "/"}
     response.set_cookie("dwrms_access_token", access_token, max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60, **cookie_options)
     response.set_cookie("dwrms_refresh_token", refresh_token, max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400, **cookie_options)
+    token = csrf_token or secrets.token_urlsafe(32)
     response.set_cookie(
         "dwrms_csrf_token",
-        secrets.token_urlsafe(32),
+        token,
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
         httponly=False,
         secure=secure,
         samesite="lax",
         path="/",
     )
+    return token
 
 
 @iam_router.post("/auth/login", response_model=TokenResponse)
@@ -405,8 +407,8 @@ async def login(
 
     access_token = create_access_token(subject=str(db_user.id))
     refresh_token = create_refresh_token(subject=str(db_user.id))
-    _set_auth_cookies(response, access_token, refresh_token)
-    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+    csrf_token = _set_auth_cookies(response, access_token, refresh_token)
+    return TokenResponse(access_token=access_token, refresh_token=refresh_token, csrf_token=csrf_token)
 
 
 @iam_router.post("/auth/refresh", response_model=TokenRefreshResponse)

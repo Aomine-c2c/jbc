@@ -14,11 +14,12 @@ jobs:
 
       - name: Sync Code to /opt/dwrms
         run: |
-          sudo mkdir -p /opt/dwrms
+          sudo mkdir -p /opt/dwrms 2>/dev/null || mkdir -p /opt/dwrms 2>/dev/null || true
+          sudo chown -R $USER:$USER /opt/dwrms 2>/dev/null || true
           if command -v rsync >/dev/null 2>&1; then
-            sudo rsync -av --exclude='.git' --exclude='node_modules' --exclude='.venv' ./ /opt/dwrms/
+            rsync -av --exclude='.git' --exclude='node_modules' --exclude='.venv' ./ /opt/dwrms/
           else
-            sudo cp -r ./* /opt/dwrms/
+            cp -r ./* /opt/dwrms/
           fi
 
       - name: Clear Frozen Port Conflicts
@@ -32,7 +33,7 @@ jobs:
         run: |
           cd /opt/dwrms
           if [ ! -f .env ] && [ -f .env.example ]; then
-            sudo cp .env.example .env
+            cp .env.example .env 2>/dev/null || sudo cp .env.example .env 2>/dev/null || true
           fi
           if command -v docker >/dev/null 2>&1; then
             sudo docker compose down --remove-orphans 2>/dev/null || docker compose down 2>/dev/null || true

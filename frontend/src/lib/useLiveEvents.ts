@@ -18,6 +18,7 @@ export function useLiveEvents(options: { enabled?: boolean } = { enabled: true }
   const [lastEvent, setLastEvent] = useState<LiveEventMessage | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const connectRef = useRef<() => void>(() => {});
 
   const connect = useCallback(async () => {
     if (typeof window === 'undefined') return;
@@ -43,7 +44,7 @@ export function useLiveEvents(options: { enabled?: boolean } = { enabled: true }
         // Exponential reconnect retry after 5s
         if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = setTimeout(() => {
-          if (options.enabled) connect();
+          if (options.enabled) connectRef.current();
         }, 5000);
       };
 
@@ -80,6 +81,10 @@ export function useLiveEvents(options: { enabled?: boolean } = { enabled: true }
       setIsConnected(false);
     }
   }, [options.enabled]);
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   useEffect(() => {
     if (!options.enabled) {

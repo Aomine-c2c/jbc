@@ -22,10 +22,15 @@ export async function login(email: string, password: string) {
     }
 
     if (typeof window !== 'undefined') {
-      // Credentials are stored in secure HttpOnly cookies by the API. Remove
-      // legacy browser-accessible tokens during the migration.
-      localStorage.removeItem('session');
-      localStorage.removeItem('refresh_token');
+      if (data?.access_token) {
+        localStorage.setItem('session', data.access_token);
+      }
+      if (data?.refresh_token) {
+        localStorage.setItem('refresh_token', data.refresh_token);
+      }
+      if (data?.csrf_token) {
+        localStorage.setItem('csrf_token', data.csrf_token);
+      }
       localStorage.setItem('user_email', email);
       window.location.href = '/';
     }
@@ -59,12 +64,17 @@ export function logout() {
     }
     localStorage.removeItem('session');
     localStorage.removeItem('refresh_token');
+    localStorage.removeItem('csrf_token');
     localStorage.removeItem('user_email');
     window.location.href = '/login';
   }
 }
 
 export function getCsrfToken(): string | null {
+  if (typeof window !== 'undefined') {
+    const fromStorage = localStorage.getItem('csrf_token');
+    if (fromStorage) return fromStorage;
+  }
   if (typeof document === 'undefined') return null;
   const cookie = document.cookie.split('; ').find((entry) => entry.startsWith('dwrms_csrf_token='));
   return cookie ? decodeURIComponent(cookie.split('=', 2)[1]) : null;

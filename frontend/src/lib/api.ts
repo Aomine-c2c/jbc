@@ -44,6 +44,10 @@ export interface ApiRequestInit extends RequestInit {
 }
 
 function getCsrfToken(): string | null {
+  if (typeof window !== 'undefined') {
+    const fromStorage = localStorage.getItem('csrf_token');
+    if (fromStorage) return fromStorage;
+  }
   if (typeof document === 'undefined') return null;
   const cookie = document.cookie.split('; ').find((entry) => entry.startsWith('dwrms_csrf_token='));
   return cookie ? decodeURIComponent(cookie.split('=', 2)[1]) : null;

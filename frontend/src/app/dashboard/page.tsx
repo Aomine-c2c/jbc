@@ -27,31 +27,32 @@ export default function DashboardPage() {
     fetchDepartments();
   }, []);
 
-  useEffect(() => {
-    fetchDashboardData(filters);
-  }, [filters]);
-
-  const fetchDashboardData = async (currentFilters: DashboardFilters) => {
+  const fetchDashboardData = useCallback(async (currentFilters: DashboardFilters) => {
     try {
       setLoading(true);
       setError(null);
-      // Construct payload, dropping empty values
-      const payload: any = {};
+      // Construct payload, dropping empty/all values
+      const payload: Record<string, unknown> = {};
       Object.entries(currentFilters).forEach(([k, v]) => {
-        if (v !== undefined && v !== '') {
+        if (v !== undefined && v !== '' && v !== 'all') {
           payload[k] = v;
         }
       });
       
       const res = await api.post('/api/v1/dashboard/metrics', payload);
       setData(res.data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to load dashboard data", err);
-      setError(err?.response?.data?.detail || "Failed to load dashboard data. Check your permissions.");
+      const message = err instanceof Error ? err.message : undefined;
+      setError(message || "Failed to load dashboard data. Check your permissions.");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchDashboardData(filters);
+  }, [fetchDashboardData, filters]);
 
   const handleExport = () => {
     // Simple CSV export of timeseries data for demonstration
