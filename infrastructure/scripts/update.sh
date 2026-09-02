@@ -50,8 +50,8 @@ if [ "$LOCAL_HASH" != "$REMOTE_HASH" ] && [ "$REMOTE_HASH" != "UNKNOWN" ]; then
     docker compose -f "${INSTALL_DIR}/docker-compose.yml" build >/dev/null 2>&1 || true
     docker compose -f "${INSTALL_DIR}/docker-compose.yml" up -d
     sleep 8
-    docker exec dwrms-backend python init_db_all.py >/dev/null 2>&1 || true
-    docker exec dwrms-backend python seed_faker.py >/dev/null 2>&1 || true
+    docker compose -f "${INSTALL_DIR}/docker-compose.yml" exec -T backend python init_db_all.py >/dev/null 2>&1 || true
+    docker compose -f "${INSTALL_DIR}/docker-compose.yml" exec -T backend python seed_faker.py >/dev/null 2>&1 || true
 
     NEW_HASH=$(git rev-parse HEAD)
     echo "[$(date -u)] [AUTONOMOUS SYNC] Application updated and verified live on commit ${NEW_HASH}."
