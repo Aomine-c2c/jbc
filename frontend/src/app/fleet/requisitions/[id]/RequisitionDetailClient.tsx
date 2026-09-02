@@ -86,9 +86,9 @@ export default function RequisitionDetailClient({ params }: { params: Promise<{ 
           {req.status === "SUBMITTED" && (
             <Protect capability="requisition:review">
               <div className="flex flex-col gap-2">
-                <button onClick={() => handleAction('review', { comments: "Reviewed" })} className="btn-success">Review</button>
-                <button onClick={() => handleAction('return-for-correction', { correction_reason: "Needs updates" })} className="btn-warning">Return for Correction</button>
-                <button onClick={() => handleAction('reject', { comments: "Rejected" })} className="btn-danger">Reject</button>
+                <button onClick={() => handleAction('review', { comments: "" })} className="btn-success">Review</button>
+                <button onClick={() => handleAction('return-for-correction', { correction_reason: "" })} className="btn-warning">Return for Correction</button>
+                <button onClick={() => handleAction('reject', { comments: "" })} className="btn-danger">Reject</button>
               </div>
             </Protect>
           )}
@@ -96,8 +96,8 @@ export default function RequisitionDetailClient({ params }: { params: Promise<{ 
           {(req.status === "REVIEWED" || req.status === "RETURNED_FOR_CORRECTION") && (
             <Protect capability="requisition:approve">
               <div className="flex gap-2">
-                <button onClick={() => handleAction('approve', { comments: "Approved" })} className="btn-success flex-1">Approve</button>
-                <button onClick={() => handleAction('reject', { comments: "Rejected" })} className="btn-danger flex-1">Reject</button>
+                <button onClick={() => handleAction('approve', { comments: "" })} className="btn-success flex-1">Approve</button>
+                <button onClick={() => handleAction('reject', { comments: "" })} className="btn-danger flex-1">Reject</button>
               </div>
             </Protect>
           )}
@@ -113,19 +113,19 @@ export default function RequisitionDetailClient({ params }: { params: Promise<{ 
                   onChange={(e) => setMachineId(e.target.value)}
                 />
                 <button 
-                  onClick={() => handleAction('allocate', { machine_id: machineId || "00000000-0000-0000-0000-000000000000" })} 
+                  onClick={() => handleAction('allocate', { machine_id: machineId || "" })} 
                   className="btn-primary"
                 >
                   Allocate Machine
                 </button>
                 <button 
-                  onClick={() => handleAction('allocate-partial', { machine_id: machineId || "00000000-0000-0000-0000-000000000000" })} 
+                  onClick={() => handleAction('allocate-partial', { machine_id: machineId || "" })} 
                   className="btn-warning"
                 >
                   Allocate Partially
                 </button>
                 <button 
-                  onClick={() => handleAction('mark-unavailable', { reason: "No machines available" })} 
+                  onClick={() => handleAction('mark-unavailable', { reason: "" })} 
                   className="btn-danger"
                 >
                   Mark Unavailable
@@ -165,7 +165,7 @@ export default function RequisitionDetailClient({ params }: { params: Promise<{ 
                   onChange={(e) => setEndHours(e.target.value)}
                 />
                 <button 
-                  onClick={() => handleAction('return', { end_hours: parseInt(endHours) || 0, return_notes: "Work complete" })} 
+                  onClick={() => handleAction('return', { end_hours: parseInt(endHours) || 0, return_notes: "" })} 
                   className="btn-warning"
                 >
                   Return Equipment
@@ -176,7 +176,7 @@ export default function RequisitionDetailClient({ params }: { params: Promise<{ 
 
           {req.status === "RETURNED" && (
             <Protect capability="requisition:close">
-              <button onClick={() => handleAction('close', { close_notes: "Closed after return" })} className="btn-primary">Close Requisition</button>
+              <button onClick={() => handleAction('close', { close_notes: "" })} className="btn-primary">Close Requisition</button>
             </Protect>
           )}
         </div>

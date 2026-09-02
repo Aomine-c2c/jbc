@@ -114,7 +114,7 @@ async def get_current_user(
         pass
 
     # 2) Mock-token handling for tests
-    if settings.ENVIRONMENT == "testing" and settings.ALLOW_TEST_TOKENS and token.startswith("mock_"):
+    if settings.ENVIRONMENT not in {"production", "staging"} and settings.ALLOW_TEST_TOKENS and token.startswith("mock_"):
         role = token.removeprefix("mock_").removesuffix("_token")
         perms = MOCK_PERMISSIONS.get(role, set())
         mock_dept = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -152,11 +152,17 @@ async def lifespan(app: FastAPI):
     # Demo data is intentionally opt-in so production never creates a known
     # default administrator account.
     if settings.SEED_DEMO_DATA:
+        if settings.ENVIRONMENT in {"production", "staging"}:
+            raise RuntimeError("Demo data seeding is forbidden in production/staging environments")
         try:
             from seed import seed
             await seed()
         except Exception as e:
             logger.warning(f"Demo data seed failed: {e}")
+    
+    # 3. Security guard: test tokens must never be enabled in production/staging
+    if settings.ALLOW_TEST_TOKENS and settings.ENVIRONMENT in {"production", "staging"}:
+        raise RuntimeError("ALLOW_TEST_TOKENS is enabled in a production/staging environment. This is a critical security misconfiguration.")
         
     # 4. Start background notification / escalation loop
     import asyncio

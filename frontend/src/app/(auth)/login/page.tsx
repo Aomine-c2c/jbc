@@ -17,12 +17,16 @@ export default function LoginPage() {
   const [activeProfileId, setActiveProfileId] = useState<string>('');
 
   useEffect(() => {
+    let cancelled = false;
     getProfiles().then((list) => {
+      if (cancelled) return;
       setProfiles(list);
-      getActiveProfile().then((active) => {
-        setActiveProfileId(active?.id || list[0]?.id || '');
-      });
+      return getActiveProfile();
+    }).then((active) => {
+      if (cancelled) return;
+      setActiveProfileId(active?.id || list[0]?.id || '');
     });
+    return () => { cancelled = true; };
   }, []);
 
   const handleProfileChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -37,9 +41,12 @@ export default function LoginPage() {
     if (!email || !password) return;
     setLoading(true);
     setError(null);
-    const result = await login(email, password);
-    if (result?.error) {
-      setError(result.error);
+    try {
+      const result = await login(email, password);
+      if (result?.error) {
+        setError(result.error);
+      }
+    } finally {
       setLoading(false);
     }
   };
@@ -49,9 +56,12 @@ export default function LoginPage() {
     setPassword(rolePass);
     setLoading(true);
     setError(null);
-    const result = await login(roleEmail, rolePass);
-    if (result?.error) {
-      setError(result.error);
+    try {
+      const result = await login(roleEmail, rolePass);
+      if (result?.error) {
+        setError(result.error);
+      }
+    } finally {
       setLoading(false);
     }
   };
@@ -166,112 +176,114 @@ export default function LoginPage() {
           </form>
 
           {/* QUICK CREDENTIALS SELECTOR */}
-          <div className="pt-4 border-t border-border space-y-2.5">
-            <div className="flex items-center justify-between text-[10px] font-mono uppercase text-muted-foreground">
-              <span>Pre-configured Test Credentials:</span>
-              <span>Pass: password123</span>
+          {process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGINS !== 'false' && (
+            <div className="pt-4 border-t border-border space-y-2.5">
+              <div className="flex items-center justify-between text-[10px] font-mono uppercase text-muted-foreground">
+                <span>Pre-configured Test Credentials:</span>
+                <span>Pass: password123</span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin('admin@bikita.com', 'password123')}
+                  className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
+                    <ShieldCheck className="size-3 text-primary" />
+                    <span>Admin</span>
+                  </div>
+                  <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
+                    admin@bikita.com
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin('supervisor@bikita.com', 'password123')}
+                  className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
+                    <UserCheck className="size-3 text-emerald-500" />
+                    <span>Supervisor</span>
+                  </div>
+                  <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
+                    supervisor@bikita.com
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin('tech@bikita.com', 'password123')}
+                  className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
+                    <Wrench className="size-3 text-blue-500" />
+                    <span>Technician</span>
+                  </div>
+                  <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
+                    tech@bikita.com
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin('operator@bikita.com', 'password123')}
+                  className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
+                    <Gauge className="size-3 text-orange-500" />
+                    <span>Operator</span>
+                  </div>
+                  <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
+                    operator@bikita.com
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin('coordinator@bikita.com', 'password123')}
+                  className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
+                    <Users className="size-3 text-cyan-500" />
+                    <span>Coordinator</span>
+                  </div>
+                  <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
+                    coordinator@bikita.com
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin('safety@bikita.com', 'password123')}
+                  className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
+                    <Shield className="size-3 text-rose-500" />
+                    <span>Safety Officer</span>
+                  </div>
+                  <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
+                    safety@bikita.com
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin('mechmgr@bikita.com', 'password123')}
+                  className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
+                    <Users className="size-3 text-amber-500" />
+                    <span>Dept Manager</span>
+                  </div>
+                  <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
+                    mechmgr@bikita.com
+                  </div>
+                </button>
+              </div>
             </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('admin@bikita.com', 'password123')}
-                className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
-              >
-                <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
-                  <ShieldCheck className="size-3 text-primary" />
-                  <span>Admin</span>
-                </div>
-                <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
-                  admin@bikita.com
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('supervisor@bikita.com', 'password123')}
-                className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
-              >
-                <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
-                  <UserCheck className="size-3 text-emerald-500" />
-                  <span>Supervisor</span>
-                </div>
-                <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
-                  supervisor@bikita.com
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('tech@bikita.com', 'password123')}
-                className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
-              >
-                <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
-                  <Wrench className="size-3 text-blue-500" />
-                  <span>Technician</span>
-                </div>
-                <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
-                  tech@bikita.com
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('operator@bikita.com', 'password123')}
-                className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
-              >
-                <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
-                  <Gauge className="size-3 text-orange-500" />
-                  <span>Operator</span>
-                </div>
-                <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
-                  operator@bikita.com
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('coordinator@bikita.com', 'password123')}
-                className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
-              >
-                <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
-                  <Users className="size-3 text-cyan-500" />
-                  <span>Coordinator</span>
-                </div>
-                <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
-                  coordinator@bikita.com
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('safety@bikita.com', 'password123')}
-                className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
-              >
-                <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
-                  <Shield className="size-3 text-rose-500" />
-                  <span>Safety Officer</span>
-                </div>
-                <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
-                  safety@bikita.com
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('mechmgr@bikita.com', 'password123')}
-                className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
-              >
-                <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
-                  <Users className="size-3 text-amber-500" />
-                  <span>Dept Manager</span>
-                </div>
-                <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
-                  mechmgr@bikita.com
-                </div>
-              </button>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

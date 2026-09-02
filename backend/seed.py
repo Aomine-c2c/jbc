@@ -121,11 +121,12 @@ async def seed():
             "job_request:read", "job_request:create", "job_request:update", "job_request:delete", "job_request:approve",
             "machine_requisition:read", "machine_requisition:create", "machine_requisition:update", "machine_requisition:approve",
             "machine:view", "machine:allocate", "machine:manage",
-            "requisition:dispatch",
+            "requisition:create", "requisition:approve", "requisition:submit", "requisition:review",
+            "requisition:allocate", "requisition:dispatch", "requisition:return", "requisition:close",
             "users:read", "users:manage",
             "departments:read", "departments:manage",
             "settings:manage",
-            "system:configure", "audit_logs:read"
+            "system:configure", "audit_logs:read", "audit:read"
         ]
         
         perm_objs = {}
@@ -159,6 +160,7 @@ async def seed():
                 "perms": [
                     ("job_card:read", Scope.ASSIGNED),
                     ("job_card:update", Scope.ASSIGNED),
+                    ("job_card:submit", Scope.ASSIGNED),
                     ("job_request:read", Scope.DEPARTMENT)
                 ]
             },
@@ -176,6 +178,9 @@ async def seed():
                     ("job_card:update", Scope.DEPARTMENT),
                     ("job_card:approve", Scope.DEPARTMENT),
                     ("job_card:verify", Scope.DEPARTMENT),
+                    ("job_card:assign", Scope.DEPARTMENT),
+                    ("job_card:return", Scope.DEPARTMENT),
+                    ("job_card:allocate", Scope.DEPARTMENT),
                     ("job_request:read", Scope.DEPARTMENT),
                     ("job_request:approve", Scope.DEPARTMENT),
                     ("users:read", Scope.DEPARTMENT)
@@ -198,14 +203,23 @@ async def seed():
                 "perms": [
                     ("machine:view", Scope.GLOBAL),
                     ("machine:allocate", Scope.GLOBAL),
+                    ("machine:manage", Scope.GLOBAL),
                     ("job_card:allocate", Scope.GLOBAL),
                     ("machine_requisition:read", Scope.GLOBAL),
                     ("machine_requisition:approve", Scope.GLOBAL),
+                    ("requisition:create", Scope.GLOBAL),
+                    ("requisition:approve", Scope.GLOBAL),
+                    ("requisition:submit", Scope.GLOBAL),
+                    ("requisition:review", Scope.GLOBAL),
+                    ("requisition:allocate", Scope.GLOBAL),
+                    ("requisition:dispatch", Scope.GLOBAL),
+                    ("requisition:return", Scope.GLOBAL),
+                    ("requisition:close", Scope.GLOBAL),
                 ]
             },
             "Safety_Officer": {
                 "perms": [
-                    ("job_card:view", Scope.GLOBAL),
+                    ("job_card:read", Scope.GLOBAL),
                     ("job_card:approve", Scope.GLOBAL),
                 ]
             },

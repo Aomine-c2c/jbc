@@ -113,12 +113,21 @@ export async function apiFetch(endpoint: string, options: ApiRequestInit = {}) {
         const plainHeaders: Record<string, string> = {};
         headers.forEach((val, key) => plainHeaders[key] = val);
         
+        let bodyToStore: string | null = null;
+        if (options.body) {
+          if (typeof options.body === 'string') {
+            bodyToStore = options.body;
+          } else {
+            bodyToStore = JSON.stringify(options.body);
+          }
+        }
+        
         await offlineStore.addSyncRequest({
           id: syncId,
           url,
           method: options.method || 'POST',
           headers: plainHeaders,
-          body: options.body ? JSON.parse(options.body as string) : null,
+          body: bodyToStore,
           created_at: new Date().toISOString(),
           status: 'PENDING'
         });
@@ -160,7 +169,9 @@ export async function apiFetch(endpoint: string, options: ApiRequestInit = {}) {
     if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
       localStorage.removeItem('session');
       localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user_email');
       window.location.href = '/login';
+      return;
     }
   }
 

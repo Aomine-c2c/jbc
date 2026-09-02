@@ -441,7 +441,7 @@ async def list_collaborators(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_get_current_user()),
 ):
-    return await CollaboratorService.list(db, job_id)
+    return await CollaboratorService.list(db, job_card_id, current_user)
 
 
 @job_router.post(

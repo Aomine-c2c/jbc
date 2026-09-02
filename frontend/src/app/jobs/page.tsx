@@ -91,18 +91,7 @@ export default function JobCardList() {
 
   useEffect(() => {
     let isMounted = true;
-    apiFetch("/api/v1/job-cards")
-      .then((res) => {
-        if (isMounted && res) {
-          setJobs(res);
-        }
-      })
-      .catch((error) => {
-        console.error("Failed to fetch jobs", error);
-      })
-      .finally(() => {
-        if (isMounted) setLoading(false);
-      });
+    fetchJobs()
 
     // Real-time SSE Live Event Listener
     const handleLiveEvent = (e: Event) => {

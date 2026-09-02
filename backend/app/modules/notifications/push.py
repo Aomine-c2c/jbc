@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 
 from app.core.logging_config import logger
+from app.core.config import settings
 
 
 class PushSubscriptionKeys(BaseModel):
@@ -37,8 +38,8 @@ class PushNotificationManager:
     def __init__(self):
         # In-memory subscription store: user_id -> List[subscription_dict]
         self._subscriptions: Dict[str, List[dict]] = {}
-        # Default VAPID Public Key for application server identification
-        self.vapid_public_key = "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckj0bSgvWf4Qx3_Fh0qw1yZ7Y6mI48"
+        # Use configured VAPID keys; fall back to a placeholder only in development.
+        self.vapid_public_key = settings.VAPID_PUBLIC_KEY or "dev-only-no-vapid-key-configured"
 
     def get_public_vapid_key(self) -> str:
         return self.vapid_public_key

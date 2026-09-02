@@ -6,7 +6,6 @@
 
 const CACHE_NAME = 'dwrms-static-v2.3.0';
 const STATIC_ASSETS = [
-  '/',
   '/favicon.ico',
   '/manifest.json',
 ];
@@ -71,7 +70,7 @@ self.addEventListener('fetch', (event) => {
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() => {
-        return caches.match('/') || caches.match(event.request);
+        return caches.match('/login');
       })
     );
   }

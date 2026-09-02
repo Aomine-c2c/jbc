@@ -355,7 +355,11 @@ class RequestService:
     async def fulfill_request(
         db: AsyncSession, request_id: uuid.UUID, data: RequestFulfill, current_user: User
     ) -> OperationalRequest:
-        res = await db.execute(select(OperationalRequest).where(OperationalRequest.id == request_id))
+        res = await db.execute(
+            select(OperationalRequest)
+            .where(OperationalRequest.id == request_id)
+            .with_for_update()
+        )
         req = res.scalar_one_or_none()
         if not req:
             raise HTTPException(status_code=404, detail="Request not found")
@@ -397,10 +401,12 @@ class RequestService:
         db: AsyncSession, request_id: uuid.UUID, data: MaterialIssueRequest, current_user: User
     ) -> RequestMaterialItem:
         res = await db.execute(
-            select(RequestMaterialItem).where(
+            select(RequestMaterialItem)
+            .where(
                 RequestMaterialItem.id == data.item_id,
                 RequestMaterialItem.request_id == request_id
             )
+            .with_for_update()
         )
         item = res.scalar_one_or_none()
         if not item:

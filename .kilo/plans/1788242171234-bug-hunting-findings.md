@@ -19,6 +19,7 @@ The middleware caches ALL non-5xx responses, including 4xx client errors (400, 4
 **Impact:** Users see stale 400/409 errors on retry; legitimate fixes to request payloads are ignored because the cached error is replayed.
 
 **Fix:** Change the condition to cache only successful responses:
+
 ```python
 if response.status_code < 300:
 ```

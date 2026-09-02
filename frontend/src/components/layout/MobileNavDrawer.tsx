@@ -36,7 +36,7 @@ export function MobileNavDrawer({ isOpen, onClose, onOpenServerConfig, userInfo 
   const adminLinks = [
     { name: 'User Management', href: '/admin/users', icon: Users, capability: 'users:manage' },
     { name: 'Platform Admin', href: '/admin/platform', icon: Server, capability: 'settings:manage' },
-    { name: 'System Info & Telemetry', href: '/admin/system', icon: Database },
+    { name: 'System Info & Telemetry', href: '/admin/system', icon: Database, capability: 'settings:manage' },
     { name: 'Security Audit Logs', href: '/admin/audit', icon: ShieldAlert, capability: 'settings:manage' },
   ];
 

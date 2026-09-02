@@ -38,14 +38,25 @@ export async function login(email: string, password: string) {
 export function logout() {
   if (typeof window !== 'undefined') {
     const csrfToken = getCsrfToken();
-    void getApiUrl().then((apiUrl) =>
-      fetch(`${apiUrl}/api/v1/iam/auth/logout`, {
+    const url = '/api/v1/iam/auth/logout';
+    const body = new URLSearchParams();
+    if (csrfToken) {
+      // sendBeacon only supports blob/form/arraybuffer; use a small form payload
+      body.set('csrf_token', csrfToken);
+    }
+    const blob = new Blob([body.toString()], { type: 'application/x-www-form-urlencoded' });
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(url, blob);
+    } else {
+      // Fallback for browsers without sendBeacon
+      fetch(url, {
         method: 'POST',
         credentials: 'include',
-        headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
         keepalive: true,
-      })
-    );
+      });
+    }
     localStorage.removeItem('session');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_email');

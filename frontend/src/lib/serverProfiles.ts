@@ -175,7 +175,7 @@ export async function getProfiles(): Promise<ServerProfile[]> {
     try {
       const { load } = await import('@tauri-apps/plugin-store');
       const store = await load('server_profiles.json');
-      const stored = await store.get<ServerProfile[]>('profiles');
+      const stored = (await store.get<ServerProfile[]>(PROFILES_STORAGE_KEY)) || (await store.get<ServerProfile[]>('profiles'));
       if (stored && stored.length > 0) return stored;
     } catch (e) {
       console.warn('Tauri store read error:', e);
@@ -232,10 +232,14 @@ async function saveProfilesList(profiles: ServerProfile[]): Promise<void> {
 
   // Sync to Tauri store if in desktop app
   if ((window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__) {
-    const { Store } = await import('@tauri-apps/plugin-store');
-    const store = new Store('.settings.dat');
-    await store.set(PROFILES_STORAGE_KEY, profiles);
-    await store.save();
+    try {
+      const { load } = await import('@tauri-apps/plugin-store');
+      const store = await load('server_profiles.json');
+      await store.set(PROFILES_STORAGE_KEY, profiles);
+      await store.save();
+    } catch (e) {
+      console.warn('Tauri store save error:', e);
+    }
   }
 }
 
@@ -260,10 +264,14 @@ export async function setActiveProfile(profileId: string): Promise<void> {
   localStorage.setItem(ACTIVE_PROFILE_ID_KEY, profileId);
 
   if ((window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__) {
-    const { Store } = await import('@tauri-apps/plugin-store');
-    const store = new Store('.settings.dat');
-    await store.set(ACTIVE_PROFILE_ID_KEY, profileId);
-    await store.save();
+    try {
+      const { load } = await import('@tauri-apps/plugin-store');
+      const store = await load('server_profiles.json');
+      await store.set(ACTIVE_PROFILE_ID_KEY, profileId);
+      await store.save();
+    } catch (e) {
+      console.warn('Tauri store setActiveProfile error:', e);
+    }
   }
 
   window.dispatchEvent(new Event('server-config-changed'));
@@ -305,18 +313,24 @@ export async function getActiveApiUrl(): Promise<string> {
 
   const active = await getActiveProfile();
 
-  // In local browser development, the frontend runs on port 3000/3001 while the API runs on 8000.
-  // If the active profile is not the production default and we're on a dev origin, use the local backend.
+  // In local browser/Tauri development, use the local backend unless we're
+  // explicitly on a production-like origin. Covers http://localhost:3000,
+  // http://127.0.0.1:3000, and Tauri's tauri://localhost dev origin.
   if (typeof window !== 'undefined') {
     const origin = window.location.origin;
-    const isDevOrigin = ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:3001', 'http://127.0.0.1:3001'].includes(origin);
-    if (isDevOrigin && active && active.id !== 'prod-default') {
+    const isDevOrigin = [
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://localhost:3001',
+      'http://127.0.0.1:3001',
+      'tauri://localhost',
+    ].includes(origin);
+
+    if (isDevOrigin) {
       return DEFAULT_BACKEND_URL;
     }
+
     if (!active || active.id === 'prod-default') {
-      if (isDevOrigin) {
-        return DEFAULT_BACKEND_URL;
-      }
       return origin;
     }
   }

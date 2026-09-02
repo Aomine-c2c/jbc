@@ -197,7 +197,11 @@ class MaterialService:
     async def issue_material(
         db: AsyncSession, requirement_id: uuid.UUID, data: MaterialIssueRequest, current_user: User
     ) -> MaterialTransaction:
-        res = await db.execute(select(MaterialRequirement).where(MaterialRequirement.id == requirement_id))
+        res = await db.execute(
+            select(MaterialRequirement)
+            .where(MaterialRequirement.id == requirement_id)
+            .with_for_update()
+        )
         req = res.scalar_one_or_none()
         if not req:
             raise HTTPException(status_code=404, detail="Material requirement not found")

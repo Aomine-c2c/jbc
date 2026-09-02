@@ -57,8 +57,10 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         if not idempotency_key:
             return await call_next(request)
 
-        # Build compound cache key with path and method
-        cache_key = f"{request.method}:{request.url.path}:{idempotency_key}"
+        # Build compound cache key with path, method, user identity, and payload hash
+        user_id = getattr(request.state, "user_id", None) or "anonymous"
+        body_hash = hashlib.sha256(await request.body()).hexdigest()[:16]
+        cache_key = f"{user_id}:{request.method}:{request.url.path}:{body_hash}:{idempotency_key}"
 
         cached = idempotency_store.get(cache_key)
         if cached:

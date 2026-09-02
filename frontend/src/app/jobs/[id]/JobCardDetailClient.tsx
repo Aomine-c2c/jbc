@@ -243,28 +243,28 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
   });
 
   // Assignment Form
-  const [assignedSupervisorId, setAssignedSupervisorId] = useState("5530362d-eff8-400f-9d4e-7338d7c1d0e4");
-  const [assignedPersonnel, setAssignedPersonnel] = useState("T. Moyo (Fitter Lead), K. Chidzero (Auto Electrician)");
+  const [assignedSupervisorId, setAssignedSupervisorId] = useState("");
+  const [assignedPersonnel, setAssignedPersonnel] = useState("");
 
   // Complete work technical report form
   const [completeForm, setCompleteForm] = useState({
     action_taken: "",
-    downtime_hours: 2.5,
+    downtime_hours: 0,
     completion_notes: "",
-    labour_details: "Fitter (Lead): 2.5 hrs • Electrician: 1.5 hrs",
-    parts: [{ part_name: "Jaw Plate Set (Hardox 500)", part_number: "CR-PLT-04", quantity: 2, unit_cost: 450.0 }],
+    labour_details: "",
+    parts: [] as { part_name: string; part_number: string; quantity: number; unit_cost: number }[],
   });
 
   // Verify Form
-  const [verifyComment, setVerifyComment] = useState("QA test completed. Equipment operating within vibration and thermal tolerance.");
+  const [verifyComment, setVerifyComment] = useState("");
 
   const { isOnline } = useConnection();
 
   // Requester Confirmation Form
-  const [confirmNotes, setConfirmNotes] = useState("Equipment handed over to plant operator. Trial run successful.");
+  const [confirmNotes, setConfirmNotes] = useState("");
 
   // Close Signature state
-  const closeComment = "Work order formally signed off and archived into DWRMS records.";
+  const [closeComment, setCloseComment] = useState("");
 
   // ── Fetch Report ──────────────────────────────────────────────
   const fetchReport = useCallback(async (jobStatus: string) => {
@@ -505,7 +505,16 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
       if (action === 'return') endpoint = `/api/v1/job-cards/${id}/return`;
       
       if (action === 'delegate' || action === 'escalate') {
-        const { id: userId } = JSON.parse(localStorage.getItem('user_details') || '{}');
+        let userId: string | undefined;
+        try {
+          const raw = localStorage.getItem('user_details');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            userId = parsed?.id;
+          }
+        } catch {
+          // Ignore corrupted localStorage data
+        }
         await decideApproval(
           'job_card', 
           id, 
@@ -1412,7 +1421,7 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
                             {att.caption && <div className="text-[10px] text-muted-foreground">{att.caption}</div>}
                             <div className="text-[10px] font-mono text-muted-foreground">{att.file_size_kb > 0 ? `${att.file_size_kb} KB` : ""}</div>
                             {att.file_url && (
-                              <a href={att.file_url} target="_blank" rel="noreferrer" className="text-[10px] text-primary underline">View</a>
+                               <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary underline">View</a>
                             )}
                           </div>
                         );
@@ -1973,10 +1982,11 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
                 value={assignedSupervisorId}
                 onChange={(e) => setAssignedSupervisorId(e.target.value)}
                 className="h-8 w-full rounded border border-input bg-card px-2.5 py-1 text-xs text-foreground outline-none focus:border-ring font-mono"
-              >
-                <option value="5530362d-eff8-400f-9d4e-7338d7c1d0e4">Eng. T. Mutasa (Mechanical Supervisor)</option>
-                <option value="8f60d491-9c11-4d72-9191-c5a110f7c0af">Eng. S. Ndlovu (Electrical Supervisor)</option>
-              </select>
+               >
+                 {/* TODO: Fetch supervisors from /api/v1/users?role=supervisor */}
+                 <option value="">Select Supervisor...</option>
+                 <option value="8f60d491-9c11-4d72-9191-c5a110f7c0af">Eng. S. Ndlovu (Electrical Supervisor)</option>
+               </select>
             </div>
 
             <div>

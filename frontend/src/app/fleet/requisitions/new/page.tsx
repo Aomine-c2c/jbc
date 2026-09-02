@@ -44,10 +44,29 @@ export default function NewRequisition() {
     setIsSubmitting(true);
     
     try {
+      if (!startTime || !endTime) {
+        alert("Please select both start and end times.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      const start = new Date(startTime);
+      const end = new Date(endTime);
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        alert("Invalid date format.");
+        setIsSubmitting(false);
+        return;
+      }
+      if (end <= start) {
+        alert("End time must be after start time.");
+        setIsSubmitting(false);
+        return;
+      }
+
       const payload = {
         machine_type_id: machineTypeId || "00000000-0000-0000-0000-000000000000",
-        start_time: new Date(startTime).toISOString(),
-        end_time: new Date(endTime).toISOString(),
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
         job_card_id: jobCardId ? jobCardId : null,
       };
 

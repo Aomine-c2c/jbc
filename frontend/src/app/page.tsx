@@ -31,17 +31,25 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+    const controller = new AbortController();
     async function loadAnalytics() {
       try {
-        const data = await apiFetch("/api/v1/dashboard/analytics");
-        setAnalytics(data);
+        const data = await apiFetch("/api/v1/dashboard/analytics", { signal: controller.signal });
+        if (mounted) setAnalytics(data);
       } catch (error) {
-        console.error("Failed to load analytics", error);
+        if (mounted && !(error instanceof DOMException && error.name === 'AbortError')) {
+          console.error("Failed to load analytics", error);
+        }
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
     loadAnalytics();
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
   }, []);
 
   if (loading) {

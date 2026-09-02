@@ -769,6 +769,17 @@ class JobCardService:
         if not job:
             raise HTTPException(status_code=404, detail="Job card not found")
 
+        user_perms = _get_user_permissions(current_user)
+        if not AuthzGuard.check_permission(
+            current_user,
+            "job_card:update",
+            user_perms,
+            resource_owner_id=job.creator_id,
+            resource_dept_id=job.department_id,
+            assigned_user_id=job.supervisor_id,
+        ):
+            raise HTTPException(status_code=403, detail="Not authorized to confirm this job card")
+
         job.requester_confirmed = data.requester_confirmed
         job.requester_notes = data.requester_notes
         job.requester_confirmed_at = datetime.utcnow()
@@ -943,6 +954,17 @@ class JobCardService:
         if not job:
             raise HTTPException(status_code=404, detail="Job card not found")
 
+        user_perms = _get_user_permissions(current_user)
+        if not AuthzGuard.check_permission(
+            current_user,
+            "job_card:update",
+            user_perms,
+            resource_owner_id=job.creator_id,
+            resource_dept_id=job.department_id,
+            assigned_user_id=job.supervisor_id,
+        ):
+            raise HTTPException(status_code=403, detail="Not authorized to add attachments to this job card")
+
         attachment = JobCardAttachment(
             job_card_id=job.id,
             filename=data.filename,
@@ -1074,11 +1096,8 @@ class WorkPackageService:
     async def create(
         db: AsyncSession, job_card_id: uuid.UUID, data: WorkPackageCreate, current_user: User
     ) -> WorkPackage:
-        # Verify parent Job Card exists
-        result = await db.execute(select(JobCard).where(JobCard.id == job_card_id))
-        job = result.scalar_one_or_none()
-        if not job:
-            raise HTTPException(status_code=404, detail="Job Card not found")
+        # Verify parent Job Card exists and user has access to it
+        job = await JobCardService.get(db, job_card_id, current_user)
         if job.status in ("CLOSED", "CANCELLED"):
             raise HTTPException(status_code=409, detail="Cannot add Work Packages to a closed or cancelled Job Card")
 
@@ -1142,6 +1161,8 @@ class WorkPackageService:
 
     @staticmethod
     async def list(db: AsyncSession, job_card_id: uuid.UUID, current_user: User) -> list[WorkPackage]:
+        # Verify parent Job Card access first
+        await JobCardService.get(db, job_card_id, current_user)
         result = await db.execute(
             select(WorkPackage)
             .where(WorkPackage.job_card_id == job_card_id)
@@ -1155,6 +1176,8 @@ class WorkPackageService:
         wp = result.scalar_one_or_none()
         if not wp:
             raise HTTPException(status_code=404, detail="Work Package not found")
+        # Verify parent Job Card access
+        await JobCardService.get(db, wp.job_card_id, current_user)
         return wp
 
     @staticmethod
@@ -1286,10 +1309,8 @@ class CollaboratorService:
     async def add(
         db: AsyncSession, job_card_id: uuid.UUID, data: JobCardCollaboratorCreate, current_user: User
     ) -> JobCardCollaborator:
-        result = await db.execute(select(JobCard).where(JobCard.id == job_card_id))
-        job = result.scalar_one_or_none()
-        if not job:
-            raise HTTPException(status_code=404, detail="Job Card not found")
+        # Verify parent Job Card exists and user has access
+        job = await JobCardService.get(db, job_card_id, current_user)
         if job.status in ("CLOSED", "CANCELLED"):
             raise HTTPException(status_code=409, detail="Cannot modify collaborators on a closed Job Card")
 
@@ -1321,8 +1342,10 @@ class CollaboratorService:
 
     @staticmethod
     async def list(
-        db: AsyncSession, job_card_id: uuid.UUID
+        db: AsyncSession, job_card_id: uuid.UUID, current_user: User
     ) -> list[JobCardCollaborator]:
+        # Verify parent Job Card access first
+        await JobCardService.get(db, job_card_id, current_user)
         result = await db.execute(
             select(JobCardCollaborator).where(JobCardCollaborator.job_card_id == job_card_id)
         )

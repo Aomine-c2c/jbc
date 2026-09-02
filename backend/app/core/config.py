@@ -66,6 +66,9 @@ class Settings(BaseSettings):
     SEED_DEMO_DATA: bool = False
     # Test-only mock bearer tokens are never accepted in a normal runtime.
     ALLOW_TEST_TOKENS: bool = False
+    # Web Push VAPID keys (generate with: openssl ecparam -genkey -name prime256v1 -out private.pem && openssl ec -in private.pem -pubout -out public.pem)
+    VAPID_PRIVATE_KEY: str | None = None
+    VAPID_PUBLIC_KEY: str | None = None
 
     # Frontend URLs for CORS
     FRONTEND_URL: str = "http://localhost:3000"

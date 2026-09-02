@@ -125,11 +125,16 @@ class NetworkResilienceManager {
       const apiUrl = await getActiveApiUrl();
       const t0 = performance.now();
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+
       const res = await fetch(`${apiUrl}/api/v1/health`, {
         method: 'GET',
         headers: { 'Cache-Control': 'no-cache' },
-        signal: AbortSignal.timeout(4000),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (res.ok) {
         const latency = Math.round(performance.now() - t0);

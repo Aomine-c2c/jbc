@@ -94,7 +94,13 @@ export default function MyWorkPage() {
   }, []);
 
   useEffect(() => {
+    let mounted = true;
+    const controller = new AbortController();
     loadData();
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
   }, [loadData]);
 
   // Derived filter categories
@@ -257,6 +263,8 @@ export default function MyWorkPage() {
                 onClick={() => {
                   if (item.approval_request.resource_type === 'job_card') {
                     router.push(`/jobs/${item.approval_request.resource_id}`);
+                  } else if (item.approval_request.resource_type === 'machine_requisition') {
+                    router.push(`/fleet/requisitions/${item.approval_request.resource_id}`);
                   } else {
                     router.push(`/fleet/${item.approval_request.resource_id}`);
                   }

@@ -35,13 +35,13 @@ export function Sidebar({ onOpenServerConfig }: SidebarProps = {}) {
     { name: "Ops Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Approvals Inbox", href: "/approvals", icon: ShieldCheck, badge: pendingCount !== null && pendingCount > 0 ? pendingCount : null },
     { name: "Job Cards", href: "/jobs", icon: Wrench, capability: "job_card:read" },
-    { name: "Fleet & Machines", href: "/fleet", icon: Truck },
+    { name: "Fleet & Machines", href: "/fleet", icon: Truck, capability: "machine:view" },
     { name: "Organization", href: "/admin/org", icon: Building2, capability: "users:manage" },
     { name: "Locations", href: "/admin/locations", icon: MapPin, capability: "settings:manage" },
     { name: "User Management", href: "/admin/users", icon: Users, capability: "users:manage" },
     { name: "Platform Admin", href: "/admin/platform", icon: Server, capability: "settings:manage" },
     { name: "Workflows", href: "/admin/workflows", icon: Settings, capability: "settings:manage" },
-    { name: "System Info", href: "/admin/system", icon: Database },
+    { name: "System Info", href: "/admin/system", icon: Database, capability: "settings:manage" },
     { name: "Audit Logs", href: "/admin/audit", icon: ShieldAlert, capability: "settings:manage" },
   ];
 
