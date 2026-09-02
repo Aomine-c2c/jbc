@@ -204,7 +204,16 @@ export function SignaturePanel({
           <div className="pt-2 border-t border-emerald-500/20 flex items-center gap-3">
             <span className="text-[10px] font-mono text-muted-foreground">SIGNATURE:</span>
             <div className="bg-white px-3 py-1 rounded border border-emerald-500/30 inline-block shadow-2xs">
-              <img src={signatureImage} alt="Handwritten Signature" className="h-8 max-w-[160px] object-contain" />
+              {/* signatureImage is a client-generated data: URL from canvas.toDataURL().
+                  next/image cannot optimize data URLs, so we use a plain <img> with
+                  explicit dimensions to avoid CLS. The image is already small (h-8). */}
+              <img
+                src={signatureImage}
+                alt="Handwritten Signature"
+                width={160}
+                height={32}
+                className="h-8 max-w-40 w-auto object-contain"
+              />
             </div>
           </div>
         )}
