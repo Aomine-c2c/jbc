@@ -23,10 +23,13 @@ def run_cmd(cmd):
         print("STDERR:", err, flush=True)
     return out
 
-# 1. Check if backend container has any errors or recent logs
-run_cmd("docker logs --tail 50 dwrms-backend-1")
+# 1. Reset Tailscale serve & Funnel to proxy port 80 (Nginx)
+run_cmd("tailscale serve reset")
+run_cmd("tailscale serve --bg 80")
+run_cmd("tailscale funnel --bg 80")
+run_cmd("tailscale serve status")
 
-# 2. Test saving step 1 directly against backend inside docker / localhost
-run_cmd("curl -v -X POST http://127.0.0.1:8000/api/v1/setup/step/1 -H 'Content-Type: application/json' -d '{\"step_data\": {\"organization_name\": \"Bikita Minerals\", \"installation_name\": \"Masvingo lithium\", \"server_name\": \"bikita-srv-01\", \"environment\": \"production\", \"timezone\": \"Africa/Harare\"}}'")
+# 2. Re-test POST /api/v1/setup/step/1 via Tailscale domain
+run_cmd("curl -k -v -X POST https://sila.tail4ff52b.ts.net/api/v1/setup/step/1 -H 'Content-Type: application/json' -d '{\"step_data\": {\"organization_name\": \"Bikita Minerals\", \"installation_name\": \"Masvingo lithium\", \"server_name\": \"bikita-srv-01\", \"environment\": \"production\", \"timezone\": \"Africa/Harare\"}}'")
 
 ssh.close()

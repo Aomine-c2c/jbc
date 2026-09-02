@@ -357,7 +357,7 @@ export function SetupClient() {
 
       {/* 8-Step Stepper Progress Bar */}
       <div className="w-full max-w-4xl mb-8 overflow-x-auto">
-        <div className="flex items-center justify-between min-w-[640px] bg-slate-900/80 border border-slate-800 rounded-xl p-3 shadow-lg backdrop-blur">
+        <div className="flex items-center justify-between min-w-160 bg-slate-900/80 border border-slate-800 rounded-xl p-3 shadow-lg backdrop-blur">
           {STEPS.map((s, idx) => {
             const Icon = s.icon;
             const isCurrent = currentStep === s.id;
