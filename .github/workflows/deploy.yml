@@ -12,17 +12,35 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Sync Code to /opt/dwrms
+        run: |
+          sudo mkdir -p /opt/dwrms
+          if command -v rsync >/dev/null 2>&1; then
+            sudo rsync -av --exclude='.git' --exclude='node_modules' --exclude='.venv' ./ /opt/dwrms/
+          else
+            sudo cp -r ./* /opt/dwrms/
+          fi
+
       - name: Clear Frozen Port Conflicts
         run: |
-          sudo fuser -k 3000/tcp || true
-          sudo fuser -k 8000/tcp || true
+          if command -v fuser >/dev/null 2>&1; then
+            sudo fuser -k 3000/tcp || true
+            sudo fuser -k 8000/tcp || true
+          fi
 
       - name: Rebuild and Restart Application Stacks
         run: |
           cd /opt/dwrms
-          docker compose down
-          docker compose up -d --build
+          if [ ! -f .env ] && [ -f .env.example ]; then
+            sudo cp .env.example .env
+          fi
+          if command -v docker >/dev/null 2>&1; then
+            sudo docker compose down --remove-orphans 2>/dev/null || docker compose down 2>/dev/null || true
+            sudo docker compose up -d --build || docker compose up -d --build
+          fi
 
-      - name: Re-bind Tailscale Funnel to Port 3000
+      - name: Re-bind Tailscale Funnel
         run: |
-          sudo tailscale funnel --bg http://127.0.0.1:3001
+          if command -v tailscale >/dev/null 2>&1; then
+            sudo tailscale funnel --bg 3000 2>/dev/null || sudo tailscale funnel --bg http://127.0.0.1:3000 2>/dev/null || true
+          fi
