@@ -8,10 +8,6 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-  // We need to disable trailing slashes and handle other settings if needed for Tauri
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     ignoreBuildErrors: true,
   }

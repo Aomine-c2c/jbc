@@ -2,7 +2,7 @@
 
 import { login } from '@/lib/auth';
 import { useState, useEffect } from 'react';
-import { HardHat, ShieldCheck, Wrench, UserCheck, Users, Gauge, Shield, Lock, Mail, ArrowRight, Server } from 'lucide-react';
+import { HardHat, ShieldCheck, Wrench, UserCheck, Users, Gauge, Shield, Lock, Mail, ArrowRight } from 'lucide-react';
 import { NotificationBanner } from '@/components/ui/notification';
 import { PlantTelemetryVisual } from '@/components/auth/PlantTelemetryVisual';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -67,20 +67,20 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen w-full bg-background text-foreground antialiased selection:bg-primary/30">
-      {/* LEFT 50% PANEL: ANIME.JS PLANT TELEMETRY SHOWCASE */}
-      <div className="w-full lg:w-1/2 min-h-[420px] lg:min-h-screen flex flex-col">
+    <div className="flex flex-col lg:flex-row min-h-screen w-full bg-zinc-50 text-zinc-900 antialiased selection:bg-zinc-200">
+      {/* LEFT 50% PANEL: PLANT TELEMETRY SHOWCASE */}
+      <div className="w-full lg:w-1/2 min-h-[400px] lg:min-h-screen flex flex-col">
         <PlantTelemetryVisual />
       </div>
 
       {/* RIGHT 50% PANEL: INDUSTRIAL AUTHENTICATION PORTAL */}
-      <div className="relative w-full lg:w-1/2 min-h-[600px] lg:min-h-screen flex items-center justify-center p-6 md:p-12 bg-background">
+      <div className="relative w-full lg:w-1/2 min-h-[600px] lg:min-h-screen flex items-center justify-center p-6 md:p-12 bg-zinc-50">
         {/* TOP RIGHT CONTROLS */}
         <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
           <select
             value={activeProfileId}
             onChange={handleProfileChange}
-            className="h-8 rounded border border-border bg-card px-2 text-[10px] font-mono text-foreground outline-none focus:border-ring"
+            className="h-8 rounded-md border border-zinc-200 bg-white px-2.5 text-[11px] font-mono text-zinc-800 outline-none focus:border-zinc-400 shadow-2xs"
           >
             {profiles.map((p) => (
               <option key={p.id} value={p.id}>
@@ -91,18 +91,18 @@ export default function LoginPage() {
           <ThemeToggle />
         </div>
 
-        <div className="w-full max-w-md space-y-6 rounded border border-border bg-card p-6 md:p-8 shadow-2xl">
+        <div className="w-full max-w-md space-y-6 rounded-lg border border-zinc-200 bg-white p-6 md:p-8 shadow-sm">
           {/* BRAND HEADER */}
           <div className="text-center space-y-2">
-            <div className="mx-auto flex size-12 items-center justify-center rounded bg-primary text-primary-foreground shadow-xs">
+            <div className="mx-auto flex size-12 items-center justify-center rounded-lg bg-zinc-900 text-white shadow-xs">
               <HardHat className="size-6" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-foreground uppercase">
+              <h1 className="text-xl font-bold tracking-tight text-zinc-900 uppercase">
                 Bikita Minerals DWRMS
               </h1>
-              <p className="text-xs font-mono text-muted-foreground mt-0.5">
-                Digital Work & Resource Management System • Operations Console
+              <p className="text-xs font-mono text-zinc-500 mt-0.5">
+                Digital Work & Resource Management • Operations Portal
               </p>
             </div>
           </div>
@@ -121,11 +121,11 @@ export default function LoginPage() {
           <form onSubmit={(e) => handleSubmit(e)} className="space-y-4">
             <div className="space-y-3 text-xs">
               <div>
-                <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">
+                <label className="text-[10px] font-mono uppercase text-zinc-500 font-medium block mb-1">
                   Operator Email Address *
                 </label>
                 <div className="relative flex items-center">
-                  <span className="pointer-events-none absolute pl-2.5 text-muted-foreground">
+                  <span className="pointer-events-none absolute pl-2.5 text-zinc-400">
                     <Mail className="size-3.5" />
                   </span>
                   <input
@@ -136,18 +136,18 @@ export default function LoginPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="h-8 w-full rounded border border-input bg-card pl-8 pr-2.5 text-xs text-foreground font-mono transition-all outline-none focus:border-ring"
+                    className="h-9 w-full rounded-md border border-zinc-200 bg-white pl-8 pr-2.5 text-xs text-zinc-900 font-mono transition-all outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400"
                     placeholder="admin@bikita.com"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">
+                <label className="text-[10px] font-mono uppercase text-zinc-500 font-medium block mb-1">
                   Access Password / Passcode *
                 </label>
                 <div className="relative flex items-center">
-                  <span className="pointer-events-none absolute pl-2.5 text-muted-foreground">
+                  <span className="pointer-events-none absolute pl-2.5 text-zinc-400">
                     <Lock className="size-3.5" />
                   </span>
                   <input
@@ -158,7 +158,7 @@ export default function LoginPage() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="h-8 w-full rounded border border-input bg-card pl-8 pr-2.5 text-xs text-foreground font-mono transition-all outline-none focus:border-ring"
+                    className="h-9 w-full rounded-md border border-zinc-200 bg-white pl-8 pr-2.5 text-xs text-zinc-900 font-mono transition-all outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400"
                     placeholder="••••••••"
                   />
                 </div>
@@ -168,7 +168,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading || !email || !password}
-              className="flex h-9 w-full items-center justify-center rounded bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all disabled:opacity-50 cursor-pointer"
+              className="flex h-9 w-full items-center justify-center rounded-md bg-zinc-900 px-3 text-xs font-semibold text-white shadow-xs hover:bg-black transition-all disabled:opacity-50 cursor-pointer"
             >
               {loading ? "Authenticating Operator..." : "Authenticate & Open Console"}
               <ArrowRight className="size-3.5 ml-1.5" />
@@ -177,37 +177,51 @@ export default function LoginPage() {
 
           {/* QUICK CREDENTIALS SELECTOR */}
           {process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGINS !== 'false' && (
-            <div className="pt-4 border-t border-border space-y-2.5">
-              <div className="flex items-center justify-between text-[10px] font-mono uppercase text-muted-foreground">
-                <span>Pre-configured Test Credentials:</span>
+            <div className="pt-4 border-t border-zinc-200 space-y-2.5">
+              <div className="flex items-center justify-between text-[10px] font-mono uppercase text-zinc-500 font-semibold">
+                <span>Select Operational Role:</span>
                 <span>Pass: password123</span>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('admin@bikita.com', 'password123')}
-                  className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
+                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 text-left transition-colors cursor-pointer group"
                 >
-                  <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
-                    <ShieldCheck className="size-3 text-primary" />
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-900">
+                    <ShieldCheck className="size-3.5 text-zinc-800" />
                     <span>Admin</span>
                   </div>
-                  <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
+                  <div className="text-[9px] font-mono text-zinc-500 truncate mt-0.5">
                     admin@bikita.com
                   </div>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => handleQuickLogin('supervisor@bikita.com', 'password123')}
-                  className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
+                  onClick={() => handleQuickLogin('mechmgr@bikita.com', 'password123')}
+                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 text-left transition-colors cursor-pointer group"
                 >
-                  <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
-                    <UserCheck className="size-3 text-emerald-500" />
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-900">
+                    <Users className="size-3.5 text-amber-600" />
+                    <span>Dept Manager</span>
+                  </div>
+                  <div className="text-[9px] font-mono text-zinc-500 truncate mt-0.5">
+                    mechmgr@bikita.com
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin('supervisor@bikita.com', 'password123')}
+                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 text-left transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-900">
+                    <UserCheck className="size-3.5 text-emerald-600" />
                     <span>Supervisor</span>
                   </div>
-                  <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
+                  <div className="text-[9px] font-mono text-zinc-500 truncate mt-0.5">
                     supervisor@bikita.com
                   </div>
                 </button>
@@ -215,13 +229,13 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('tech@bikita.com', 'password123')}
-                  className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
+                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 text-left transition-colors cursor-pointer group"
                 >
-                  <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
-                    <Wrench className="size-3 text-blue-500" />
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-900">
+                    <Wrench className="size-3.5 text-blue-600" />
                     <span>Technician</span>
                   </div>
-                  <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
+                  <div className="text-[9px] font-mono text-zinc-500 truncate mt-0.5">
                     tech@bikita.com
                   </div>
                 </button>
@@ -229,56 +243,28 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('operator@bikita.com', 'password123')}
-                  className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
+                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 text-left transition-colors cursor-pointer group"
                 >
-                  <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
-                    <Gauge className="size-3 text-orange-500" />
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-900">
+                    <Gauge className="size-3.5 text-orange-600" />
                     <span>Operator</span>
                   </div>
-                  <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
+                  <div className="text-[9px] font-mono text-zinc-500 truncate mt-0.5">
                     operator@bikita.com
                   </div>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => handleQuickLogin('coordinator@bikita.com', 'password123')}
-                  className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
-                >
-                  <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
-                    <Users className="size-3 text-cyan-500" />
-                    <span>Coordinator</span>
-                  </div>
-                  <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
-                    coordinator@bikita.com
-                  </div>
-                </button>
-
-                <button
-                  type="button"
                   onClick={() => handleQuickLogin('safety@bikita.com', 'password123')}
-                  className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
+                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 text-left transition-colors cursor-pointer group"
                 >
-                  <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
-                    <Shield className="size-3 text-rose-500" />
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-900">
+                    <Shield className="size-3.5 text-rose-600" />
                     <span>Safety Officer</span>
                   </div>
-                  <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
+                  <div className="text-[9px] font-mono text-zinc-500 truncate mt-0.5">
                     safety@bikita.com
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('mechmgr@bikita.com', 'password123')}
-                  className="p-2 rounded border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors cursor-pointer group"
-                >
-                  <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground group-hover:text-primary">
-                    <Users className="size-3 text-amber-500" />
-                    <span>Dept Manager</span>
-                  </div>
-                  <div className="text-[9px] font-mono text-muted-foreground truncate mt-0.5">
-                    mechmgr@bikita.com
                   </div>
                 </button>
               </div>

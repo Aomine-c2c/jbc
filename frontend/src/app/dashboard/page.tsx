@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FilterPanel, DashboardFilters } from '@/components/dashboard/FilterPanel';
 import { MetricsCards, FleetMetricsCards, ChartsSection } from '@/components/dashboard/Metrics';
 import api from '@/lib/api';
@@ -73,36 +73,42 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-zinc-200">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Operational Dashboard</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Key performance metrics and workloads</p>
+          <h1 className="text-xl font-bold tracking-tight text-zinc-900 uppercase font-mono">Operations Dashboard</h1>
+          <p className="text-xs text-zinc-500">Live operational throughput, equipment telemetry & department workloads</p>
         </div>
-        <Button onClick={handleExport} variant="outline" className="flex items-center gap-2">
-          <Download className="h-4 w-4" /> Export Report
+        <Button onClick={handleExport} variant="outline" className="flex items-center gap-2 text-xs h-8 border-zinc-200 text-zinc-800 hover:bg-zinc-100">
+          <Download className="h-3.5 w-3.5" /> Export Report (CSV)
         </Button>
       </div>
 
       <FilterPanel onFilter={setFilters} departments={departments} />
 
       {error ? (
-        <div className="p-4 bg-red-50 text-red-600 rounded-lg border border-red-200">
+        <div className="p-4 bg-rose-50 text-rose-700 rounded-md border border-rose-200 text-xs">
           {error}
         </div>
       ) : loading && !data ? (
-        <div className="flex justify-center py-20">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="flex justify-center py-24">
+          <div className="animate-spin rounded-full h-7 w-7 border-2 border-zinc-900 border-t-transparent"></div>
         </div>
       ) : data ? (
         <>
-          <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Job Execution Metrics</h3>
-          <MetricsCards data={data} />
+          <div className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 font-mono">Job Execution Metrics</h3>
+            <MetricsCards data={data} />
+          </div>
           
-          <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 mt-8">Fleet & Requisition Metrics</h3>
-          <FleetMetricsCards data={data} />
+          <div className="space-y-3 pt-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 font-mono">Fleet & Materials Metrics</h3>
+            <FleetMetricsCards data={data} />
+          </div>
           
-          <ChartsSection data={data} />
+          <div className="pt-2">
+            <ChartsSection data={data} />
+          </div>
         </>
       ) : null}
     </div>

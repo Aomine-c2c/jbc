@@ -32,15 +32,16 @@ export function FilterPanel({ onFilter, departments }: FilterPanelProps) {
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 mb-6 shadow-sm">
+    <div className="bg-white border border-zinc-200 rounded-lg p-4 mb-6 shadow-2xs">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-          <Filter className="h-4 w-4" /> Operational Filters
+        <h3 className="font-semibold text-xs uppercase tracking-wider text-zinc-900 flex items-center gap-2">
+          <Filter className="h-3.5 w-3.5 text-zinc-500" /> Operational Filters
         </h3>
         <Button 
           variant="outline" 
           size="sm"
           onClick={() => setIsExpanded(!isExpanded)}
+          className="text-xs h-7 border-zinc-200 text-zinc-700 hover:bg-zinc-100"
         >
           {isExpanded ? 'Hide Advanced' : 'Show Advanced'}
         </Button>
@@ -48,9 +49,9 @@ export function FilterPanel({ onFilter, departments }: FilterPanelProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <div>
-          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Department</label>
+          <label className="block text-[11px] font-medium text-zinc-600 mb-1">Department</label>
           <select 
-            className="w-full text-sm border-slate-300 dark:border-slate-700 rounded-md bg-transparent dark:bg-slate-800 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full text-xs h-8 border border-zinc-200 rounded-md bg-white text-zinc-900 px-2 focus:ring-1 focus:ring-zinc-400 focus:border-zinc-400 outline-none"
             value={filters.department_id || ''}
             onChange={(e) => setFilters({...filters, department_id: e.target.value || undefined})}
           >
@@ -62,9 +63,9 @@ export function FilterPanel({ onFilter, departments }: FilterPanelProps) {
         </div>
         
         <div>
-          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Status</label>
+          <label className="block text-[11px] font-medium text-zinc-600 mb-1">Status</label>
           <select 
-            className="w-full text-sm border-slate-300 dark:border-slate-700 rounded-md bg-transparent dark:bg-slate-800 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full text-xs h-8 border border-zinc-200 rounded-md bg-white text-zinc-900 px-2 focus:ring-1 focus:ring-zinc-400 focus:border-zinc-400 outline-none"
             value={filters.status || ''}
             onChange={(e) => setFilters({...filters, status: e.target.value || undefined})}
           >
@@ -81,20 +82,20 @@ export function FilterPanel({ onFilter, departments }: FilterPanelProps) {
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Date From</label>
+          <label className="block text-[11px] font-medium text-zinc-600 mb-1">Date From</label>
           <input 
             type="date"
-            className="w-full text-sm border-slate-300 dark:border-slate-700 rounded-md bg-transparent dark:bg-slate-800 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full text-xs h-8 border border-zinc-200 rounded-md bg-white text-zinc-900 px-2 focus:ring-1 focus:ring-zinc-400 focus:border-zinc-400 outline-none"
             value={filters.date_from || ''}
             onChange={(e) => setFilters({...filters, date_from: e.target.value || undefined})}
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Date To</label>
+          <label className="block text-[11px] font-medium text-zinc-600 mb-1">Date To</label>
           <input 
             type="date"
-            className="w-full text-sm border-slate-300 dark:border-slate-700 rounded-md bg-transparent dark:bg-slate-800 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full text-xs h-8 border border-zinc-200 rounded-md bg-white text-zinc-900 px-2 focus:ring-1 focus:ring-zinc-400 focus:border-zinc-400 outline-none"
             value={filters.date_to || ''}
             onChange={(e) => setFilters({...filters, date_to: e.target.value || undefined})}
           />
@@ -103,9 +104,9 @@ export function FilterPanel({ onFilter, departments }: FilterPanelProps) {
         {isExpanded && (
           <>
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Priority</label>
+              <label className="block text-[11px] font-medium text-zinc-600 mb-1">Priority</label>
               <select 
-                className="w-full text-sm border-slate-300 dark:border-slate-700 rounded-md bg-transparent dark:bg-slate-800 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full text-xs h-8 border border-zinc-200 rounded-md bg-white text-zinc-900 px-2 focus:ring-1 focus:ring-zinc-400 focus:border-zinc-400 outline-none"
                 value={filters.priority !== undefined ? filters.priority : ''}
                 onChange={(e) => setFilters({...filters, priority: e.target.value ? parseInt(e.target.value) : undefined})}
               >
@@ -118,11 +119,11 @@ export function FilterPanel({ onFilter, departments }: FilterPanelProps) {
             </div>
             
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Location</label>
+              <label className="block text-[11px] font-medium text-zinc-600 mb-1">Location</label>
               <input 
                 type="text"
                 placeholder="Search location..."
-                className="w-full text-sm border-slate-300 dark:border-slate-700 rounded-md bg-transparent dark:bg-slate-800 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full text-xs h-8 border border-zinc-200 rounded-md bg-white text-zinc-900 px-2 focus:ring-1 focus:ring-zinc-400 focus:border-zinc-400 outline-none"
                 value={filters.location || ''}
                 onChange={(e) => setFilters({...filters, location: e.target.value || undefined})}
               />
@@ -132,11 +133,11 @@ export function FilterPanel({ onFilter, departments }: FilterPanelProps) {
       </div>
 
       <div className="mt-4 flex justify-end gap-2">
-        <Button variant="ghost" size="sm" onClick={handleClear} className="flex gap-1 items-center">
-          <X className="h-4 w-4" /> Clear
+        <Button variant="ghost" size="sm" onClick={handleClear} className="flex gap-1 items-center text-xs h-8 text-zinc-600 hover:text-zinc-900">
+          <X className="h-3.5 w-3.5" /> Clear
         </Button>
-        <Button onClick={handleApply} size="sm" className="flex gap-1 items-center">
-          <Search className="h-4 w-4" /> Apply Filters
+        <Button onClick={handleApply} size="sm" className="flex gap-1 items-center text-xs h-8 bg-zinc-900 text-white hover:bg-black">
+          <Search className="h-3.5 w-3.5" /> Apply Filters
         </Button>
       </div>
     </div>

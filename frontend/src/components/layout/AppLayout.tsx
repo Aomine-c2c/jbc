@@ -112,17 +112,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background text-foreground font-sans antialiased">
+    <div className="flex h-screen overflow-hidden bg-zinc-50 text-zinc-900 font-sans antialiased">
       <Sidebar onOpenServerConfig={() => setShowServerConfig(true)} />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <header className="h-14 bg-card border-b border-border flex items-center px-4 md:px-6 justify-between shrink-0 shadow-2xs">
+        <header className="h-14 bg-white border-b border-zinc-200 flex items-center px-4 md:px-6 justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <span className="relative flex size-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full size-2 bg-emerald-500"></span>
               </span>
-              <span className="font-bold text-xs uppercase tracking-wider text-foreground truncate max-w-[140px] sm:max-w-none">
+              <span className="font-bold text-xs uppercase tracking-wider text-zinc-900 truncate max-w-[140px] sm:max-w-none">
                 Bikita Operations Console
               </span>
             </div>
@@ -134,7 +134,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             {timeStr && (
               <div
                 suppressHydrationWarning
-                className="hidden lg:block text-[11px] font-mono text-muted-foreground px-2 py-0.5 bg-muted/50 rounded border border-border/40"
+                className="hidden lg:block text-[11px] font-mono text-zinc-600 px-2.5 py-1 bg-zinc-100 rounded-md border border-zinc-200"
               >
                 {timeStr}
               </div>
@@ -143,11 +143,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="relative">
               <button
                 onClick={() => setShowSyncPanel(!showSyncPanel)}
-                className={`relative p-2 rounded-md hover:bg-muted transition-colors ${!isOnline ? 'text-destructive' : 'text-muted-foreground'}`}
+                className={`relative p-2 rounded-md hover:bg-zinc-100 transition-colors ${!isOnline ? 'text-rose-600' : 'text-zinc-500 hover:text-zinc-900'}`}
               >
-                <Cloud className="size-5" />
+                <Cloud className="size-4" />
                 {!isOnline && (
-                  <span className="absolute top-1.5 right-1.5 size-2 bg-destructive rounded-full border border-card animate-pulse" />
+                  <span className="absolute top-1.5 right-1.5 size-2 bg-rose-500 rounded-full border border-white animate-pulse" />
                 )}
               </button>
               {showSyncPanel && <SyncStatusPanel />}
@@ -156,24 +156,24 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <NotificationCenter />
             <ThemeToggle />
 
-            <div className="flex items-center gap-2 pl-2 border-l border-border">
+            <div className="flex items-center gap-2 pl-2 border-l border-zinc-200">
               <div
                 suppressHydrationWarning
-                className="w-7 h-7 rounded border border-border bg-muted flex items-center justify-center font-bold text-xs text-foreground font-mono"
+                className="size-8 rounded-full border border-zinc-200 bg-zinc-100 flex items-center justify-center font-bold text-xs text-zinc-800 font-mono"
               >
                 {userInfo.initials}
               </div>
               <div className="hidden lg:block text-left">
                 <div
                   suppressHydrationWarning
-                  className="text-xs font-semibold leading-none text-foreground flex items-center gap-1"
+                  className="text-xs font-semibold leading-none text-zinc-900 flex items-center gap-1"
                 >
                   <span>{userInfo.name}</span>
-                  <Shield className="size-3 text-primary" />
+                  <Shield className="size-3 text-zinc-700" />
                 </div>
                 <div
                   suppressHydrationWarning
-                  className="text-[10px] text-muted-foreground font-mono mt-0.5"
+                  className="text-[10px] text-zinc-500 font-mono mt-0.5"
                 >
                   {userInfo.role}
                 </div>
@@ -182,10 +182,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 type="button"
                 onClick={() => logout()}
                 title="Log out of system"
-                className="ml-1 p-1.5 rounded hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors cursor-pointer"
+                className="ml-1 p-1.5 rounded-md hover:bg-rose-50 hover:text-rose-600 text-zinc-400 transition-colors cursor-pointer"
                 aria-label="Logout"
               >
-                <LogOut className="size-3.5" />
+                <LogOut className="size-4" />
               </button>
             </div>
           </div>
