@@ -46,10 +46,8 @@ if [ "$LOCAL_HASH" != "$REMOTE_HASH" ] && [ "$REMOTE_HASH" != "UNKNOWN" ]; then
     tailscale serve --bg 80 >/dev/null 2>&1 || true
 
     # 4. Rebuild & Launch Docker Compose containers
-    docker compose -f "${INSTALL_DIR}/docker-compose.yml" down -v --remove-orphans >/dev/null 2>&1 || true
-    docker ps -a --filter "name=dwrms" -q | xargs -r docker rm -f >/dev/null 2>&1 || true
     docker compose -f "${INSTALL_DIR}/docker-compose.yml" build >/dev/null 2>&1 || true
-    docker compose -f "${INSTALL_DIR}/docker-compose.yml" up -d
+    docker compose -f "${INSTALL_DIR}/docker-compose.yml" up -d --force-recreate
 
     # 5. Wait for database and backend
     sleep 10
