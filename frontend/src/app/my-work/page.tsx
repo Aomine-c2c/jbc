@@ -397,8 +397,8 @@ export default function MyWorkPage() {
               <Truck className="size-4 text-emerald-500" />
               My Equipment Requisitions ({requisitions.length})
             </CardTitle>
-            <Link href="/fleet" className="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
-              Fleet & Requisitions <ArrowRight className="size-3" />
+            <Link href="/fleet/requisitions" className="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
+              All Requisitions <ArrowRight className="size-3" />
             </Link>
           </div>
         </CardHeader>

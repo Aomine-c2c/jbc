@@ -407,6 +407,13 @@ class JobCardResponse(BaseModel):
     closure_date: Optional[datetime] = None
     closed_by_id: Optional[uuid.UUID] = None
 
+    # Safety clearance & LOTO gate
+    safety_cleared: bool = False
+    safety_cleared_at: Optional[datetime] = None
+    safety_cleared_by_id: Optional[uuid.UUID] = None
+    safety_clearance_notes: Optional[str] = None
+    loto_tag_number: Optional[str] = None
+
     parts: list[JobCardPartResponse] = []
     labour_entries: list[JobCardLabourResponse] = []
     execution_events: list[JobCardExecutionEventResponse] = []
@@ -441,5 +448,14 @@ class JobCardListResponse(BaseModel):
     location_id: Optional[uuid.UUID] = None
     location_breadcrumb: Optional[str] = None
     maintenance_type: Optional[str] = None
+    safety_cleared: bool = False
+    loto_tag_number: Optional[str] = None
     created_at: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)
+
+
+class JobCardSafetyClearance(BaseModel):
+    loto_tag_number: Optional[str] = None
+    notes: Optional[str] = None
+    signature_data: Optional[dict] = None
+

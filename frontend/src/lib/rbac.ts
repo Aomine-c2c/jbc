@@ -27,13 +27,13 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
     allowedCapabilities: [
       'my_work:view',
       'job_card:create',
+      'job_card:read',
       'fleet:view',
       'requisition:create',
       'fleet_calendar:view',
     ],
     deniedRoutes: [
       '/dashboard',
-      '/jobs',
       '/work',
       '/assets',
       '/materials',
@@ -56,6 +56,8 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
       'job_card:update',
       'fleet:view',
       'requisition:create',
+      'requisition:submit',
+      'requisition:cancel',
       'fleet_calendar:view',
       'materials:view',
       'materials:request',
@@ -88,7 +90,15 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
       'fleet:view',
       'fleet:allocate',
       'requisition:create',
+      'requisition:submit',
+      'requisition:review',
+      'requisition:return',
       'requisition:approve',
+      'requisition:allocate',
+      'requisition:dispatch',
+      'requisition:return_complete',
+      'requisition:close',
+      'requisition:cancel',
       'fleet_calendar:view',
       'assets:view',
       'materials:view',
@@ -125,7 +135,15 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
       'fleet:view',
       'fleet:allocate',
       'requisition:create',
+      'requisition:submit',
+      'requisition:review',
+      'requisition:return',
       'requisition:approve',
+      'requisition:allocate',
+      'requisition:dispatch',
+      'requisition:return_complete',
+      'requisition:close',
+      'requisition:cancel',
       'fleet_calendar:view',
       'assets:view',
       'materials:view',
@@ -153,19 +171,18 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
       'dashboard:view',
       'jobs:view',
       'job_card:read',
-      'job_card:create',
-      'job_card:execute',
+      'safety:clear',
       'work_hub:view',
       'fleet:view',
       'fleet_calendar:view',
       'assets:view',
-      'contractors:view',
       'approvals:view',
       'sla:view',
       'audit:view',
     ],
     deniedRoutes: [
       '/materials',
+      '/contractors',
       '/fleet/requisitions/new',
       '/admin/org',
       '/admin/locations',
@@ -194,7 +211,15 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
       'fleet:view',
       'fleet:allocate',
       'requisition:create',
+      'requisition:submit',
+      'requisition:review',
+      'requisition:return',
       'requisition:approve',
+      'requisition:allocate',
+      'requisition:dispatch',
+      'requisition:return_complete',
+      'requisition:close',
+      'requisition:cancel',
       'fleet_calendar:view',
       'assets:view',
       'materials:view',
@@ -302,4 +327,42 @@ export function hasCapability(
   }
 
   return false;
+}
+
+/**
+ * Checks if the role is permitted to see commercial financial metrics, costs, and labor rates.
+ * Field operators are restricted from viewing pricing and budgets.
+ */
+export function canViewFinancials(roleOrEmail: string | null | undefined): boolean {
+  if (!roleOrEmail) return false;
+  const role = resolveUserRole(roleOrEmail);
+  return role !== 'Operator';
+}
+
+/**
+ * Checks if the role is permitted to execute high-privilege lifecycle actions.
+ */
+export function canExecuteAction(
+  roleOrEmail: string | null | undefined,
+  action: 'approve' | 'verify' | 'close' | 'safety_clear' | 'start' | 'complete'
+): boolean {
+  if (!roleOrEmail) return false;
+  const role = resolveUserRole(roleOrEmail);
+  if (role === 'Administrator') return true;
+
+  switch (action) {
+    case 'safety_clear':
+      return role === 'Safety Officer' || role === 'Department Manager';
+    case 'verify':
+      return role === 'Supervisor' || role === 'Department Manager';
+    case 'close':
+      return role === 'Department Manager';
+    case 'approve':
+      return role === 'Supervisor' || role === 'Department Manager';
+    case 'start':
+    case 'complete':
+      return role === 'Technician' || role === 'Supervisor' || role === 'Department Manager';
+    default:
+      return false;
+  }
 }

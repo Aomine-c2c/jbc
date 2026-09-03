@@ -215,6 +215,19 @@ class JobCard(Base, TimestampMixin, SoftDeleteMixin):
     closure_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     closed_by_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
+    # Safety Clearance & HSE Gate
+    safety_cleared: Mapped[bool] = mapped_column(Boolean, default=False)
+    safety_cleared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    safety_cleared_by_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    safety_clearance_notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    loto_tag_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    # User Relationships
+    creator = relationship("User", foreign_keys=[creator_id], lazy="selectin")
+    approver = relationship("User", foreign_keys=[approver_id], lazy="selectin")
+    supervisor = relationship("User", foreign_keys=[supervisor_id], lazy="selectin")
+    closed_by = relationship("User", foreign_keys=[closed_by_id], lazy="selectin")
+
     # Relationships
     attachments = relationship("JobCardAttachment", back_populates="job_card", lazy="selectin", cascade="all, delete-orphan")
     comments = relationship("JobCardComment", back_populates="job_card", lazy="selectin", cascade="all, delete-orphan")

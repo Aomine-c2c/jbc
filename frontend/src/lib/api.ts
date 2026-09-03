@@ -190,7 +190,20 @@ export async function apiFetch<T = any>(endpoint: string, options: ApiRequestIni
   }
 
   if (!res.ok) {
-    throw new Error(data?.detail || data?.error || res.statusText || "An API error occurred");
+    let errorMsg = res.statusText || "An API error occurred";
+    if (typeof data?.detail === "string") {
+      errorMsg = data.detail;
+    } else if (Array.isArray(data?.detail)) {
+      errorMsg = data.detail
+        .map((d: Record<string, unknown>) => (d && typeof d === "object" && d.msg ? String(d.msg) : JSON.stringify(d)))
+        .join("; ");
+    } else if (data?.detail && typeof data?.detail === "object") {
+      const d = data.detail as Record<string, unknown>;
+      errorMsg = (d.msg as string) || (d.message as string) || JSON.stringify(d);
+    } else if (typeof data?.error === "string") {
+      errorMsg = data.error;
+    }
+    throw new Error(errorMsg);
   }
 
   // Return data directly (or data.data if it's wrapped)

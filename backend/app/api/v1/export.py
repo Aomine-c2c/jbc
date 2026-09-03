@@ -102,8 +102,8 @@ async def export_audit_logs_csv(
 ):
     """Streams a formatted CSV export of immutable audit trail records."""
     if not current_user.is_superuser:
-        from app.modules.iam.api import _get_user_permissions
-        perms = _get_user_permissions(current_user)
+        from app.core.authz import get_user_permissions
+        perms = get_user_permissions(current_user)
         if "audit:read" not in perms and "global_override" not in perms:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Audit export permissions required.")
 

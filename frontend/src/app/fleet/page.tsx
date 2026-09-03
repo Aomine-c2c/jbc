@@ -41,6 +41,10 @@ export default function FleetDashboard() {
 
   const handleStatusChange = async (machineId: string, newStatus: string) => {
     setUpdatingId(machineId);
+    // Optimistic UI update
+    setMachines((prev) =>
+      prev.map((m) => (m.id === machineId ? { ...m, status: newStatus } : m))
+    );
     try {
       const res = await apiFetch(`/api/v1/fleet/machines/${machineId}`, {
         method: "PATCH",
@@ -48,12 +52,16 @@ export default function FleetDashboard() {
         body: JSON.stringify({ status: newStatus })
       });
       if (res) {
-        // Re-fetch machines
-        const updatedMachinesRes = await apiFetch("/api/v1/fleet/machines");
-        if (updatedMachinesRes) setMachines(updatedMachinesRes);
+        const updatedMachinesRes = await apiFetch<Machine[]>("/api/v1/fleet/machines");
+        if (Array.isArray(updatedMachinesRes) && updatedMachinesRes.length > 0) {
+          setMachines(updatedMachinesRes);
+        }
       }
     } catch (e) {
       console.error("Failed to update status", e);
+      // Revert if error
+      const updatedMachinesRes = await apiFetch<Machine[]>("/api/v1/fleet/machines").catch(() => null);
+      if (Array.isArray(updatedMachinesRes)) setMachines(updatedMachinesRes);
     } finally {
       setUpdatingId(null);
     }

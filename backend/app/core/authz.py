@@ -88,42 +88,35 @@ class AuthzGuard:
 
         # Check SITE scope
         if "SITE" in scope_names:
-            if resource_site_id is None:
-                return False
-            if user.site_id and str(user.site_id) == str(resource_site_id):
+            if user.site_id and resource_site_id and str(user.site_id) == str(resource_site_id):
                 return True
-            return False
 
         # Check LOCATION scope
         if "LOCATION" in scope_names:
-            if resource_location_id is None:
-                return False
-            if user.location_id and str(user.location_id) == str(resource_location_id):
+            if user.location_id and resource_location_id and str(user.location_id) == str(resource_location_id):
                 return True
-            return False
 
         # Check DEPARTMENT scope
         if "DEPARTMENT" in scope_names:
-            if resource_dept_id is None:
-                return False
-            if user.department_id and str(user.department_id) == str(resource_dept_id):
+            if user.department_id and resource_dept_id and str(user.department_id) == str(resource_dept_id):
                 return True
-            return False
         
         # Check ASSIGNED scope
         if "ASSIGNED" in scope_names:
-            if assigned_user_id is None:
-                return False
-            if str(user.id) == str(assigned_user_id):
+            if assigned_user_id and str(user.id) == str(assigned_user_id):
                 return True
-            return False
 
-        # Check OWN scope
-        if "OWN" in scope_names:
-            if resource_owner_id is None:
-                return False
-            if str(user.id) == str(resource_owner_id):
+        # Check OWN scope or if user is the resource creator/owner
+        if "OWN" in scope_names or "DEPARTMENT" in scope_names:
+            if resource_owner_id and str(user.id) == str(resource_owner_id):
                 return True
-            return False
 
         return False
+
+
+def get_user_permissions(user: User) -> dict[str, list[Scope]]:
+    """Convenience wrapper for AuthzGuard.get_user_permissions."""
+    return AuthzGuard.get_user_permissions(user)
+
+
+_get_user_permissions = get_user_permissions

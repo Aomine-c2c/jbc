@@ -20,7 +20,7 @@ from app.core.security import (
     create_refresh_token, decode_token,
 )
 from app.core.config import settings
-from app.core.authz import AuthzGuard
+from app.core.authz import AuthzGuard, _get_user_permissions, get_user_permissions
 from app.modules.audit.service import AuditService
 
 
@@ -198,6 +198,16 @@ async def list_users(
             created_at=u.created_at
         ))
     return out
+
+
+@iam_router.get("/users/me", response_model=MeResponse)
+async def get_current_user_me(current_user: User = Depends(_get_current_user())):
+    return current_user
+
+
+@iam_router.get("/auth/me/permissions", response_model=list[str])
+async def get_current_user_permissions(current_user: User = Depends(_get_current_user())):
+    return list(_get_user_permissions(current_user).keys())
 
 
 @iam_router.get("/users/{user_id}", response_model=UserResponse)
@@ -446,43 +456,3 @@ async def refresh_token(
 async def logout(response: Response):
     for name in ("dwrms_access_token", "dwrms_refresh_token", "dwrms_csrf_token"):
         response.delete_cookie(name, path="/")
-
-
-@iam_router.get("/users/me", response_model=MeResponse)
-async def get_current_user_me(current_user: User = Depends(_get_current_user())):
-    return current_user
-
-
-@iam_router.get("/auth/me/permissions", response_model=list[str])
-async def get_current_user_permissions(current_user: User = Depends(_get_current_user())):
-    return list(_get_user_permissions(current_user).keys())
-
-
-# ── Helpers ─────────────────────────────────────────────────
-
-def _get_user_permissions(user: User) -> dict[str, list[Scope]]:
-    """Collect all permission names mapped to scopes granted to a user through their roles."""
-    perms = {}
-    try:
-        for ur in (user.roles or []):
-            if not ur.role:
-                continue
-            for rp in (ur.role.role_permissions or []):
-                if not rp.permission:
-                    continue
-                perm_name = rp.permission.name
-                if perm_name not in perms:
-                    perms[perm_name] = []
-                if rp.scope:
-                    perms[perm_name].append(rp.scope)
-    except Exception as e:
-        print(f"DEBUG _get_user_permissions error: {e}")
-    if getattr(user, "is_superuser", False):
-        perms["global_override"] = []
-    # Check for mock permissions attached by get_current_user
-    mock_perms = getattr(user, "mock_permissions", None)
-    if mock_perms:
-        for p in mock_perms:
-            if p not in perms:
-                perms[p] = []
-    return perms

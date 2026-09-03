@@ -101,6 +101,7 @@ export default function MaterialsManagementPage() {
   const [actionNotes, setActionNotes] = useState('');
   const [actionQty, setActionQty] = useState('');
   const [actionSubmitting, setActionSubmitting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Modals
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -169,6 +170,7 @@ export default function MaterialsManagementPage() {
   const handleApprove = async () => {
     if (!selectedReq) return;
     setActionSubmitting(true);
+    setActionError(null);
     try {
       const updated = await apiFetch<MaterialReqDetail>(`/api/v1/materials/requirements/${selectedReq.id}/approve`, {
         method: 'POST',
@@ -181,7 +183,8 @@ export default function MaterialsManagementPage() {
       setActionNotes('');
       loadData();
     } catch (err) {
-      console.error('Failed to approve', err);
+      const error = err as { message?: string };
+      setActionError(error.message || 'Failed to approve requirement.');
     } finally {
       setActionSubmitting(false);
     }
@@ -190,6 +193,7 @@ export default function MaterialsManagementPage() {
   const handleIssue = async () => {
     if (!selectedReq || !actionQty) return;
     setActionSubmitting(true);
+    setActionError(null);
     try {
       await apiFetch(`/api/v1/materials/requirements/${selectedReq.id}/issue`, {
         method: 'POST',
@@ -203,7 +207,8 @@ export default function MaterialsManagementPage() {
       setActionQty('');
       loadData();
     } catch (err) {
-      console.error('Failed to issue', err);
+      const error = err as { message?: string };
+      setActionError(error.message || 'Failed to issue material.');
     } finally {
       setActionSubmitting(false);
     }
@@ -212,6 +217,7 @@ export default function MaterialsManagementPage() {
   const handleUsage = async () => {
     if (!selectedReq || !actionQty) return;
     setActionSubmitting(true);
+    setActionError(null);
     try {
       await apiFetch(`/api/v1/materials/requirements/${selectedReq.id}/usage`, {
         method: 'POST',
@@ -225,7 +231,8 @@ export default function MaterialsManagementPage() {
       setActionQty('');
       loadData();
     } catch (err) {
-      console.error('Failed to record usage', err);
+      const error = err as { message?: string };
+      setActionError(error.message || 'Failed to record usage.');
     } finally {
       setActionSubmitting(false);
     }
@@ -234,6 +241,7 @@ export default function MaterialsManagementPage() {
   const handleReturn = async () => {
     if (!selectedReq || !actionQty) return;
     setActionSubmitting(true);
+    setActionError(null);
     try {
       await apiFetch(`/api/v1/materials/requirements/${selectedReq.id}/return`, {
         method: 'POST',
@@ -247,7 +255,8 @@ export default function MaterialsManagementPage() {
       setActionQty('');
       loadData();
     } catch (err) {
-      console.error('Failed to return', err);
+      const error = err as { message?: string };
+      setActionError(error.message || 'Failed to return material.');
     } finally {
       setActionSubmitting(false);
     }
@@ -646,6 +655,12 @@ export default function MaterialsManagementPage() {
                     className="h-8 text-xs"
                   />
                 </div>
+                {actionError && (
+                  <div className="p-2.5 rounded-md bg-rose-500/10 border border-rose-500/20 text-rose-600 text-xs flex items-center gap-2">
+                    <X className="size-4 shrink-0" />
+                    <span>{actionError}</span>
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-2 pt-1">
                   {selectedReq.status === 'REQUESTED' && (
                     <Button size="sm" onClick={handleApprove} disabled={actionSubmitting} className="text-xs bg-blue-600 hover:bg-blue-700 text-white gap-1">

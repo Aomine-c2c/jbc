@@ -541,12 +541,12 @@ class ApprovalEngine:
         db: AsyncSession,
         user: User
     ) -> list[dict]:
-        from app.modules.iam.api import _get_user_permissions
+        from app.core.authz import AuthzGuard
         from app.modules.jobs.models import JobCard
         from app.modules.fleet.models import MachineRequisition
         from sqlalchemy.orm import selectinload
 
-        user_perms = _get_user_permissions(user)
+        user_perms = AuthzGuard.get_user_permissions(user)
         has_global = "global_override" in user_perms
 
         # Get all OPEN requests
@@ -599,8 +599,11 @@ class ApprovalEngine:
                     if job:
                         title = job.title
                         description = job.description or ""
-                        if job.creator:
-                            requester_name = f"{job.creator.first_name} {job.creator.last_name}".strip()
+                        creator = getattr(job, "creator", None)
+                        if creator:
+                            first_name = getattr(creator, "first_name", "") or ""
+                            last_name = getattr(creator, "last_name", "") or ""
+                            requester_name = f"{first_name} {last_name}".strip() or "Unknown"
                 elif req.resource_type == "machine_requisition":
                     mr = await db.execute(select(MachineRequisition).options(selectinload(MachineRequisition.requester), selectinload(MachineRequisition.department)).where(MachineRequisition.id == req.resource_id))
                     req_obj = mr.scalar_one_or_none()

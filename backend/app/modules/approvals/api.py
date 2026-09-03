@@ -43,12 +43,16 @@ async def get_pending_approvals(
 @approvals_router.get("/{resource_type}/{resource_id}", response_model=list[ApprovalRequestOut])
 async def get_approval_history(
     resource_type: str,
-    resource_id: uuid.UUID,
+    resource_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_get_current_user()),
 ):
     """Return all approval rounds for a resource (most recent first)."""
-    return await ApprovalEngine.get_all_requests(db, resource_type, resource_id)
+    try:
+        parsed_id = uuid.UUID(resource_id)
+    except ValueError:
+        return []
+    return await ApprovalEngine.get_all_requests(db, resource_type, parsed_id)
 
 
 @approvals_router.post("/{resource_type}/{resource_id}/open", response_model=ApprovalRequestOut)

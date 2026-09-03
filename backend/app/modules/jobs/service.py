@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.iam.models import User
@@ -46,6 +46,7 @@ from app.modules.jobs.schemas import (
     JobCardConfirm,
     JobCardClose,
     JobCardCancel,
+    JobCardSafetyClearance,
     JobCardAmendmentCreate,
     JobCardAttachmentCreate,
     JobReportCalculations,
@@ -121,8 +122,14 @@ class JobCardService:
     @staticmethod
     async def create(db: AsyncSession, data: JobCardCreate, current_user: User) -> JobCard:
         user_perms = _get_user_permissions(current_user)
-        print(f"DEBUG create user_perms: {user_perms}, current_user: {current_user.email}, roles: {current_user.roles}")
-        if not AuthzGuard.check_permission(current_user, "job_card:create", user_perms, resource_dept_id=data.department_id):
+        effective_dept_id = data.department_id or current_user.department_id
+        if not AuthzGuard.check_permission(
+            current_user,
+            "job_card:create",
+            user_perms,
+            resource_owner_id=current_user.id,
+            resource_dept_id=effective_dept_id,
+        ):
             raise HTTPException(status_code=403, detail="Not enough privileges")
         
         # Generate human-readable Job Card Number
@@ -134,7 +141,7 @@ class JobCardService:
             job_number=job_number,
             title=data.title,
             description=data.description,
-            department_id=data.department_id,
+            department_id=effective_dept_id,
             priority=data.priority,
             creator_id=current_user.id,
             status="DRAFT",
@@ -169,10 +176,32 @@ class JobCardService:
         return job
 
     @staticmethod
-    async def get(db: AsyncSession, job_id: uuid.UUID, current_user: User) -> JobCard:
+    async def get(db: AsyncSession, job_id: uuid.UUID | str, current_user: User) -> JobCard:
         user_perms = _get_user_permissions(current_user)
-        result = await db.execute(select(JobCard).where(JobCard.id == job_id))
-        job = result.scalar_one_or_none()
+        parsed_uuid = None
+        if isinstance(job_id, uuid.UUID):
+            parsed_uuid = job_id
+        elif isinstance(job_id, str):
+            try:
+                parsed_uuid = uuid.UUID(job_id)
+            except ValueError:
+                pass
+
+        if parsed_uuid:
+            result = await db.execute(select(JobCard).where(JobCard.id == parsed_uuid))
+            job = result.scalar_one_or_none()
+        else:
+            id_str = str(job_id).strip()
+            result = await db.execute(
+                select(JobCard).where(
+                    or_(
+                        func.lower(JobCard.job_number) == id_str.lower(),
+                        JobCard.job_number.ilike(f"%{id_str}%")
+                    )
+                )
+            )
+            job = result.scalar_one_or_none()
+
         if not job:
             raise HTTPException(status_code=404, detail="Job card not found")
         if not AuthzGuard.check_permission(
@@ -183,7 +212,7 @@ class JobCardService:
             resource_dept_id=job.department_id,
             assigned_user_id=job.supervisor_id,
         ):
-            raise HTTPException(status_code=403, detail="Not enough privileges")
+            raise HTTPException(status_code=403, detail="Not enough privileges to view this job card")
         return job
 
     @staticmethod
@@ -893,6 +922,52 @@ class JobCardService:
         )
         await JobCardService._log(
             db, job.id, current_user.id, "cancel", state_from=old_state, state_to=job.status, details=data.reason
+        )
+        return job
+
+    @staticmethod
+    async def safety_clearance(db: AsyncSession, job_id: uuid.UUID | str, data: JobCardSafetyClearance, current_user: User) -> JobCard:
+        job = await JobCardService.get(db, job_id, current_user)
+        user_perms = _get_user_permissions(current_user)
+
+        can_clear = (
+            "safety:clear" in user_perms
+            or "global_override" in user_perms
+            or any(r.role and ("Safety" in r.role.name or "Manager" in r.role.name or "Admin" in r.role.name) for r in getattr(current_user, "roles", []))
+            or AuthzGuard.check_permission(
+                current_user,
+                "job_card:approve",
+                user_perms,
+                resource_owner_id=job.creator_id,
+                resource_dept_id=job.department_id,
+            )
+        )
+        if not can_clear:
+            raise HTTPException(status_code=403, detail="Only Safety Officers (HSE) or Superintendents can grant safety clearance")
+
+        job.safety_cleared = True
+        job.safety_cleared_at = datetime.utcnow()
+        job.safety_cleared_by_id = current_user.id
+        if data.notes:
+            job.safety_clearance_notes = data.notes
+        if data.loto_tag_number:
+            job.loto_tag_number = data.loto_tag_number
+
+        note_text = f"HSE SAFETY CLEARANCE GRANTED by {current_user.first_name} {current_user.last_name}"
+        if data.loto_tag_number:
+            note_text += f" (LOTO Tag: {data.loto_tag_number})"
+        if data.notes:
+            note_text += f" - {data.notes}"
+
+        db.add(JobCardComment(job_card_id=job.id, author_id=current_user.id, comment=note_text))
+        await db.commit()
+        await db.refresh(job)
+
+        await JobCardService._record_event(
+            db, job.id, "SAFETY_CLEARED", operator_name=f"{current_user.first_name} {current_user.last_name}", notes=note_text
+        )
+        await JobCardService._log(
+            db, job.id, current_user.id, "safety_clearance", state_from=job.status, state_to=job.status, details=note_text
         )
         return job
 

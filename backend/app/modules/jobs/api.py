@@ -44,6 +44,7 @@ from app.modules.jobs.schemas import (
     JobCardConfirm,
     JobCardClose,
     JobCardCancel,
+    JobCardSafetyClearance,
     JobCardAmendmentCreate,
     JobCardAttachmentCreate,
     JobCardAttachmentResponse,
@@ -100,7 +101,7 @@ async def list_job_cards(
 
 @job_router.get("/{job_id}", response_model=JobCardResponse)
 async def get_job_card(
-    job_id: uuid.UUID,
+    job_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_get_current_user()),
 ):
@@ -110,14 +111,14 @@ async def get_job_card(
 
 @job_router.get("/{job_id}/report", response_model=JobReportResponse)
 async def get_job_report(
-    job_id: uuid.UUID,
+    job_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_get_current_user()),
 ):
     """Get the full execution report for a job card."""
     # Ensure the user has access to the job card first
-    await JobCardService.get(db, job_id, current_user)
-    report = await ReportService.get(db, job_id)
+    job = await JobCardService.get(db, job_id, current_user)
+    report = await ReportService.get(db, job.id)
     return report
 
 
@@ -410,6 +411,19 @@ async def cancel_job_card(
 ):
     job = await JobCardService.cancel(db, job_id, data, current_user)
     return _format_job_response(job)
+
+
+@job_router.post("/{job_id}/safety-clearance", response_model=JobCardResponse)
+async def grant_safety_clearance(
+    job_id: str,
+    data: JobCardSafetyClearance,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(_get_current_user()),
+):
+    """HSE Safety Officer clearance gate for high-risk / LOTO job cards."""
+    job = await JobCardService.safety_clearance(db, job_id, data, current_user)
+    return _format_job_response(job)
+
 
 
 @job_router.post("/{job_id}/amend", response_model=JobCardResponse)

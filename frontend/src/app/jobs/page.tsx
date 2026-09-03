@@ -51,17 +51,17 @@ export default function JobCardList() {
 
   const fetchJobs = useCallback(() => {
     setLoading(true);
-    apiFetch("/api/v1/job-cards")
+    apiFetch<JobCardItem[]>("/api/v1/job-cards")
       .then((res) => {
-        if (Array.isArray(res) && res.length > 0) {
+        if (Array.isArray(res)) {
           setJobs(res);
         } else {
-          import("@/lib/mockData").then((m) => setJobs(m.MOCK_JOB_CARDS));
+          setJobs([]);
         }
       })
       .catch((error) => {
-        console.warn("Failed to fetch jobs from central API, using fallback data", error);
-        import("@/lib/mockData").then((m) => setJobs(m.MOCK_JOB_CARDS));
+        console.warn("Failed to fetch jobs from central API", error);
+        setJobs([]);
       })
       .finally(() => {
         setLoading(false);
@@ -99,8 +99,10 @@ export default function JobCardList() {
     // Real-time SSE Live Event Listener
     const handleLiveEvent = (e: Event) => {
       const customEvent = e as CustomEvent;
-      if (customEvent.detail?.type?.startsWith('job_card.')) {
-        fetchJobs();
+      if (customEvent.detail && customEvent.detail.event_type?.startsWith('job_card:')) {
+        if (_isMounted) {
+          fetchJobs();
+        }
       }
     };
 
@@ -114,6 +116,7 @@ export default function JobCardList() {
 
   const filterTabs = [
     { label: "All Records", value: "ALL" },
+    { label: "Safety Clearance", value: "HSE_CLEARANCE" },
     { label: "My Work", value: "MY_WORK" },
     { label: "Pending Approval", value: "PENDING_APPROVAL" },
     { label: "Planning / Assigned", value: "PLANNING_GROUP" },
@@ -133,6 +136,11 @@ export default function JobCardList() {
         if (userEmail && job.assigned_to_email && job.assigned_to_email !== userEmail) {
           return false;
         }
+      } else if (statusFilter === "HSE_CLEARANCE") {
+        const p = Number(job.priority);
+        const pStr = String(job.priority || "").toUpperCase();
+        const isHighRisk = p === 1 || p === 2 || pStr.includes("CRIT") || pStr.includes("HIGH") || pStr.includes("P1") || pStr.includes("P2");
+        if (!isHighRisk) return false;
       } else if (statusFilter === "DRAFT_GROUP") {
         if (s !== "DRAFT" && s !== "SUBMITTED" && s !== "RETURNED") return false;
       } else if (statusFilter === "PENDING_APPROVAL") {

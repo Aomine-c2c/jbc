@@ -37,6 +37,7 @@ export default function NewRequisition() {
     endTime: "",
     jobCardId: "",
     purpose: "",
+    location: "Bikita Open Pit - Bench 5",
   };
 
   const {
@@ -52,12 +53,14 @@ export default function NewRequisition() {
   const endTime = draft.endTime;
   const jobCardId = draft.jobCardId;
   const purpose = draft.purpose;
+  const location = draft.location;
 
   const setMachineTypeId = (val: string) => setDraft({ machineTypeId: val });
   const setStartTime = (val: string) => setDraft({ startTime: val });
   const setEndTime = (val: string) => setDraft({ endTime: val });
   const setJobCardId = (val: string) => setDraft({ jobCardId: val });
   const setPurpose = (val: string) => setDraft({ purpose: val });
+  const setLocation = (val: string) => setDraft({ location: val });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -121,6 +124,7 @@ export default function NewRequisition() {
 
       const payload = {
         machine_type_id: machineTypeId || (machineTypes[0]?.id ?? "00000000-0000-0000-0000-000000000000"),
+        location: location?.trim() || "Bikita Open Pit - Bench 5",
         start_time: start.toISOString(),
         end_time: end.toISOString(),
         job_card_id: jobCardId ? jobCardId : null,

@@ -282,7 +282,14 @@ class FleetService:
     @staticmethod
     async def create_requisition(db: AsyncSession, data: RequisitionCreate, current_user: User) -> MachineRequisition:
         user_perms = _get_user_permissions(current_user)
-        if not AuthzGuard.check_permission(current_user, "requisition:create", user_perms, resource_dept_id=data.department_id):
+        effective_dept_id = data.department_id or current_user.department_id
+        if not AuthzGuard.check_permission(
+            current_user,
+            "requisition:create",
+            user_perms,
+            resource_owner_id=current_user.id,
+            resource_dept_id=effective_dept_id,
+        ):
             raise HTTPException(status_code=403, detail="Not enough privileges")
         if data.end_time <= data.start_time:
             raise HTTPException(status_code=400, detail="end_time must be after start_time")
@@ -303,7 +310,7 @@ class FleetService:
 
         req = MachineRequisition(
             requisition_number=req_number,
-            department_id=data.department_id,
+            department_id=effective_dept_id,
             collaborating_department_id=data.collaborating_department_id,
             requester_id=current_user.id,
             purpose=data.purpose,

@@ -186,9 +186,12 @@ export default function UniversalRequestsPage() {
     }
   };
 
+  const [actionError, setActionError] = useState<string | null>(null);
+
   const handleTransition = async (action: string) => {
     if (!selectedRequest) return;
     setActionSubmitting(true);
+    setActionError(null);
     try {
       const updated = await apiFetch<RequestDetail>(`/api/v1/requests/${selectedRequest.id}/transition`, {
         method: 'POST',
@@ -201,7 +204,8 @@ export default function UniversalRequestsPage() {
       setActionNotes('');
       loadRequests();
     } catch (err) {
-      console.error(`Failed to ${action} request`, err);
+      const error = err as { message?: string };
+      setActionError(error.message || `Failed to ${action} request.`);
     } finally {
       setActionSubmitting(false);
     }
@@ -679,6 +683,12 @@ export default function UniversalRequestsPage() {
                   onChange={(e) => setActionNotes(e.target.value)}
                   className="h-8 text-xs"
                 />
+                {actionError && (
+                  <div className="p-2.5 rounded-md bg-rose-500/10 border border-rose-500/20 text-rose-600 text-xs flex items-center gap-2">
+                    <X className="size-4 shrink-0" />
+                    <span>{actionError}</span>
+                  </div>
+                )}
                 <div className="flex flex-wrap items-center gap-2">
                   {selectedRequest.status === 'DRAFT' && (
                     <Button size="sm" onClick={() => handleTransition('SUBMIT')} disabled={actionSubmitting} className="text-xs gap-1">

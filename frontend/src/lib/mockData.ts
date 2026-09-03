@@ -851,16 +851,17 @@ export const MOCK_SLA_TRACKERS = [
 ];
 
 export const MOCK_DEPARTMENTS = [
-  { id: "dept-mech", name: "Mechanical Engineering & Fixed Plant", code: "MECH", description: "Mechanical overhaul, fixed crushing, conveyor belts, mills and mobile workshop maintenance." },
-  { id: "dept-elec", name: "Electrical & Instrumentation", code: "ELEC", description: "HV switchgear, 33kV substations, automation SCADA loops, and motor control centers." },
-  { id: "dept-mining", name: "Open Cast Mining Operations", code: "MINE", description: "Load and haul, blast hole drilling, overburden stripping, and mine pit operations." },
-  { id: "dept-plant", name: "Mineral Processing & DMS Plant", code: "PLANT", description: "Dense media separation, lithium flotation, comminution, and gravity concentration circuits." },
-  { id: "dept-safety", name: "Health, Safety & Environment (HSE)", code: "HSE", description: "Mine safety compliance, LOTO isolations, environmental tailings monitoring, and hazard control." },
-  { id: "dept-stores", name: "Supply Chain & Materials Management", code: "STORES", description: "Central warehouse spares inventory, ERP receiving, issuing, and vendor logistics." },
-  { id: "dept-geo", name: "Geology, Geotech & Exploration", code: "GEO", description: "Diamond core exploration drilling, ore body block modeling, grade control assays, and pit wall stability." },
-  { id: "dept-civil", name: "Civil Works & Tailings Infrastructure", code: "CIVIL", description: "Tailings dam structural integrity, haul road maintenance, earth bund construction, and stormwater drainage." },
-  { id: "dept-it", name: "Information Technology & Digital Systems", code: "IT", description: "Telemetry networking, industrial IoT mesh, server infrastructure, and software management." },
-  { id: "dept-reliability", name: "Asset Integrity & Reliability Engineering", code: "RELIABILITY", description: "Vibration thermography analysis, oil condition lab analysis, and RCM maintenance optimization." },
+  { id: "cda5dc91-6af2-426b-806c-f9594c4830b0", name: "Mechanical Engineering & Fixed Plant", code: "MECH", description: "Mechanical overhaul, fixed crushing, conveyor belts, mills and mobile workshop maintenance." },
+  { id: "6dbe2c61-b73d-4880-b12f-d3134372b7cb", name: "Electrical & Instrumentation", code: "ELEC", description: "HV switchgear, 33kV substations, automation SCADA loops, and motor control centers." },
+  { id: "0b0eb8ee-cb57-4056-9e85-2ff4042c9a40", name: "Open Cast Mining Operations", code: "MINE", description: "Load and haul, blast hole drilling, overburden stripping, and mine pit operations." },
+  { id: "f232bb93-d748-4746-8e17-35f08b6da8ca", name: "Mineral Processing & DMS Plant", code: "PLANT", description: "Dense media separation, lithium flotation, comminution, and gravity concentration circuits." },
+  { id: "b4c50943-6817-4a53-b8fa-552edb192cdd", name: "Health, Safety & Environment (HSE)", code: "HSE", description: "Mine safety compliance, LOTO isolations, environmental tailings monitoring, and hazard control." },
+  { id: "81c22437-76fc-41a3-93fd-525946ea1687", name: "Supply Chain & Materials Management", code: "STORES", description: "Central warehouse spares inventory, ERP receiving, issuing, and vendor logistics." },
+  { id: "f7a4ab6f-d501-4f42-bbcf-06022a61d415", name: "Geology, Geotech & Exploration", code: "GEO", description: "Diamond core exploration drilling, ore body block modeling, grade control assays, and pit wall stability." },
+  { id: "92a651bd-e6bc-4895-9e71-a692eeca9551", name: "Civil Works & Tailings Infrastructure", code: "CIVIL", description: "Tailings dam structural integrity, haul road maintenance, earth bund construction, and stormwater drainage." },
+  { id: "4e2c4a45-b5f3-4c3e-a1e5-7b0580906aa6", name: "Information Technology & Digital Systems", code: "IT", description: "Telemetry networking, industrial IoT mesh, server infrastructure, and software management." },
+  { id: "8c97ef3a-5cc1-4946-8d07-d75dd69e1f8b", name: "Asset Integrity & Reliability Engineering", code: "RELIABILITY", description: "Vibration thermography analysis, oil condition lab analysis, and RCM maintenance optimization." },
+  { id: "a4e8348f-65f4-450e-b799-c3d3fa42e559", name: "Maintenance", code: "MAINT", description: "Central engineering and maintenance operations." },
 ];
 
 export const MOCK_MATERIAL_REQUIREMENTS = [

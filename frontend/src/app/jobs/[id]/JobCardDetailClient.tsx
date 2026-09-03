@@ -2079,7 +2079,12 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
               loading={actionLoading}
               onClick={() => {
                 const ep = showApprovalModal.action === "approve" ? "approve" : showApprovalModal.action === "return" ? "return" : "reject";
-                executeTransition(ep, { comments: decisionComment });
+                const fallbackComment = showApprovalModal.action === "approve"
+                  ? "Approved by supervisor"
+                  : showApprovalModal.action === "return"
+                  ? "Returned for revision"
+                  : "Rejected";
+                executeTransition(ep, { comments: decisionComment || fallbackComment });
               }}
             >
               Confirm {showApprovalModal.action.toUpperCase()}
@@ -2207,6 +2212,7 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
               variant="default"
               size="sm"
               loading={actionLoading}
+              disabled={!assignedSupervisorId || actionLoading}
               onClick={() => executeTransition("assign", {
                 supervisor_id: assignedSupervisorId,
                 assigned_personnel: assignedPersonnel,
@@ -2790,7 +2796,7 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
               variant="default"
               size="sm"
               loading={actionLoading}
-              onClick={() => executeTransition("verify", { comments: verifyComment, supervisor_signature: supervisorSignData })}
+              onClick={() => executeTransition("verify", { comments: verifyComment || "Supervisory post-maintenance verification completed successfully", supervisor_signature: supervisorSignData })}
             >
               <ShieldCheck className="size-3.5 mr-1" />
               Sign Verification
@@ -2876,7 +2882,7 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
               variant="default"
               size="sm"
               loading={actionLoading}
-              onClick={() => executeTransition("close", { comments: closeComment, safety_signature: safetySignData })}
+              onClick={() => executeTransition("close", { comments: closeComment || "Work order closed and archived successfully", safety_signature: safetySignData })}
             >
               <CheckCircle2 className="size-3.5 mr-1" />
               Archive & Close

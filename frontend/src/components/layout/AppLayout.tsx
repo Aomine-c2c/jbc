@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "./Sidebar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { Shield, LogOut, Cloud } from "lucide-react";
+import { Shield, LogOut, Cloud, ShieldAlert, X } from "lucide-react";
 import { logout } from "@/lib/auth";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { SyncStatusPanel } from "@/components/notifications/SyncStatusPanel";
@@ -19,7 +19,7 @@ import { ServerConfigDialog } from "@/components/config/ServerConfigDialog";
 import { RoleSwitcher } from "./RoleSwitcher";
 import { AccessRestricted } from "./AccessRestricted";
 
-import { resolveUserRole, isRouteAllowed } from "@/lib/rbac";
+import { resolveUserRole, isRouteAllowed, getDefaultLandingRoute } from "@/lib/rbac";
 
 interface UserProfile {
   name: string;
@@ -118,6 +118,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
   }, [pathname, isAuthPage, isSetupPage, router]);
+
+  const [restrictedNotice, setRestrictedNotice] = useState<string | null>(null);
+
+  // Enforce zero-visibility URL navigation: automatically redirect unauthorized hits to permitted home hub
+  useEffect(() => {
+    if (!pathname || isAuthPage || isSetupPage || !currentUserRole) return;
+    if (!isRouteAllowed(currentUserRole, pathname)) {
+      const target = getDefaultLandingRoute(currentUserRole);
+      setRestrictedNotice(`Access restricted: Your role does not have permission to access ${pathname}. Redirected to your primary hub.`);
+      router.replace(target);
+      const timer = setTimeout(() => setRestrictedNotice(null), 7000);
+      return () => clearTimeout(timer);
+    }
+  }, [pathname, currentUserRole, isAuthPage, isSetupPage, router]);
 
   if (!isConfigured) {
     return (
@@ -220,14 +234,26 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </header>
-        <NetworkStatusBar />
+        {restrictedNotice && (
+          <div className="fixed top-16 right-6 z-50 max-w-md p-3.5 bg-amber-500/15 border border-amber-500/30 text-amber-800 dark:text-amber-300 rounded-lg shadow-xl backdrop-blur-md flex items-start gap-2.5 text-xs animate-in fade-in slide-in-from-top-2">
+            <ShieldAlert className="size-4 shrink-0 text-amber-600 mt-0.5" />
+            <div className="flex-1 font-medium leading-relaxed">{restrictedNotice}</div>
+            <button onClick={() => setRestrictedNotice(null)} className="text-amber-600 hover:text-amber-800 dark:hover:text-amber-200">
+              <X className="size-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Main Content Area — with bottom padding on mobile for MobileBottomNav */}
         <main className="flex-1 overflow-auto bg-background/50 pb-16 md:pb-0">
           {!pathname || isRouteAllowed(currentUserRole, pathname) ? (
             children
           ) : (
-            <AccessRestricted pathname={pathname} userRole={currentUserRole} />
+            <div className="p-12 flex flex-col items-center justify-center min-h-[50vh] text-center space-y-2">
+              <ShieldAlert className="size-8 text-amber-500 animate-pulse" />
+              <div className="text-xs font-semibold text-foreground">Zero-Visibility Redirection</div>
+              <div className="text-[11px] text-muted-foreground">Transferring you to your authorized operations hub...</div>
+            </div>
           )}
         </main>
       </div>

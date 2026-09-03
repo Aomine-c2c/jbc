@@ -45,7 +45,9 @@ export const DEFAULT_PROFILES: ServerProfile[] = [
   {
     id: 'prod-default',
     name: 'Bikita Minerals Production',
-    primaryUrl: process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '').replace(/\/api\/v1$/, '') || DEFAULT_BACKEND_URL,
+    primaryUrl: (process.env.NEXT_PUBLIC_API_URL && !process.env.NEXT_PUBLIC_API_URL.includes(':3000')
+      ? process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '').replace(/\/api\/v1$/, '')
+      : DEFAULT_BACKEND_URL),
     fallbackUrl: 'http://192.168.1.100:8000',
     connectionMode: 'domain',
     isVerified: false,
@@ -306,34 +308,48 @@ export async function deleteProfile(profileId: string): Promise<void> {
  * Resolves active API base URL with automatic fallback failover if needed.
  */
 export async function getActiveApiUrl(): Promise<string> {
-  const envUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '').replace(/\/api\/v1$/, '');
-  if (envUrl) {
-    return normalizeServerUrl(envUrl);
-  }
-
-  const active = await getActiveProfile();
-
-  // In local browser/Tauri development, use the local backend unless we're
-  // explicitly on a production-like origin. Covers http://localhost:3000,
-  // http://127.0.0.1:3000, and Tauri's tauri://localhost dev origin.
+  // 1. Browser runtime
   if (typeof window !== 'undefined') {
     const origin = window.location.origin;
-    const isDevOrigin = [
-      'http://localhost:3000',
-      'http://127.0.0.1:3000',
-      'http://localhost:3001',
-      'http://127.0.0.1:3001',
-      'tauri://localhost',
-    ].includes(origin);
+    const isTauri = Boolean(
+      (window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ ||
+      (window as unknown as { __TAURI__?: unknown }).__TAURI__
+    );
 
-    if (isDevOrigin) {
+    if (isTauri) {
+      const active = await getActiveProfile();
+      if (active?.primaryUrl && !active.primaryUrl.includes(':3000')) {
+        return normalizeServerUrl(active.primaryUrl);
+      }
       return DEFAULT_BACKEND_URL;
     }
 
-    if (!active || active.id === 'prod-default') {
-      return origin;
+    const isLocalhost = [
+      'localhost',
+      '127.0.0.1',
+      '[::1]',
+    ].includes(window.location.hostname);
+
+    if (isLocalhost) {
+      // Local web dev on :3000/:3001 connects directly to FastAPI backend on :8000
+      const active = await getActiveProfile();
+      if (active && active.primaryUrl && active.id !== 'prod-default' && !active.primaryUrl.includes(':3000')) {
+        return normalizeServerUrl(active.primaryUrl);
+      }
+      return DEFAULT_BACKEND_URL;
     }
+
+    // Remote browser deployment (Tailscale node, LAN IP, or public domain)
+    // E.g. http://sila.tail4ff57b.ts.net or https://dwrms.bikita.com
+    // Always use the server origin that served the client
+    return origin;
   }
 
-  return active?.primaryUrl ? normalizeServerUrl(active.primaryUrl) : DEFAULT_BACKEND_URL;
+  // 2. SSR Runtime
+  const envUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '').replace(/\/api\/v1$/, '');
+  if (envUrl && !envUrl.includes(':3000')) {
+    return normalizeServerUrl(envUrl);
+  }
+
+  return DEFAULT_BACKEND_URL;
 }

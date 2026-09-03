@@ -13,12 +13,40 @@ MACHINE_STATES = [
     "UNDER_MAINTENANCE", "OUT_OF_SERVICE", "RETIRED"
 ]
 MACHINE_TRANSITIONS = {
-    "AVAILABLE": {"reserve": "RESERVED", "allocate": "ALLOCATED", "start_use": "IN_USE", "maintenance": "UNDER_MAINTENANCE", "out_of_service": "OUT_OF_SERVICE", "retire": "RETIRED"},
-    "RESERVED": {"allocate": "ALLOCATED", "start_use": "IN_USE", "cancel": "AVAILABLE", "maintenance": "UNDER_MAINTENANCE"},
-    "ALLOCATED": {"start_use": "IN_USE", "cancel": "AVAILABLE", "maintenance": "UNDER_MAINTENANCE"},
-    "IN_USE": {"return": "AVAILABLE", "maintenance": "UNDER_MAINTENANCE", "out_of_service": "OUT_OF_SERVICE"},
-    "UNDER_MAINTENANCE": {"available": "AVAILABLE", "out_of_service": "OUT_OF_SERVICE", "retire": "RETIRED"},
-    "OUT_OF_SERVICE": {"available": "AVAILABLE", "maintenance": "UNDER_MAINTENANCE", "retire": "RETIRED"},
+    "AVAILABLE": {
+        "reserve": "RESERVED", "RESERVED": "RESERVED",
+        "allocate": "ALLOCATED", "ALLOCATED": "ALLOCATED",
+        "start_use": "IN_USE", "IN_USE": "IN_USE",
+        "maintenance": "UNDER_MAINTENANCE", "UNDER_MAINTENANCE": "UNDER_MAINTENANCE",
+        "out_of_service": "OUT_OF_SERVICE", "OUT_OF_SERVICE": "OUT_OF_SERVICE",
+        "retire": "RETIRED", "RETIRED": "RETIRED",
+    },
+    "RESERVED": {
+        "allocate": "ALLOCATED", "ALLOCATED": "ALLOCATED",
+        "start_use": "IN_USE", "IN_USE": "IN_USE",
+        "cancel": "AVAILABLE", "available": "AVAILABLE", "AVAILABLE": "AVAILABLE",
+        "maintenance": "UNDER_MAINTENANCE", "UNDER_MAINTENANCE": "UNDER_MAINTENANCE",
+    },
+    "ALLOCATED": {
+        "start_use": "IN_USE", "IN_USE": "IN_USE",
+        "cancel": "AVAILABLE", "available": "AVAILABLE", "AVAILABLE": "AVAILABLE",
+        "maintenance": "UNDER_MAINTENANCE", "UNDER_MAINTENANCE": "UNDER_MAINTENANCE",
+    },
+    "IN_USE": {
+        "return": "AVAILABLE", "available": "AVAILABLE", "AVAILABLE": "AVAILABLE",
+        "maintenance": "UNDER_MAINTENANCE", "UNDER_MAINTENANCE": "UNDER_MAINTENANCE",
+        "out_of_service": "OUT_OF_SERVICE", "OUT_OF_SERVICE": "OUT_OF_SERVICE",
+    },
+    "UNDER_MAINTENANCE": {
+        "available": "AVAILABLE", "AVAILABLE": "AVAILABLE",
+        "out_of_service": "OUT_OF_SERVICE", "OUT_OF_SERVICE": "OUT_OF_SERVICE",
+        "retire": "RETIRED", "RETIRED": "RETIRED",
+    },
+    "OUT_OF_SERVICE": {
+        "available": "AVAILABLE", "AVAILABLE": "AVAILABLE",
+        "maintenance": "UNDER_MAINTENANCE", "UNDER_MAINTENANCE": "UNDER_MAINTENANCE",
+        "retire": "RETIRED", "RETIRED": "RETIRED",
+    },
     "RETIRED": {}
 }
 
@@ -26,9 +54,12 @@ MACHINE_TRANSITIONS = {
 def validate_machine_transition(from_state: str, action: str) -> str:
     if from_state not in MACHINE_TRANSITIONS:
         raise ValueError(f"Unknown machine state: {from_state}")
-    if action not in MACHINE_TRANSITIONS[from_state]:
-        raise ValueError(f"Cannot {action} machine from state {from_state}")
-    return MACHINE_TRANSITIONS[from_state][action]
+    if from_state == action:
+        return from_state
+    norm_action = action.lower() if action.lower() in MACHINE_TRANSITIONS[from_state] else action
+    if norm_action not in MACHINE_TRANSITIONS[from_state]:
+        raise ValueError(f"Cannot transition machine from state {from_state} with action/status {action}")
+    return MACHINE_TRANSITIONS[from_state][norm_action]
 
 
 # ── Full Requisition State Machine ───────────────────────────

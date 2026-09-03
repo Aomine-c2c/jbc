@@ -63,13 +63,13 @@ class MachineResponse(BaseModel):
 
 class RequisitionCreate(BaseModel):
     machine_type_id: UUID
-    department_id: UUID
+    department_id: Optional[UUID] = None
     collaborating_department_id: Optional[UUID] = None
     purpose: str = Field(..., min_length=3, description="Operational purpose of equipment requisition")
     job_card_id: Optional[UUID] = None
     machine_id: Optional[UUID] = None
     quantity: int = Field(1, ge=1)
-    location: str = Field(..., min_length=2, description="Location of work execution")
+    location: Optional[str] = Field("Bikita Mine Operations", description="Location of work execution")
     location_id: Optional[UUID] = None
     required_date: Optional[datetime] = None
     start_time: datetime
