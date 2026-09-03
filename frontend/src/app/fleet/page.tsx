@@ -14,10 +14,15 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 interface Requisition {
   id: string;
   status: string;
-  machine_type_id: string;
+  machine_type_id?: string;
   start_time: string;
   end_time: string;
-  department_id: string;
+  department_id?: string;
+  requisition_number?: string;
+  machine_type?: { name: string };
+  purpose?: string;
+  department?: { name: string };
+  requester?: { first_name: string; last_name: string };
 }
 
 interface Machine {

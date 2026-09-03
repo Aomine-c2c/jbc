@@ -1,5 +1,6 @@
 import time
 import json
+import hashlib
 from typing import Dict, Any, Optional
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request

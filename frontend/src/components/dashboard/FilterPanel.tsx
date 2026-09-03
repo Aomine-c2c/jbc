@@ -4,8 +4,11 @@ import { Button } from '@/components/ui/button';
 
 export interface DashboardFilters {
   department_id?: string;
+  departmentId?: string;
   date_from?: string;
   date_to?: string;
+  startDate?: string;
+  endDate?: string;
   status?: string;
   priority?: number;
   job_type?: string;
@@ -14,21 +17,28 @@ export interface DashboardFilters {
 }
 
 interface FilterPanelProps {
-  onFilter: (filters: DashboardFilters) => void;
+  onFilter?: (filters: DashboardFilters) => void;
+  onFilterChange?: (filters: DashboardFilters) => void;
   departments: { id: string, name: string }[];
+  loading?: boolean;
 }
 
-export function FilterPanel({ onFilter, departments }: FilterPanelProps) {
+export function FilterPanel({ onFilter, onFilterChange, departments, loading }: FilterPanelProps) {
   const [filters, setFilters] = useState<DashboardFilters>({});
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const applyFilters = (newFilters: DashboardFilters) => {
+    if (onFilterChange) onFilterChange(newFilters);
+    if (onFilter) onFilter(newFilters);
+  };
+
   const handleApply = () => {
-    onFilter(filters);
+    applyFilters(filters);
   };
 
   const handleClear = () => {
     setFilters({});
-    onFilter({});
+    applyFilters({});
   };
 
   return (

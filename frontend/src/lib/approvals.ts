@@ -3,6 +3,7 @@ import { apiFetch } from './api';
 export interface ApprovalStep {
   id: string;
   step_number: number;
+  step_name?: string;
   authority_role: string;
   required_permission: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'RETURNED' | 'DELEGATED' | 'ESCALATED' | 'SKIPPED';

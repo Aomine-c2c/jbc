@@ -21,10 +21,10 @@ export default function LoginPage() {
     getProfiles().then((list) => {
       if (cancelled) return;
       setProfiles(list);
-      return getActiveProfile();
-    }).then((active) => {
-      if (cancelled) return;
-      setActiveProfileId(active?.id || list[0]?.id || '');
+      getActiveProfile().then((active) => {
+        if (cancelled) return;
+        setActiveProfileId(active?.id || list[0]?.id || '');
+      });
     });
     return () => { cancelled = true; };
   }, []);

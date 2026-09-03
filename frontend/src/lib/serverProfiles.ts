@@ -335,5 +335,5 @@ export async function getActiveApiUrl(): Promise<string> {
     }
   }
 
-  return normalizeServerUrl(active.primaryUrl);
+  return active?.primaryUrl ? normalizeServerUrl(active.primaryUrl) : DEFAULT_BACKEND_URL;
 }

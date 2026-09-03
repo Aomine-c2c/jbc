@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from "react";
-import { PenTool, RotateCcw, CheckCheck, Stamp, ShieldCheck, Lock, AlertTriangle } from "lucide-react";
+import { PenTool, RotateCcw, CheckCheck, Stamp, Lock } from "lucide-react";
 import { Button } from "./button";
 import { Input } from "./input";
 import { cn } from "@/lib/utils";

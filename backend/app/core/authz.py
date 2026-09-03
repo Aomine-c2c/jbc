@@ -73,6 +73,19 @@ class AuthzGuard:
         if "GLOBAL" in scope_names:
             return True
 
+        # If no specific resource context is provided, possessing the permission under any scope is sufficient for creation/unscoped actions
+        has_context = any(
+            x is not None for x in (
+                resource_site_id,
+                resource_location_id,
+                resource_dept_id,
+                assigned_user_id,
+                resource_owner_id,
+            )
+        )
+        if not has_context:
+            return True
+
         # Check SITE scope
         if "SITE" in scope_names:
             if resource_site_id is None:

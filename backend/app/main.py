@@ -81,6 +81,12 @@ async def get_current_user(
     # 1) Try real JWT decode
     try:
         payload = jwt.decode(token, settings.get_secret_key, algorithms=[settings.ALGORITHM])
+        if payload.get("type") == "refresh":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh tokens cannot be used as access tokens",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         subject = payload.get("sub")
         if not subject:
             raise HTTPException(
@@ -203,6 +209,14 @@ app.add_middleware(IdempotencyMiddleware)
 
 from app.core.csrf import CsrfProtectionMiddleware
 app.add_middleware(CsrfProtectionMiddleware)
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
 
 
 # ── Exception Handlers ──────────────────────────────────────

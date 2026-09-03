@@ -150,3 +150,54 @@ async def test_invalid_workflow_transition(async_client: AsyncClient, seed_user_
         await JobCardService.start(db, job.id, JobCardStart(comments=""), seed_user_a)
     assert exc.value.status_code == 409
     assert "Cannot start job card from state DRAFT" in exc.value.detail
+
+
+@pytest.mark.asyncio
+async def test_refresh_token_rejected_as_access_token(async_client: AsyncClient, seed_user_a):
+    from app.core.security import create_refresh_token
+    refresh_token = create_refresh_token(subject=str(seed_user_a.id))
+    response = await async_client.get(
+        "/api/v1/iam/users/me",
+        headers={"Authorization": f"Bearer {refresh_token}"}
+    )
+    assert response.status_code == 401
+    assert "Refresh tokens cannot be used as access tokens" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_csrf_protection_for_cookie_auth(async_client: AsyncClient, seed_user_a):
+    access_token = create_access_token(subject=str(seed_user_a.id))
+    # 1. Missing both cookie and header for cookie-authenticated mutation
+    res_no_csrf = await async_client.post(
+        "/api/v1/jobs",
+        cookies={"dwrms_access_token": access_token},
+        json={"title": "Unauthorized CSRF Job", "department_id": str(seed_user_a.department_id)}
+    )
+    assert res_no_csrf.status_code == 403
+
+    # 2. Header present, but cookie missing (spoof attempt)
+    res_spoof = await async_client.post(
+        "/api/v1/jobs",
+        cookies={"dwrms_access_token": access_token},
+        headers={"X-CSRF-Token": "attacker_supplied_token"},
+        json={"title": "Unauthorized CSRF Job", "department_id": str(seed_user_a.department_id)}
+    )
+    assert res_spoof.status_code == 403
+
+    # 3. Both cookie and header present but mismatched
+    res_mismatch = await async_client.post(
+        "/api/v1/jobs",
+        cookies={"dwrms_access_token": access_token, "dwrms_csrf_token": "valid_cookie_token"},
+        headers={"X-CSRF-Token": "different_header_token"},
+        json={"title": "Unauthorized CSRF Job", "department_id": str(seed_user_a.department_id)}
+    )
+    assert res_mismatch.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_security_headers_present(async_client: AsyncClient):
+    response = await async_client.get("/api/v1/health")
+    assert response.headers.get("X-Content-Type-Options") == "nosniff"
+    assert response.headers.get("X-Frame-Options") == "SAMEORIGIN"
+    assert response.headers.get("Referrer-Policy") == "strict-origin-when-cross-origin"
+

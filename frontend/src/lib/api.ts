@@ -53,7 +53,7 @@ function getCsrfToken(): string | null {
   return cookie ? decodeURIComponent(cookie.split('=', 2)[1]) : null;
 }
 
-export async function apiFetch(endpoint: string, options: ApiRequestInit = {}) {
+export async function apiFetch<T = any>(endpoint: string, options: ApiRequestInit = {}): Promise<T> {
   let token: string | null = null;
   if (typeof window !== 'undefined') {
     token = localStorage.getItem('session');
@@ -136,7 +136,7 @@ export async function apiFetch(endpoint: string, options: ApiRequestInit = {}) {
           status: 'PENDING'
         });
         
-        return { _offline: true, syncId, id: `offline-${syncId.slice(0, 8)}` };
+        return { _offline: true, syncId, id: `offline-${syncId.slice(0, 8)}` } as unknown as T;
       }
 
       // If we have retries remaining for GET request, wait with backoff
@@ -167,7 +167,7 @@ export async function apiFetch(endpoint: string, options: ApiRequestInit = {}) {
         body: JSON.stringify({}),
       });
       if (refreshResponse.ok) {
-        return apiFetch(endpoint, { ...options, retriedAfterRefresh: true });
+        return apiFetch<T>(endpoint, { ...options, retriedAfterRefresh: true });
       }
     }
     if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
@@ -175,7 +175,7 @@ export async function apiFetch(endpoint: string, options: ApiRequestInit = {}) {
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('user_email');
       window.location.href = '/login';
-      return;
+      return undefined as unknown as T;
     }
   }
 
@@ -192,7 +192,7 @@ export async function apiFetch(endpoint: string, options: ApiRequestInit = {}) {
   }
 
   // Return data directly (or data.data if it's wrapped)
-  return data?.data !== undefined ? data.data : data;
+  return (data?.data !== undefined ? data.data : data) as T;
 }
 
 export const api = {

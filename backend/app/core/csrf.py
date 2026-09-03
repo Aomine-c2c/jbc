@@ -23,7 +23,7 @@ class CsrfProtectionMiddleware(BaseHTTPMiddleware):
         ):
             csrf_header = request.headers.get("X-CSRF-Token")
             csrf_cookie = request.cookies.get("dwrms_csrf_token")
-            if not csrf_header or (csrf_cookie and csrf_header != csrf_cookie):
+            if not csrf_header or not csrf_cookie or csrf_header != csrf_cookie:
                 return JSONResponse(status_code=403, content={"detail": "Invalid CSRF token"})
         return await call_next(request)
 

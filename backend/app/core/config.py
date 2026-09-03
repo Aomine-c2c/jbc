@@ -1,9 +1,8 @@
 import os
 from pathlib import Path
-from datetime import timedelta
 from functools import lru_cache
 from pydantic import model_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     APP_NAME: str = "Bikita Minerals DWRMS"
@@ -149,9 +148,7 @@ class Settings(BaseSettings):
     def allowed_extensions_set(self) -> set[str]:
         return {ext.strip().lower().lstrip(".") for ext in self.ALLOWED_EXTENSIONS.split(",") if ext.strip()}
 
-    class Config:
-        env_file = ".env"
-        extra = "allow"
+    model_config = SettingsConfigDict(env_file=".env", extra="allow")
 
 
 @lru_cache

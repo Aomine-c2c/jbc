@@ -108,7 +108,7 @@ export default function LocationsAdminPage() {
 
       // Auto-expand top level nodes
       const initialExpanded: Record<string, boolean> = {};
-      (treeRes || []).forEach((node) => {
+      (treeRes || []).forEach((node: LocationTreeNode) => {
         initialExpanded[node.id] = true;
       });
       setExpandedNodes((prev) => ({ ...initialExpanded, ...prev }));

@@ -121,6 +121,15 @@ interface JobCard {
   location?: string;
   plant_area?: string;
   machine_id?: string;
+  asset_id?: string;
+  asset_tag?: string;
+  machine_identifier?: string;
+  department_name?: string;
+  completed_at?: string;
+  duration_hours?: number;
+  start_meter_hours?: number;
+  end_meter_hours?: number;
+  loto_tag_number?: string;
   
   creator_id?: string;
   required_date?: string;
@@ -415,8 +424,8 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
       .then((users) => {
         if (cancelled) return;
         const supervisors = (users || [])
-          .filter((u) => Array.isArray(u.roles) && u.roles.some((r) => r.toLowerCase() === "supervisor"))
-          .map((u) => ({
+          .filter((u: any) => Array.isArray(u.roles) && u.roles.some((r: any) => typeof r === 'string' && r.toLowerCase() === "supervisor"))
+          .map((u: any) => ({
             id: u.id,
             full_name: `${u.first_name ?? ""} ${u.last_name ?? ""}`.trim() || u.email,
           }));
@@ -614,7 +623,7 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
           id, 
           action, 
           comments, 
-          job.creator_id || userId, 
+          job.creator_id || userId || "", 
           job.status, 
           job.status
         );
@@ -2931,7 +2940,7 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
                 endMeterHours: job.end_meter_hours || 12454,
                 lotoTagNumber: job.loto_tag_number || "LOTO-2026-992",
                 lotoVerified: true,
-                parts: (materials || []).map((m: any) => ({
+                parts: (job.parts || []).map((m: any) => ({
                   part_name: m.material_name || m.part_name || "Component Part",
                   part_number: m.part_number || "PRT-001",
                   quantity: m.quantity || 1,

@@ -196,8 +196,9 @@ export default function SLAManagementPage() {
               response_time_minutes: 15,
               completion_time_minutes: 180,
               warning_threshold_percentage: 80,
-              escalation_level: 1,
-              is_active: true
+              escalation_rules: [{ level: 1, trigger: "WARNING", after_percentage: 80 }],
+              is_active: true,
+              is_default: true
             },
             {
               id: "pol-02",
@@ -207,8 +208,9 @@ export default function SLAManagementPage() {
               response_time_minutes: 30,
               completion_time_minutes: 360,
               warning_threshold_percentage: 80,
-              escalation_level: 1,
-              is_active: true
+              escalation_rules: [{ level: 1, trigger: "WARNING", after_percentage: 80 }],
+              is_active: true,
+              is_default: false
             }
           ]);
         }

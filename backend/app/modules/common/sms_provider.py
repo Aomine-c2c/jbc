@@ -2,14 +2,18 @@ import random
 
 
 class MockSMSProvider:
-    """Mock SMS provider that returns True most of the time."""
+    """Mock SMS provider that returns True by default, with optional simulated failure rate."""
+
+    def __init__(self, failure_rate: float = 0.0):
+        self.failure_rate = failure_rate
 
     def send_sms(self, phone: str, message: str) -> bool:
         """Simulate sending an SMS. Returns True on success."""
         if not phone or not message:
             return False
-        # ~90% success rate
-        return random.random() > 0.1
+        if self.failure_rate > 0.0:
+            return random.random() > self.failure_rate
+        return True
 
 
 _provider_instance: MockSMSProvider | None = None

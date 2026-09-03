@@ -21,10 +21,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from app.db.session import Base
-from app.modules.iam.models import *
-from app.modules.jobs.models import *
-from app.modules.fleet.models import *
-from app.modules.audit.models import *
+import app.modules  # Load all 18 modules (74 models) into Base.metadata
 target_metadata = Base.metadata
 
 from app.core.config import settings
