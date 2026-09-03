@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useCallback } from 'react';
-import { offlineStore, SyncRequest } from './offlineStore';
+import { offlineStore } from './offlineStore';
 import { useConnection } from './providers/ConnectionProvider';
 
 export function useSyncManager() {
@@ -45,7 +45,7 @@ export function useSyncManager() {
             });
           }
           // If 5xx, leave as PENDING for retry later
-        } catch (error) {
+        } catch {
           // Network error during sync, will retry later
           break;
         }

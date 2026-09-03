@@ -19,9 +19,11 @@
 ### Task 1: Create TopNav Component
 
 **Files:**
+
 - Create: `frontend/src/components/layout/TopNav.tsx`
 
 **Interfaces:**
+
 - Consumes: Next.js `usePathname` for active route detection, `Protect` component for RBAC.
 - Produces: `TopNav` component.
 
@@ -107,10 +109,12 @@ git commit -m "feat: create top horizontal tab navigation"
 ### Task 2: Restructure AppLayout & Remove Sidebar
 
 **Files:**
+
 - Modify: `frontend/src/components/layout/AppLayout.tsx`
 - Delete: `frontend/src/components/layout/Sidebar.tsx`
 
 **Interfaces:**
+
 - Consumes: `TopNav` component.
 
 - [ ] **Step 1: Update AppLayout.tsx**
@@ -142,6 +146,7 @@ rm frontend/src/components/layout/Sidebar.tsx
 ```bash
 npx tsc --noEmit
 ```
+
 Expected: PASS (or pre-existing errors in unrelated files, but no new errors in layout).
 
 - [ ] **Step 4: Commit**

@@ -56,7 +56,6 @@ export function MobileNavDrawer({ isOpen, onClose, onOpenServerConfig, userInfo 
   const pathname = usePathname();
   const [permissions, setPermissions] = useState<string[]>([]);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [loadedPerms, setLoadedPerms] = useState<boolean>(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -73,8 +72,7 @@ export function MobileNavDrawer({ isOpen, onClose, onOpenServerConfig, userInfo 
           setPermissions(res.data);
         }
       })
-      .catch(() => {})
-      .finally(() => setLoadedPerms(true));
+      .catch(() => {});
   }, [isOpen]);
 
   if (!isOpen) return null;

@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { WifiOff, RefreshCw, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { WifiOff, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { networkResilience, ConnectionDiagnostics, DetailedConnectionStatus } from '@/lib/networkResilience';
+import { networkResilience, ConnectionDiagnostics } from '@/lib/networkResilience';
 
 export function NetworkStatusBar() {
   const [diagnostics, setDiagnostics] = useState<ConnectionDiagnostics>({

@@ -7,6 +7,7 @@ This manual provides authoritative procedures for deploying, configuring, monito
 ## 1. System Requirements & Architecture Stack
 
 ### Recommended Host Specifications
+
 * **Operating System**: Ubuntu Server 22.04 LTS or 24.04 LTS (x86_64 / ARM64)
 * **CPU**: 4+ Cores recommended for concurrent mining operations
 * **RAM**: 8+ GB recommended for production with Redis & worker queues
@@ -14,7 +15,8 @@ This manual provides authoritative procedures for deploying, configuring, monito
 * **Network**: Static IPv4 address or internal corporate DNS (e.g. `dwrms.bikita.com`)
 
 ### Service Topology
-```
+
+```text
 Ubuntu Server (Host OS)
 │
 ├── Nginx Reverse Proxy (:80, :443) ── TLS 1.2/1.3, Rate Limiting, Health & Static Cache
@@ -35,13 +37,14 @@ Ubuntu Server (Host OS)
 
 The deployment orchestrator automates the complete operational lifecycle:
 
-```
+```text
 [1. INSTALL] ➔ [2. CONFIGURE] ➔ [3. INITIALIZE DB] ➔ [4. RUN MIGRATIONS]
                                                                 │
 [8. VERIFY HEALTH] 🠤 [7. START SERVICES] 🠤 [6. CONFIGURE STORAGE] 🠤 [5. CREATE ADMIN]
 ```
 
 ### Automated Single-Command Deployment
+
 ```bash
 # 1. Clone repository to server:
 sudo git clone https://github.com/bikita-minerals/dwrms.git /opt/dwrms
@@ -114,10 +117,13 @@ For the comprehensive command manual, see [docs/OPS_CLI_REFERENCE.md](file:///c:
 ## 4. Health, Readiness & Diagnostics Endpoints
 
 ### 1. Liveness Probe (`/health` or `/api/v1/health`)
+
 Fast, non-blocking check verifying that the application process is running.
+
 ```bash
 curl -k https://localhost/health
 ```
+
 ```json
 {
   "status": "ok",
@@ -127,10 +133,13 @@ curl -k https://localhost/health
 ```
 
 ### 2. Deep Readiness Probe (`/readiness` or `/api/v1/readiness`)
+
 Evaluates all critical subsystem dependencies (Database latency, Redis ping, Storage write access). Returns HTTP `200 OK` when healthy, or HTTP `503 Service Unavailable` if degraded.
+
 ```bash
 curl -k https://localhost/readiness
 ```
+
 ```json
 {
   "status": "ready",
@@ -157,12 +166,15 @@ curl -k https://localhost/readiness
 ```
 
 ### 3. Version Probe (`/version` or `/api/v1/version`)
+
 Returns release version and operating environment.
+
 ```bash
 curl -k https://localhost/version
 ```
 
 ### 4. Admin Diagnostics (`/api/v1/diagnostics`)
+
 Protected diagnostic endpoint for authorized System Administrators providing CPU, memory metrics, database pool statistics, and storage health.
 
 ---
@@ -171,13 +183,16 @@ Protected diagnostic endpoint for authorized System Administrators providing CPU
 
 All logs are written to `/var/dwrms/logs` with structured JSON format and log rotation.
 
-### Log Files:
+### Log Files
+
 * `dwrms_app.log`: Application lifecycle, API requests, and audit logs.
 * `dwrms_error.log`: Filtered error logs and uncaught exception tracebacks.
 * `nginx/access.log`: Nginx access logs with request execution time and `req_id`.
 
-### Request Correlation (`X-Request-ID`):
+### Request Correlation (`X-Request-ID`)
+
 Every API request generates or accepts an `X-Request-ID` header. When an error occurs, clients receive:
+
 ```json
 {
   "error": "INTERNAL_SERVER_ERROR",
@@ -185,7 +200,9 @@ Every API request generates or accepts an `X-Request-ID` header. When an error o
   "request_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
 }
 ```
+
 Operators can immediately grep for the root cause in the server logs:
+
 ```bash
 grep "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d" /var/dwrms/logs/dwrms_error.log
 ```
@@ -200,7 +217,8 @@ All containers and scheduled services are configured to survive unexpected serve
 * `dwrms-backup.timer`: Executes automated daily snapshot backups at 02:00 CAT.
 * `dwrms-healthcheck.timer`: Periodic watchdog that checks system readiness every 5 minutes.
 
-### Service Management Commands:
+### Service Management Commands
+
 ```bash
 # Stack status:
 systemctl status dwrms
@@ -217,9 +235,11 @@ systemctl list-timers | grep dwrms
 ## 7. Disaster Recovery & Backup Restoration
 
 ### Automated Daily Snapshots
+
 Backups are archived in `/var/dwrms/backups/dwrms_backup_YYYYMMDD_HHMMSS.tar.gz` with a companion `.sha256` checksum file.
 
-### Restoration Procedure:
+### Restoration Procedure
+
 ```bash
 # 1. Stop active worker and API services:
 sudo docker compose -f /opt/dwrms/docker-compose.prod.yml stop backend worker beat

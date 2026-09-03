@@ -26,8 +26,6 @@ import {
   Sliders,
   BellRing,
   Activity,
-  Layers,
-  Building2,
   Check,
 } from 'lucide-react';
 
@@ -656,6 +654,17 @@ export default function SLAManagementPage() {
               <option value="BREACHED_COMPLETION">COMPLETION BREACH</option>
               <option value="MET">SLA MET</option>
             </select>
+            <select
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value)}
+              className="h-9 rounded-md border border-input bg-card px-3 text-xs text-foreground shrink-0"
+            >
+              <option value="ALL">All Priorities</option>
+              <option value="CRITICAL">Critical (P1)</option>
+              <option value="HIGH">High (P2)</option>
+              <option value="NORMAL">Normal (P3)</option>
+              <option value="LOW">Low (P4)</option>
+            </select>
           </div>
 
           <Card className="bg-card border-border">
@@ -780,7 +789,12 @@ export default function SLAManagementPage() {
       {/* Tracker Detail & Action Drawer */}
       {selectedTracker && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex justify-end">
-          <div className="w-full max-w-xl bg-card border-l border-border h-full flex flex-col shadow-2xl overflow-hidden">
+          <div className="w-full max-w-xl bg-card border-l border-border h-full flex flex-col shadow-2xl overflow-hidden relative">
+            {drawerLoading && (
+              <div className="absolute inset-0 bg-background/50 backdrop-blur-xs flex items-center justify-center z-10">
+                <span className="text-xs text-muted-foreground font-mono">Loading details...</span>
+              </div>
+            )}
             <div className="p-4 border-b border-border flex items-center justify-between bg-muted/20">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded bg-primary/10 text-primary">

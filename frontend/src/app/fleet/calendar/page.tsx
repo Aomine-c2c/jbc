@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
+import { Protect } from "@/components/auth/Protect";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Calendar as CalendarIcon, Wrench, ArrowLeft, ArrowRight, Truck } from "lucide-react";
@@ -47,7 +48,8 @@ export default function FleetCalendarPage() {
   useEffect(() => { load(); }, [load]);
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-5">
+    <Protect capability="fleet_calendar:view" isPageGuard moduleName="Fleet Schedule & Availability Calendar">
+      <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-5">
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
         <div>
@@ -165,6 +167,7 @@ export default function FleetCalendarPage() {
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </Protect>
   );
 }

@@ -13,7 +13,6 @@ import {
   Wrench,
   Search,
   Plus,
-  Filter,
   CheckCircle2,
   Clock,
   AlertTriangle,
@@ -26,7 +25,6 @@ import {
   MapPin,
   Truck,
   Eye,
-  SlidersHorizontal,
 } from 'lucide-react';
 import Link from 'next/link';
 

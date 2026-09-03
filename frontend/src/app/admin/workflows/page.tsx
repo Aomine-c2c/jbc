@@ -8,11 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import {
   Settings,
   ShieldCheck,
-  Layers,
   GitFork,
   RefreshCw,
   Plus,
-  ChevronRight,
   CheckCircle2,
   XCircle,
   AlertCircle,
@@ -261,8 +259,8 @@ export default function WorkflowsAdminPage() {
       const transitions = JSON.parse(newTransitionsJson);
       setJsonError(null);
       return { states, transitions };
-    } catch (e: any) {
-      setJsonError(`JSON parse error: ${e.message}`);
+    } catch (e: unknown) {
+      setJsonError(`JSON parse error: ${e instanceof Error ? e.message : String(e)}`);
       return null;
     }
   };
@@ -310,7 +308,7 @@ export default function WorkflowsAdminPage() {
       setNewDesc('');
       setValidation(null);
       loadTemplates();
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Create template failed', e);
     } finally {
       setCreating(false);

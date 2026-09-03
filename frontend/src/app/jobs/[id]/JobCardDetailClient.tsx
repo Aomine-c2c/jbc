@@ -26,10 +26,8 @@ import { ErrorState } from "@/components/ui/error-state";
 import { useConnection } from "@/lib/providers/ConnectionProvider";
 import {
   JobReport,
-  JobReportProgressUpdate,
   JobReportMaterial,
   JobReportAttachment,
-  JobReportAmendment,
   DeptFieldMeta,
   getJobReport,
   updateJobReport,
@@ -74,10 +72,7 @@ import {
   FlaskConical,
   PenLine,
   Timer,
-  Stamp,
   Printer,
-  StopCircle,
-  HardHat,
 } from "lucide-react";
 
 interface JobCardPart {
@@ -299,6 +294,7 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
   const [approvalRequest, setApprovalRequest] = useState<ApprovalRequestData | null>(null);
   const [holdReason, setHoldReason] = useState("");
   const [cancelReason, setCancelReason] = useState("");
+  const [closeComment, setCloseComment] = useState("");
   
   // Planning Form
   const [planForm, setPlanForm] = useState({
@@ -333,9 +329,6 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
 
   // Requester Confirmation Form
   const [confirmNotes, setConfirmNotes] = useState("");
-
-  // Close Signature state
-  const [closeComment, setCloseComment] = useState("");
 
   // ── Fetch Report ──────────────────────────────────────────────
   const fetchReport = useCallback(async (jobStatus: string) => {
@@ -424,8 +417,8 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
       .then((users) => {
         if (cancelled) return;
         const supervisors = (users || [])
-          .filter((u: any) => Array.isArray(u.roles) && u.roles.some((r: any) => typeof r === 'string' && r.toLowerCase() === "supervisor"))
-          .map((u: any) => ({
+          .filter((u) => Array.isArray(u.roles) && u.roles.some((r) => typeof r === 'string' && r.toLowerCase() === "supervisor"))
+          .map((u) => ({
             id: u.id,
             full_name: `${u.first_name ?? ""} ${u.last_name ?? ""}`.trim() || u.email,
           }));
@@ -645,7 +638,8 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-5 antialiased">
+    <Protect capability="job_card:read" isPageGuard moduleName="Job Card Details">
+      <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-5 antialiased">
       {/* 1. TOP BREADCRUMB & HEADER CONTROLS */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
         <div className="flex items-center gap-3">
@@ -696,6 +690,16 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
           message={errorMessage}
           dismissible
           onDismiss={() => setErrorMessage(null)}
+        />
+      )}
+
+      {successMessage && (
+        <NotificationBanner
+          type="success"
+          title="Success"
+          message={successMessage}
+          dismissible
+          onDismiss={() => setSuccessMessage(null)}
         />
       )}
 
@@ -1389,7 +1393,7 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
                         {icon} {label}
                       </label>
                       {report.is_locked ? (
-                        <div className="p-2.5 rounded bg-muted/20 border border-border text-xs text-foreground leading-relaxed whitespace-pre-wrap min-h-[40px]">
+                        <div className="p-2.5 rounded bg-muted/20 border border-border text-xs text-foreground leading-relaxed whitespace-pre-wrap min-h-10">
                           {(report as unknown as Record<string, string>)[key] || <span className="text-muted-foreground italic">Not recorded</span>}
                         </div>
                       ) : (
@@ -1636,9 +1640,9 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
                         {report.amendments.map((am) => (
                           <TableRow key={am.id}>
                             <TableCell mono className="font-bold">{am.field_name}</TableCell>
-                            <TableCell className="text-muted-foreground text-xs max-w-[120px] truncate" title={am.old_value ?? ""}>{am.old_value || "—"}</TableCell>
-                            <TableCell className="text-foreground text-xs max-w-[120px] truncate" title={am.new_value ?? ""}>{am.new_value || "—"}</TableCell>
-                            <TableCell className="text-xs max-w-[160px] truncate" title={am.amendment_reason}>{am.amendment_reason}</TableCell>
+                            <TableCell className="text-muted-foreground text-xs max-w-30 truncate" title={am.old_value ?? ""}>{am.old_value || "—"}</TableCell>
+                            <TableCell className="text-foreground text-xs max-w-30 truncate" title={am.new_value ?? ""}>{am.new_value || "—"}</TableCell>
+                            <TableCell className="text-xs max-w-40 truncate" title={am.amendment_reason}>{am.amendment_reason}</TableCell>
                             <TableCell>
                               <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
                                 am.approval_status === "APPROVED" ? "bg-emerald-500/10 text-emerald-600" :
@@ -2853,6 +2857,16 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
               signatureHash={safetySignData?.hash}
               signatureImage={safetySignData?.signatureImage}
             />
+            <div className="space-y-1">
+              <label className="font-mono text-muted-foreground">Closure Notes (Optional)</label>
+              <textarea
+                placeholder="Final remarks or handover archive notes..."
+                value={closeComment}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCloseComment(e.target.value)}
+                className="w-full rounded-md border border-input bg-card p-2 text-xs text-foreground placeholder:text-muted-foreground"
+                rows={2}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setShowCloseModal(false)}>
@@ -2940,11 +2954,11 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
                 endMeterHours: job.end_meter_hours || 12454,
                 lotoTagNumber: job.loto_tag_number || "LOTO-2026-992",
                 lotoVerified: true,
-                parts: (job.parts || []).map((m: any) => ({
-                  part_name: m.material_name || m.part_name || "Component Part",
+                parts: (job.parts || []).map((m: JobCardPart) => ({
+                  part_name: ((m as unknown as Record<string, unknown>).material_name as string) || m.part_name || "Component Part",
                   part_number: m.part_number || "PRT-001",
-                  quantity: m.quantity || 1,
-                  unit_cost: m.unit_cost || 0,
+                  quantity: Number(m.quantity) || 1,
+                  unit_cost: Number(m.unit_cost) || 0,
                 })),
                 technicianSign: technicianSignData || {
                   name: "Farai Moyo",
@@ -2970,6 +2984,7 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </Protect>
   );
 }

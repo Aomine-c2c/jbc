@@ -2,24 +2,33 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { FilterPanel, DashboardFilters } from '@/components/dashboard/FilterPanel';
-import { MetricsCards, FleetMetricsCards, ChartsSection } from '@/components/dashboard/Metrics';
+import { MetricsCards, FleetMetricsCards, ChartsSection, DashboardData } from '@/components/dashboard/Metrics';
 import api from '@/lib/api';
 import { Download, RefreshCw, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Protect } from '@/components/auth/Protect';
 
-const FALLBACK_DASHBOARD_METRICS = {
-  total_jobs: 24,
-  in_progress_jobs: 8,
-  pending_approval: 5,
-  completed_jobs: 11,
-  overdue_jobs: 1,
-  avg_resolution_hours: 3.4,
-  sla_compliance_percent: 96.2,
-  machines_operating: 14,
-  machines_maintenance: 3,
-  fleet_utilization_rate: 82.4,
-  spares_cost_mtd: 14850,
+const FALLBACK_DASHBOARD_METRICS: DashboardData = {
+  job_metrics: {
+    open_jobs: 24,
+    pending_approval: 5,
+    in_progress: 8,
+    on_hold: 2,
+    overdue: 1,
+    avg_completion_time_hours: 3.4,
+    actual_cost: 14850,
+    estimated_cost: 18500,
+  },
+  fleet_metrics: {
+    utilization_percentage: 82.4,
+    in_use: 14,
+    total_equipment: 17,
+    pending_requisitions: 3,
+    equipment_utilization_breakdown: [
+      { status: "OPERATING", count: 14 },
+      { status: "MAINTENANCE", count: 3 },
+    ],
+  },
   timeseries_data: [
     { date: "2026-08-27", jobs_created: 4, jobs_completed: 3 },
     { date: "2026-08-28", jobs_created: 6, jobs_completed: 5 },
@@ -29,22 +38,17 @@ const FALLBACK_DASHBOARD_METRICS = {
     { date: "2026-09-01", jobs_created: 8, jobs_completed: 7 },
     { date: "2026-09-02", jobs_created: 5, jobs_completed: 4 },
   ],
-  department_breakdown: [
-    { department: "Mechanical Workshop", count: 12 },
-    { department: "Electrical Section", count: 6 },
-    { department: "Mining / Pit Ops", count: 4 },
-    { department: "Processing Plant", count: 2 },
-  ],
-  status_breakdown: [
-    { status: "IN_PROGRESS", count: 8 },
-    { status: "COMPLETED", count: 11 },
-    { status: "PENDING_APPROVAL", count: 5 },
+  department_workload: [
+    { department_name: "Mechanical Workshop", active_jobs: 12 },
+    { department_name: "Electrical Section", active_jobs: 6 },
+    { department_name: "Mining / Pit Ops", active_jobs: 4 },
+    { department_name: "Processing Plant", active_jobs: 2 },
   ],
 };
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<DashboardData | null>(null);
   const [departments, setDepartments] = useState<{id: string, name: string}[]>([]);
   const [filters, setFilters] = useState<DashboardFilters>({});
   const [isCachedSnapshot, setIsCachedSnapshot] = useState(false);

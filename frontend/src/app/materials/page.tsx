@@ -15,17 +15,13 @@ import {
   RefreshCw,
   CheckCircle2,
   Clock,
-  AlertTriangle,
-  Send,
   Check,
   X,
   Eye,
-  ArrowRight,
   Truck,
   RotateCcw,
   Boxes,
   Database,
-  Building2,
 } from 'lucide-react';
 
 interface MaterialReqRow {
@@ -102,7 +98,6 @@ export default function MaterialsManagementPage() {
 
   // Detail & Action Drawer
   const [selectedReq, setSelectedReq] = useState<MaterialReqDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [actionNotes, setActionNotes] = useState('');
   const [actionQty, setActionQty] = useState('');
   const [actionSubmitting, setActionSubmitting] = useState(false);
@@ -120,6 +115,7 @@ export default function MaterialsManagementPage() {
   const [selectedCatalogId, setSelectedCatalogId] = useState('');
 
   const loadData = useCallback(async () => {
+    setLoading(true);
     try {
       const reqUrl = `/api/v1/materials/requirements?limit=100${statusFilter !== 'ALL' ? `&status=${statusFilter}` : ''}${searchQuery.trim() ? `&search=${encodeURIComponent(searchQuery.trim())}` : ''}`;
       const catUrl = `/api/v1/materials/catalog?limit=100${searchQuery.trim() ? `&search=${encodeURIComponent(searchQuery.trim())}` : ''}`;
@@ -152,6 +148,8 @@ export default function MaterialsManagementPage() {
       setRequirements(MOCK_MATERIAL_REQUIREMENTS);
       setCatalog(MOCK_MATERIALS_CATALOG);
       setDepartments(MOCK_DEPARTMENTS);
+    } finally {
+      setLoading(false);
     }
   }, [statusFilter, searchQuery]);
 
@@ -160,14 +158,11 @@ export default function MaterialsManagementPage() {
   }, [loadData]);
 
   const viewDetail = async (id: string) => {
-    setDetailLoading(true);
     try {
       const data = await apiFetch<MaterialReqDetail>(`/api/v1/materials/requirements/${id}`);
       setSelectedReq(data);
     } catch (err) {
       console.error('Failed to load detail', err);
-    } finally {
-      setDetailLoading(false);
     }
   };
 

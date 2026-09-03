@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Briefcase,
-  Users,
   HardHat,
   ShieldCheck,
   Search,
@@ -18,14 +17,10 @@ import {
   Clock,
   Star,
   CheckCircle2,
-  AlertTriangle,
   X,
   Eye,
   Building2,
-  Calendar,
-  DollarSign,
   FileCheck,
-  Wrench,
 } from 'lucide-react';
 
 interface CompanyRow {
@@ -503,20 +498,34 @@ export default function ContractorsManagementPage() {
       </div>
 
       {/* Filters */}
-      <div className="relative w-full max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        <Input
-          placeholder={
-            activeTab === 'COMPANIES'
-              ? 'Search contractor firms, services, contacts...'
-              : activeTab === 'WORKERS'
-              ? 'Search workers, skills, roles, badges...'
-              : 'Search assignments, scopes, numbers...'
-          }
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9 text-xs h-9"
-        />
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="relative w-full max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input
+            placeholder={
+              activeTab === 'COMPANIES'
+                ? 'Search contractor firms, services, contacts...'
+                : activeTab === 'WORKERS'
+                ? 'Search workers, skills, roles, badges...'
+                : 'Search assignments, scopes, numbers...'
+            }
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 text-xs h-9"
+          />
+        </div>
+        {activeTab === 'COMPANIES' && (
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="h-9 rounded border border-input bg-card px-2.5 text-xs text-foreground"
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="SUSPENDED">SUSPENDED</option>
+            <option value="INACTIVE">INACTIVE</option>
+          </select>
+        )}
       </div>
 
       {/* Main Table */}

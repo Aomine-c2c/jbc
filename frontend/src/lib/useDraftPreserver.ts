@@ -11,7 +11,7 @@ import { useState, useEffect, useCallback } from 'react';
  * Draft submission strictly requires full authentication, RBAC capabilities,
  * and workflow authorization upon server delivery.
  */
-export function useDraftPreserver<T extends Record<string, any>>(
+export function useDraftPreserver<T extends Record<string, unknown>>(
   draftKey: string,
   initialValues: T
 ) {

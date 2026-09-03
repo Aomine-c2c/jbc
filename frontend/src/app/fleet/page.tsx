@@ -118,13 +118,19 @@ export default function FleetDashboard() {
   const maintenanceMachines = machines.filter(m => m.status === 'UNDER_MAINTENANCE').length;
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
+    <Protect capability="fleet:view" isPageGuard moduleName="Fleet & Heavy Equipment">
+      <div className="p-8 max-w-7xl mx-auto space-y-8">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-foreground tracking-tight">Fleet & Equipment</h1>
         <div className="flex gap-2">
           <Link href="/fleet/calendar">
             <Button variant="outline" size="lg">
               Calendar
+            </Button>
+          </Link>
+          <Link href="/fleet/requisitions">
+            <Button variant="outline" size="lg">
+              Requisitions
             </Button>
           </Link>
           <Protect capability="requisition:create">
@@ -214,9 +220,11 @@ export default function FleetDashboard() {
                 machine.status === 'AVAILABLE' ? 'default' : 
                 machine.status === 'IN_USE' ? 'secondary' : 'destructive';
               
-              // Find location (department ID) if in use
-              const activeReq = requisitions.find(r => r.machine_type_id === machine.machine_type_id && r.status === 'DISPATCHED');
-              const derivedLocation = machine.status === 'IN_USE' && activeReq ? activeReq.department_id : "Yard";
+              // Find location (department) if in use
+              const activeReq = requisitions.find(r => r.machine_type_id === machine.machine_type_id && (r.status === 'DISPATCHED' || r.status === 'IN_USE'));
+              const derivedLocation = machine.status === 'IN_USE' && activeReq
+                ? (activeReq.department?.name || activeReq.department_id || "Mining Pit")
+                : "Central Yard";
 
               return (
                 <Card key={machine.id} className="flex flex-col hover:border-primary/50 transition-colors">
@@ -232,7 +240,7 @@ export default function FleetDashboard() {
                   <CardContent className="py-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Location:</span>
-                      <span className="font-medium truncate max-w-[120px]" title={derivedLocation}>{derivedLocation}</span>
+                      <span className="font-medium truncate max-w-30" title={derivedLocation}>{derivedLocation}</span>
                     </div>
                   </CardContent>
                   <CardFooter className="pt-2 pb-4 mt-auto">
@@ -263,21 +271,26 @@ export default function FleetDashboard() {
                     )}
                   </CardFooter>
                 </Card>
-              )
+              );
             })}
           </div>
         )}
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Active Requisitions</CardTitle>
+          <Link href="/fleet/requisitions" className="text-xs font-semibold text-primary hover:underline">
+            View All ({requisitions.length}) &rarr;
+          </Link>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow>
-                <TableHead>ID</TableHead>
+                <TableHead>Requisition #</TableHead>
+                <TableHead>Machine Type / Purpose</TableHead>
+                <TableHead>Department</TableHead>
                 <TableHead>Start Time</TableHead>
                 <TableHead>End Time</TableHead>
                 <TableHead>Status</TableHead>
@@ -287,18 +300,33 @@ export default function FleetDashboard() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground h-24">Loading...</TableCell>
+                  <TableCell colSpan={7} className="text-center text-muted-foreground h-24">Loading requisitions...</TableCell>
                 </TableRow>
               ) : requisitions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground h-24">No active requisitions.</TableCell>
+                  <TableCell colSpan={7} className="text-center text-muted-foreground h-24">No active requisitions.</TableCell>
                 </TableRow>
               ) : (
                 requisitions.map((req) => (
                   <TableRow key={req.id}>
-                    <TableCell className="font-mono text-xs">{req.id.substring(0,8)}</TableCell>
-                    <TableCell>{new Date(req.start_time).toLocaleString()}</TableCell>
-                    <TableCell>{new Date(req.end_time).toLocaleString()}</TableCell>
+                    <TableCell className="font-mono text-xs font-semibold">
+                      {req.requisition_number || req.id.substring(0, 8)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm font-medium text-foreground">
+                        {req.machine_type?.name || "Heavy Equipment"}
+                      </div>
+                      {req.purpose && (
+                        <div className="text-xs text-muted-foreground truncate max-w-xs" title={req.purpose}>
+                          {req.purpose}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {req.department?.name || req.department_id || "Mining Ops"}
+                    </TableCell>
+                    <TableCell className="text-xs">{new Date(req.start_time).toLocaleString()}</TableCell>
+                    <TableCell className="text-xs">{new Date(req.end_time).toLocaleString()}</TableCell>
                     <TableCell>
                       <Badge variant="outline">{req.status.replace("_", " ")}</Badge>
                     </TableCell>
@@ -314,6 +342,7 @@ export default function FleetDashboard() {
           </Table>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </Protect>
   );
 }

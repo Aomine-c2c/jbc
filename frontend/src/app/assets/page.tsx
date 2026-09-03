@@ -19,16 +19,9 @@ import {
   Plus,
   RefreshCw,
   MapPin,
-  Building2,
-  UserCheck,
   AlertTriangle,
   CheckCircle2,
-  SlidersHorizontal,
-  FileText,
-  Activity,
   History,
-  Archive,
-  ArrowUpRight,
   Shield,
   Eye,
   X,
@@ -60,7 +53,7 @@ interface AssetDetail extends AssetRow {
   commissioned_date?: string;
   retired_date?: string;
   notes?: string;
-  specifications?: Record<string, any>;
+  specifications?: Record<string, unknown>;
   open_work_items_count: number;
   activity_logs: Array<{
     id: string;
@@ -109,7 +102,6 @@ export default function AssetManagementPage() {
 
   // Detail drawer
   const [selectedAsset, setSelectedAsset] = useState<AssetDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
 
   // Create Modal
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -204,14 +196,11 @@ export default function AssetManagementPage() {
   }, [loadAssets]);
 
   const viewAssetDetail = async (id: string) => {
-    setDetailLoading(true);
     try {
       const data = await apiFetch<AssetDetail>(`/api/v1/assets/${id}`);
       setSelectedAsset(data);
     } catch (err) {
       console.error('Failed to load asset details', err);
-    } finally {
-      setDetailLoading(false);
     }
   };
 

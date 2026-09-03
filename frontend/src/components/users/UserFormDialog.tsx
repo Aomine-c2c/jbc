@@ -10,9 +10,42 @@ interface Role {
   name: string;
 }
 
-interface Department {
+export interface UserFormData {
+  id?: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  is_active?: boolean;
+  department_id?: string;
+  section_id?: string;
+  team_id?: string;
+  position_id?: string;
+  supervisor_id?: string;
+  employee_number?: string;
+  shift_pattern?: string;
+}
+
+export interface DepartmentOption {
   id: string;
   name: string;
+}
+
+export interface SectionOption {
+  id: string;
+  name: string;
+  department_id: string;
+}
+
+export interface TeamOption {
+  id: string;
+  name: string;
+  section_id: string;
+}
+
+export interface PositionOption {
+  id: string;
+  title: string;
+  department_id: string;
 }
 
 export function UserFormDialog({ 
@@ -26,13 +59,13 @@ export function UserFormDialog({
   onClose, 
   onSaved 
 }: { 
-  user?: any;
-  users: any[];
-  departments: any[]; 
-  sections: any[];
-  teams: any[];
-  positions: any[];
-  roles: {id: string, name: string}[];
+  user?: UserFormData;
+  users: UserFormData[];
+  departments: DepartmentOption[]; 
+  sections: SectionOption[];
+  teams: TeamOption[];
+  positions: PositionOption[];
+  roles: Role[];
   onClose: () => void;
   onSaved: () => void;
 }) {

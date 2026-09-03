@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Bell, Check, Clock, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useNotifications, Notification } from '@/lib/useNotifications';
-import { Button } from '@/components/ui/button';
 
 export function NotificationCenter() {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();

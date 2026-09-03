@@ -69,12 +69,12 @@ export default function LoginPage() {
   return (
     <div className="flex flex-col lg:flex-row min-h-screen w-full bg-zinc-50 text-zinc-900 antialiased selection:bg-zinc-200">
       {/* LEFT 50% PANEL: PLANT TELEMETRY SHOWCASE */}
-      <div className="w-full lg:w-1/2 min-h-[400px] lg:min-h-screen flex flex-col">
+      <div className="w-full lg:w-1/2 min-h-100 lg:min-h-screen flex flex-col">
         <PlantTelemetryVisual />
       </div>
 
       {/* RIGHT 50% PANEL: INDUSTRIAL AUTHENTICATION PORTAL */}
-      <div className="relative w-full lg:w-1/2 min-h-[600px] lg:min-h-screen flex items-center justify-center p-6 md:p-10 lg:p-12 bg-zinc-50/60">
+      <div className="relative w-full lg:w-1/2 min-h-150 lg:min-h-screen flex items-center justify-center p-6 md:p-10 lg:p-12 bg-zinc-50/60">
         {/* TOP RIGHT CONTROLS */}
         <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
           <div className="flex items-center gap-1.5 bg-white border border-zinc-200 rounded-md px-2 py-1 shadow-2xs">

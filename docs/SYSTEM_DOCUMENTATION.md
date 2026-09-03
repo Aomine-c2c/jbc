@@ -9,7 +9,8 @@
 
 Bikita Minerals DWRMS is a mission-critical, enterprise-grade maintenance, asset management, and operational workflow execution platform. Engineered specifically for demanding open-pit and underground mining environments, DWRMS centralizes equipment reliability, fault logging, multi-tier approvals, parts inventory, contractor compliance, and service level agreement (SLA) governance across all ten operational mining departments.
 
-### Key Architectural Pillars:
+### Key Architectural Pillars
+
 1. **Server-First Autonomous Core**: High-throughput FastAPI backend running on a dedicated Ubuntu Linux host with autonomous self-healing systemd services, automated health watchdogs, and 30-day encrypted backup rotation.
 2. **Multi-Platform Local Applications**: Native Windows desktop applications (.exe / .msi via Tauri) for workshop/office PCs and installable Progressive Web Apps (PWA) with offline IndexedDB storage for rugged field tablets in open pits and underground shafts.
 3. **Strict 6-Role RBAC Capability Enforcement**: Fine-grained access control with route guards and dynamic navigation filtering across Operators, Artisans, Shift Bosses, Superintendents, HSE Officers, and Administrators.

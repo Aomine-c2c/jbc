@@ -23,6 +23,7 @@ The DWRMS login screen includes one-click role selector buttons for instant pers
 ## 2. End-to-End Operational Lifecycle Demo
 
 ### Phase 1: Operator / Driver (Open Pit Cut 3)
+
 *Goal: Log an urgent breakdown fault directly from a rugged tablet in the field.*
 
 1. **Sign In**:
@@ -44,6 +45,7 @@ The DWRMS login screen includes one-click role selector buttons for instant pers
 ---
 
 ### Phase 2: Technician / Artisan (Workshop & Field Bay)
+
 *Goal: Enforce Lockout/Tagout (LOTO), start repair timer, requisition spare parts, and sign lead artisan endorsement.*
 
 1. **Sign In**:
@@ -71,6 +73,7 @@ The DWRMS login screen includes one-click role selector buttons for instant pers
 ---
 
 ### Phase 3: Shift Supervisor / Shift Boss (Workshop Office)
+
 *Goal: Review technician's execution report, perform QA inspection, and sign supervisor endorsement.*
 
 1. **Sign In**:
@@ -88,6 +91,7 @@ The DWRMS login screen includes one-click role selector buttons for instant pers
 ---
 
 ### Phase 4: Department Manager / Superintendent (Engineering Directorate)
+
 *Goal: Authorize multi-tier high-risk approvals, review departmental SLA governance, and apply formal closure seal.*
 
 1. **Sign In**:
@@ -109,6 +113,7 @@ The DWRMS login screen includes one-click role selector buttons for instant pers
 ---
 
 ### Phase 5: Safety Officer (HSE Directorate)
+
 *Goal: Conduct safety audit, verify LOTO isolation compliance, and inspect immutable system audit stream.*
 
 1. **Sign In**:
@@ -124,6 +129,7 @@ The DWRMS login screen includes one-click role selector buttons for instant pers
 ---
 
 ### Phase 6: System Administrator (Platform & Infrastructure)
+
 *Goal: Inspect server telemetry, monitor self-healing watchdogs, and manage organizational hierarchy.*
 
 1. **Sign In**:

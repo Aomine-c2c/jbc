@@ -171,11 +171,11 @@ export function FilterPanel({ onFilter, onFilterChange, departments, loading }: 
       </div>
 
       <div className="mt-4 flex justify-end gap-2">
-        <Button variant="ghost" size="sm" onClick={handleClear} className="flex gap-1 items-center text-xs h-8 text-zinc-600 hover:text-zinc-900">
+        <Button variant="ghost" size="sm" onClick={handleClear} disabled={loading} className="flex gap-1 items-center text-xs h-8 text-zinc-600 hover:text-zinc-900">
           <X className="h-3.5 w-3.5" /> Clear
         </Button>
-        <Button onClick={handleApply} size="sm" className="flex gap-1 items-center text-xs h-8 bg-zinc-900 text-white hover:bg-black">
-          <Search className="h-3.5 w-3.5" /> Apply Filters
+        <Button onClick={handleApply} disabled={loading} size="sm" className="flex gap-1 items-center text-xs h-8 bg-zinc-900 text-white hover:bg-black">
+          <Search className="h-3.5 w-3.5" /> {loading ? "Filtering..." : "Apply Filters"}
         </Button>
       </div>
     </div>

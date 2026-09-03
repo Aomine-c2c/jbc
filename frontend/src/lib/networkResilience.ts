@@ -34,7 +34,7 @@ class NetworkResilienceManager {
   private reconnectAttempts: number = 0;
   private lastPingTime: string | null = null;
   private listeners: Set<(diag: ConnectionDiagnostics) => void> = new Set();
-  private heartbeatTimer: any = null;
+  private heartbeatTimer: ReturnType<typeof setTimeout> | null = null;
   private isChecking: boolean = false;
 
   constructor() {
@@ -149,7 +149,7 @@ class NetworkResilienceManager {
       } else {
         throw new Error(`Server returned status ${res.status}`);
       }
-    } catch (err: any) {
+    } catch {
       this.consecutiveFailures++;
       this.reconnectAttempts++;
 
@@ -183,9 +183,10 @@ class NetworkResilienceManager {
   /**
    * Translates low-level browser network errors into human-friendly explanations
    */
-  public translateNetworkError(err: any, endpoint: string): string {
-    const msg = err?.message || String(err);
-    if (msg.includes('AbortError') || msg.includes('timeout') || err?.name === 'TimeoutError') {
+  public translateNetworkError(err: unknown, endpoint: string): string {
+    const errorObj = err as { message?: string; name?: string } | null;
+    const msg = errorObj?.message || String(err);
+    if (msg.includes('AbortError') || msg.includes('timeout') || errorObj?.name === 'TimeoutError') {
       return `Server response timed out after 4 seconds. The central server may be busy or unreachable.`;
     }
     if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('ECONNREFUSED')) {

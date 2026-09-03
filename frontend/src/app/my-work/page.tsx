@@ -11,7 +11,6 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { StatusBadge, PriorityBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { TelemetrySpinner } from '@/components/ui/loading-state';
-import { EmptyState } from '@/components/ui/empty-state';
 
 import {
   Briefcase,
@@ -25,7 +24,6 @@ import {
   User,
   MapPin,
   Calendar,
-  Zap,
   Plus,
   RefreshCw,
 } from 'lucide-react';
@@ -120,11 +118,11 @@ export default function MyWorkPage() {
   }, []);
 
   useEffect(() => {
-    let mounted = true;
+    let _mounted = true;
     const controller = new AbortController();
     loadData();
     return () => {
-      mounted = false;
+      _mounted = false;
       controller.abort();
     };
   }, [loadData]);
@@ -155,7 +153,8 @@ export default function MyWorkPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
+    <Protect capability="my_work:view" isPageGuard moduleName="My Work Workspace">
+      <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
       {/* ── HEADER ──────────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
         <div>
@@ -435,6 +434,7 @@ export default function MyWorkPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </Protect>
   );
 }

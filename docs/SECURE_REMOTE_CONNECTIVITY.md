@@ -11,9 +11,10 @@
 The Bikita Minerals DWRMS platform treats secure remote networks (such as Tailscale, WireGuard, Cloudflare Tunnels, or Corporate VPNs) **strictly as an optional transport layer**.
 
 ### 1.1 Invariant Security Model
+
 Remote network connectivity establishes encrypted network reachability; it **never** replaces or bypasses the application security hierarchy:
 
-```
+```text
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
 │                                APPLICATION SECURITY CHAIN                              │
 └────────────────────────────────────────────────────────────────────────────────────────┘
@@ -37,13 +38,14 @@ Remote network connectivity establishes encrypted network reachability; it **nev
 ## 2. Supported Deployment Modes
 
 ### MODE 1 — Local Network Only (Default)
+
 Ideal for self-contained mine site installations where all client devices reside within the on-premises mining LAN or dedicated operational Wi-Fi.
 
 * **Client Reachability**: Internal domain (`https://dwrms.bikita.local`), internal DNS, or server LAN IP (`http://192.168.10.50:8000`).
 * **Remote Networking**: Disabled (`REMOTE_CONNECTIVITY_ENABLED=false`).
 * **Security Surface**: Zero external or public network ingress; isolated by local network boundaries.
 
-```
+```text
   [ Mining Plant LAN / Wi-Fi ]
   ├── Rugged Tablets (PWA) ──────┐
   ├── Maintenance Workstations ──┼──► [ Ubuntu Server: masvingo-srv-01 ]
@@ -53,13 +55,14 @@ Ideal for self-contained mine site installations where all client devices reside
 ---
 
 ### MODE 2 — Local Network + Optional Secure Remote Access (Hybrid)
+
 Ideal for active mining operations where on-site personnel connect directly via high-speed LAN/Wi-Fi, while traveling engineers, executive managers, and off-site supervisors connect securely over an encrypted mesh overlay (e.g. Tailscale or WireGuard).
 
 * **On-Site Access**: High-speed direct LAN / internal DNS.
 * **Remote Access**: Encrypted point-to-point tunnel via Tailscale (`100.x.y.z` or MagicDNS) or WireGuard.
 * **Failover Capability**: Client desktop and mobile applications automatically probe LAN addresses with fallback to the secure remote URL.
 
-```
+```text
   [ Local Plant LAN ]                      [ Remote / Off-Site Users ]
   ├── On-site Tablets (LAN) ─────┐          ├── Mobile Field App (Remote Mesh) ──┐
   └── Local Workstations (LAN) ──┤          └── Laptop Client (Tailscale / VPN) ─┤
@@ -72,6 +75,7 @@ Ideal for active mining operations where on-site personnel connect directly via 
 ---
 
 ### MODE 3 — Private Distributed Deployment
+
 Ideal for multi-site mining enterprises operating across several geographical pits, processing facilities, and regional offices (e.g. Bikita Pit, Masvingo Regional Office, Harare HQ).
 
 * **Primary Transport**: Dedicated private overlay network / Zero Trust mesh connecting all operational nodes.
@@ -143,19 +147,24 @@ sudo systemctl enable --now wg-quick@wg0
 ## 6. Remote Connectivity Telemetry & Verification
 
 ### 6.1 Inspecting via Web Platform Administration GUI
+
 Authorized administrators can inspect transport status at [`/admin/platform`](file:///c:/Users/armut/404/job%20card/frontend/src/app/admin/platform/page.tsx):
+
 * **Deployment Mode Badge**: `LOCAL_ONLY` | `HYBRID_REMOTE` | `PRIVATE_DISTRIBUTED`
 * **Transport Status**: `CONNECTED` (Green) | `STANDBY` (Slate) | `DISABLED`
 * **Virtual Mesh IP**: e.g. `100.64.12.34` or `None (LAN Direct)`
 
 ### 6.2 Inspecting via the `ops` CLI
+
 Run over local or SSH terminal:
+
 ```bash
 ops network
 ```
 
 Output includes:
-```
+
+```text
 ======================================================================
   DWRMS NETWORK TOPOLOGY & TRANSPORT CONNECTIVITY
 ======================================================================

@@ -34,21 +34,26 @@ The application login screen at `http://localhost:3000/login` includes one-click
 
 ## 3. Quick Start (Development & Local Run)
 
-### Prerequisites:
+### Prerequisites
+
 - **Node.js**: v20+
 - **Python**: v3.12+ (or `.venv` in `/backend`)
 
-### Launch All Services:
+### Launch All Services
+
 ```powershell
 # In frontend directory
 cd frontend
 npm run tauri:dev
 ```
+
 *Starts the FastAPI backend daemon (`http://localhost:8000`), Next.js Turbo dev server (`http://localhost:3000`), and Tauri Desktop runtime concurrently.*
 
-### Production Build Verification:
+### Production Build Verification
+
 ```powershell
 cd frontend
 npm run build
 ```
+
 *Compiles all 28 application routes with strict TypeScript and RBAC route guard validation.*

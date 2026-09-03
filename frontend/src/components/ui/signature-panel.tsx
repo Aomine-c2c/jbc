@@ -207,6 +207,7 @@ export function SignaturePanel({
               {/* signatureImage is a client-generated data: URL from canvas.toDataURL().
                   next/image cannot optimize data URLs, so we use a plain <img> with
                   explicit dimensions to avoid CLS. The image is already small (h-8). */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={signatureImage}
                 alt="Handwritten Signature"
@@ -311,7 +312,7 @@ export function SignaturePanel({
             onTouchStart={startDrawing}
             onTouchMove={draw}
             onTouchEnd={stopDrawing}
-            className="w-full h-[90px] cursor-crosshair touch-none"
+            className="w-full h-22.5 cursor-crosshair touch-none"
           />
           {!hasDrawn && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-muted-foreground/40 text-[11px] font-mono">

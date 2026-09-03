@@ -59,7 +59,8 @@ export default function RequisitionsListPage() {
   });
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-5">
+    <Protect capability="fleet:view" isPageGuard moduleName="Fleet Requisitions Registry">
+      <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-5">
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
         <div>
@@ -162,6 +163,7 @@ export default function RequisitionsListPage() {
           </Table>
         </div>
       )}
-    </div>
+      </div>
+    </Protect>
   );
 }

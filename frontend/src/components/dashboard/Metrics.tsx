@@ -42,7 +42,7 @@ interface DepartmentWorkloadItem {
   active_jobs: number;
 }
 
-interface DashboardData {
+export interface DashboardData {
   job_metrics: DashboardJobMetrics;
   fleet_metrics: DashboardFleetMetrics;
   timeseries_data: TimeSeriesItem[];

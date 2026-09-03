@@ -3,6 +3,7 @@
 ## Release v2.9.0 — Platform Update and Version Management
 
 ### Overview
+
 Release **v2.9.0** introduces a standardized, non-destructive platform update and version management system designed for enterprise-grade reliability in harsh or intermittent industrial mining environments.
 
 ---

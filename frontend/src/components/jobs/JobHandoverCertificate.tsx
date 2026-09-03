@@ -3,19 +3,13 @@
 import React from 'react';
 import {
   ShieldCheck,
-  CheckCircle2,
   Printer,
   Wrench,
-  Truck,
   HardHat,
   Stamp,
-  Lock,
-  Calendar,
-  Layers,
   FileCheck2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { StatusBadge, PriorityBadge } from '@/components/ui/status-badge';
 
 export interface HandoverSignature {
   name: string;
@@ -256,7 +250,8 @@ export function JobHandoverCertificate({ data, onClose }: JobHandoverCertificate
             </div>
             {data.technicianSign?.signatureImage ? (
               <div className="bg-white p-1 rounded border border-border/80 inline-block mt-1">
-                <img src={data.technicianSign.signatureImage} alt="Technician Signature" className="h-7 max-w-[120px] object-contain" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={data.technicianSign.signatureImage} alt="Technician Signature" className="h-7 max-w-30 object-contain" />
               </div>
             ) : (
               <div className="pt-2 text-[10px] text-muted-foreground italic border-t border-border/40">
@@ -278,7 +273,8 @@ export function JobHandoverCertificate({ data, onClose }: JobHandoverCertificate
             </div>
             {data.supervisorSign?.signatureImage ? (
               <div className="bg-white p-1 rounded border border-border/80 inline-block mt-1">
-                <img src={data.supervisorSign.signatureImage} alt="Supervisor Signature" className="h-7 max-w-[120px] object-contain" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={data.supervisorSign.signatureImage} alt="Supervisor Signature" className="h-7 max-w-30 object-contain" />
               </div>
             ) : (
               <div className="pt-2 text-[10px] text-muted-foreground italic border-t border-border/40">
@@ -300,7 +296,8 @@ export function JobHandoverCertificate({ data, onClose }: JobHandoverCertificate
             </div>
             {data.safetySign?.signatureImage ? (
               <div className="bg-white p-1 rounded border border-border/80 inline-block mt-1">
-                <img src={data.safetySign.signatureImage} alt="Safety Signature" className="h-7 max-w-[120px] object-contain" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={data.safetySign.signatureImage} alt="Safety Signature" className="h-7 max-w-30 object-contain" />
               </div>
             ) : (
               <div className="pt-2 text-[10px] text-muted-foreground italic border-t border-border/40">

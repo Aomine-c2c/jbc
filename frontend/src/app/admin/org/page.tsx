@@ -17,7 +17,6 @@ import {
   ChevronDown,
   ShieldCheck,
   RefreshCw,
-  Plus,
   ArrowUpRight,
   Layers,
 } from 'lucide-react';

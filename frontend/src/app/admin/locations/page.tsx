@@ -10,8 +10,6 @@ import { Badge } from '@/components/ui/badge';
 import {
   MapPin,
   FolderTree,
-  Building2,
-  Layers,
   ChevronRight,
   ChevronDown,
   Plus,
@@ -20,11 +18,8 @@ import {
   Archive,
   RotateCcw,
   Trash2,
-  Tag,
-  AlertCircle,
   CheckCircle2,
   Compass,
-  ArrowUpRight,
   Sparkles,
 } from 'lucide-react';
 
@@ -112,8 +107,8 @@ export default function LocationsAdminPage() {
         initialExpanded[node.id] = true;
       });
       setExpandedNodes((prev) => ({ ...initialExpanded, ...prev }));
-    } catch (err: any) {
-      setErrorMsg(err?.message || 'Failed to load location hierarchy.');
+    } catch (err: unknown) {
+      setErrorMsg((err as { message?: string })?.message || 'Failed to load location hierarchy.');
     } finally {
       setLoading(false);
     }
@@ -194,8 +189,8 @@ export default function LocationsAdminPage() {
       }
       setShowModal(false);
       await loadData();
-    } catch (err: any) {
-      setErrorMsg(err?.message || 'Failed to save location.');
+    } catch (err: unknown) {
+      setErrorMsg((err as { message?: string })?.message || 'Failed to save location.');
     } finally {
       setSubmitting(false);
     }
@@ -209,8 +204,8 @@ export default function LocationsAdminPage() {
         body: JSON.stringify({ reason: 'Decommissioned / archived via Administration' }),
       });
       await loadData();
-    } catch (err: any) {
-      alert(err?.message || 'Failed to archive location.');
+    } catch (err: unknown) {
+      alert((err as { message?: string })?.message || 'Failed to archive location.');
     }
   };
 
@@ -218,8 +213,8 @@ export default function LocationsAdminPage() {
     try {
       await apiFetch(`/api/v1/locations/${node.id}/restore`, { method: 'POST' });
       await loadData();
-    } catch (err: any) {
-      alert(err?.message || 'Failed to restore location.');
+    } catch (err: unknown) {
+      alert((err as { message?: string })?.message || 'Failed to restore location.');
     }
   };
 
@@ -228,8 +223,8 @@ export default function LocationsAdminPage() {
     try {
       await apiFetch(`/api/v1/locations/${node.id}`, { method: 'DELETE' });
       await loadData();
-    } catch (err: any) {
-      alert(err?.message || 'Cannot delete location.');
+    } catch (err: unknown) {
+      alert((err as { message?: string })?.message || 'Cannot delete location.');
     }
   };
 
@@ -241,8 +236,8 @@ export default function LocationsAdminPage() {
       const res = await apiFetch<MigrationSummary>('/api/v1/locations/migrate', { method: 'POST' });
       setMigrationSummary(res);
       await loadData();
-    } catch (err: any) {
-      alert(err?.message || 'Migration failed.');
+    } catch (err: unknown) {
+      alert((err as { message?: string })?.message || 'Migration failed.');
     } finally {
       setMigrationRunning(false);
     }

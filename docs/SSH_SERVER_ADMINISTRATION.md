@@ -10,7 +10,7 @@
 
 To guarantee platform security, organizational integrity, and clear operational boundaries, the Bikita Minerals DWRMS platform enforces **three strictly isolated administrative tiers**.
 
-```
+```text
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
 │                              ADMINISTRATIVE ACCESS TIERS                               │
 └────────────────────────────────────────────────────────────────────────────────────────┘
@@ -44,15 +44,18 @@ To guarantee platform security, organizational integrity, and clear operational 
 ## 2. Server Infrastructure & SSH Hardening
 
 ### 2.1 SSH Key Generation
+
 Server administrators must authenticate using **Ed25519 elliptic-curve public keys**. Password authentication over SSH is disabled.
 
 Generate an administrative keypair on your local administrative workstation:
+
 ```bash
 # Generate high-security Ed25519 keypair
 ssh-keygen -t ed25519 -C "admin@bikita.local" -f ~/.ssh/id_ed25519_dwrms
 ```
 
 ### 2.2 OpenSSH Daemon Configuration (`/etc/ssh/sshd_config.d/dwrms-security.conf`)
+
 The authoritative server deployment enforces hardened SSH policies via drop-in configuration:
 
 ```ini
@@ -85,7 +88,9 @@ X11Forwarding no
 ```
 
 ### 2.3 Network Firewall (UFW) Configuration
+
 Port `22` (SSH) is restricted to the administrative management network or secure VPN:
+
 ```bash
 # Allow administrative SSH from trusted subnet only
 sudo ufw allow proto tcp from 192.168.10.0/24 to any port 22 comment 'Administrative SSH Subnet'
@@ -99,7 +104,9 @@ sudo ufw enable
 ```
 
 ### 2.4 Fail2ban Intrusion Prevention (`/etc/fail2ban/jail.d/dwrms-sshd.local`)
+
 Automated rate-limiting and IP banning upon repeated failed SSH authentication attempts:
+
 ```ini
 [sshd]
 enabled = true
@@ -123,6 +130,7 @@ sudo /opt/dwrms/infrastructure/scripts/setup-ssh-admin.sh administrator
 ```
 
 The script performs:
+
 1. Creates the `dwrms-admins` system group.
 2. Provisions the `administrator` user with membership in `sudo`, `docker`, and `dwrms-admins`.
 3. Creates `~/.ssh/authorized_keys` with `700`/`600` permissions.
@@ -135,6 +143,7 @@ The script performs:
 ## 4. SSH-Based Operations Workflows
 
 ### 4.1 Workstation SSH Client Configuration (`~/.ssh/config`)
+
 For seamless connectivity, add the server configuration to your workstation's `~/.ssh/config`:
 
 ```ini
@@ -147,14 +156,17 @@ Host bikita-server
 ```
 
 ### 4.2 Interactive SSH Session
+
 Connect to the server:
+
 ```bash
 ssh bikita-server
 ```
 
 Upon logging in, the interactive MOTD banner displays available authoritative commands.
 
-#### Example Interactive Command Sequence:
+#### Example Interactive Command Sequence
+
 ```bash
 # 1. Check overall platform status and 7-subsystem matrix
 ops status
@@ -179,6 +191,7 @@ ops update
 ```
 
 ### 4.3 Non-Interactive Remote Automation
+
 Server administrators can execute remote commands over SSH without opening an interactive shell (e.g. from CI/CD pipelines, remote cron jobs, or monitoring systems):
 
 ```bash
@@ -201,7 +214,7 @@ ssh administrator@masvingo-srv-01.bikita.local "ops logs -s app -n 100"
 | `ops status` | Displays aggregate status across Application, Database, Storage, Worker, Backups, Network | Server Admin (SSH) |
 | `ops health` | Probes live DB ping, API latency, and filesystem write access | Server Admin (SSH) |
 | `ops logs` | Streams sanitized application logs with level filtering and secret masking | Server Admin (SSH) |
-| `ops diagnostics`| Displays CPU, RAM, disk breakdown, and DB connection pool statistics | Server Admin (SSH) |
+| `ops diagnostics` | Displays CPU, RAM, disk breakdown, and DB connection pool statistics | Server Admin (SSH) |
 | `ops backup create` | Generates a compressed tar.gz disaster recovery archive with SHA-256 hash | Server Admin (SSH) |
 | `ops backup list` | Lists all historical backup archives with timestamps and integrity hashes | Server Admin (SSH) |
 | `ops restore` | Restores database tables and storage volumes from a verified archive | Server Admin (SSH) |
@@ -215,6 +228,7 @@ ssh administrator@masvingo-srv-01.bikita.local "ops logs -s app -n 100"
 ## 6. Security Audit & Incident Response
 
 1. **Review SSH Access Logs**:
+
    ```bash
    # Inspect authenticated SSH sessions
    sudo grep 'Accepted publickey' /var/log/auth.log
@@ -224,11 +238,13 @@ ssh administrator@masvingo-srv-01.bikita.local "ops logs -s app -n 100"
    ```
 
 2. **Inspect Fail2ban Ban Status**:
+
    ```bash
    sudo fail2ban-client status sshd
    ```
 
 3. **Verify OpenSSH Daemon Status**:
+
    ```bash
    sudo systemctl status ssh
    ```

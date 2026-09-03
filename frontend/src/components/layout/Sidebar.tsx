@@ -50,14 +50,18 @@ export function Sidebar({ onOpenServerConfig }: SidebarProps = {}) {
   const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [loadedPerms, setLoadedPerms] = useState<boolean>(false);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const email = localStorage.getItem('user_email');
-      const role = localStorage.getItem('user_role');
-      setUserRole(role || email);
-    }
+    const syncRole = () => {
+      if (typeof window !== 'undefined') {
+        const email = localStorage.getItem('user_email');
+        const role = localStorage.getItem('user_role');
+        setUserRole(role || email);
+      }
+    };
+    syncRole();
+
+    window.addEventListener('role-changed', syncRole);
 
     getPendingApprovals()
       .then((data) => {
@@ -73,8 +77,9 @@ export function Sidebar({ onOpenServerConfig }: SidebarProps = {}) {
           setPermissions(res.data);
         }
       })
-      .catch(() => {})
-      .finally(() => setLoadedPerms(true));
+      .catch(() => {});
+
+    return () => window.removeEventListener('role-changed', syncRole);
   }, []);
 
   const sections: NavSection[] = [

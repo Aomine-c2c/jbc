@@ -3,7 +3,7 @@ export interface SyncRequest {
   url: string;
   method: string;
   headers: Record<string, string>;
-  body: any;
+  body: unknown;
   created_at: string;
   status: 'PENDING' | 'CONFLICTED' | 'FAILED';
   error?: string;
@@ -94,7 +94,7 @@ class OfflineStore {
 
   // --- Drafts Methods ---
 
-  async saveDraft(id: string, data: any): Promise<void> {
+  async saveDraft<T = unknown>(id: string, data: T): Promise<void> {
     await this.init();
     return new Promise((resolve, reject) => {
       if (!this.db) return reject('DB not initialized');
@@ -107,7 +107,7 @@ class OfflineStore {
     });
   }
 
-  async getDraft(id: string): Promise<any> {
+  async getDraft<T = unknown>(id: string): Promise<T | null> {
     await this.init();
     return new Promise((resolve, reject) => {
       if (!this.db) return resolve(null);

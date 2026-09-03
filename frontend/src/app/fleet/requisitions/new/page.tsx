@@ -73,8 +73,8 @@ export default function NewRequisition() {
         if (mounted) {
           if (typesRes.status === "fulfilled" && Array.isArray(typesRes.value)) {
             setMachineTypes(typesRes.value);
-            if (typesRes.value.length > 0 && !draft.machineTypeId) {
-              setDraft({ machineTypeId: typesRes.value[0].id });
+            if (typesRes.value.length > 0) {
+              setDraft((prev) => (!prev.machineTypeId ? { ...prev, machineTypeId: typesRes.value[0].id } : prev));
             }
           }
           if (jobsRes.status === "fulfilled" && Array.isArray(jobsRes.value)) {
@@ -91,6 +91,7 @@ export default function NewRequisition() {
     return () => {
       mounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

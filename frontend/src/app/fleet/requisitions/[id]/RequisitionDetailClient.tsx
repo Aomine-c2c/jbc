@@ -7,7 +7,7 @@ import { Protect } from "@/components/auth/Protect";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { ArrowLeft, Truck, CheckCircle2, AlertTriangle, AlertCircle, Clock, FileText } from "lucide-react";
+import { ArrowLeft, Truck, CheckCircle2, AlertCircle, FileText } from "lucide-react";
 
 interface Requisition {
   id: string;
@@ -68,9 +68,10 @@ export default function RequisitionDetailClient({ params }: { params: Promise<{ 
       .then((data) => {
         if (data && Array.isArray(data)) {
           setMachines(data);
-          if (data.length > 0 && !machineId) {
+          if (data.length > 0) {
             const available = data.find(m => m.status === 'AVAILABLE');
-            setMachineId(available ? available.id : data[0].id);
+            const defaultId = available ? available.id : data[0].id;
+            setMachineId(prev => prev || defaultId);
           }
         }
       })
@@ -124,7 +125,8 @@ export default function RequisitionDetailClient({ params }: { params: Promise<{ 
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-4 md:p-8 space-y-6">
+    <Protect capability="fleet:view" isPageGuard moduleName="Fleet Requisition Details">
+      <div className="max-w-5xl mx-auto p-4 md:p-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
         <div>
@@ -435,6 +437,7 @@ export default function RequisitionDetailClient({ params }: { params: Promise<{ 
           </Card>
         </div>
       </div>
-    </div>
+      </div>
+    </Protect>
   );
 }

@@ -19,18 +19,13 @@ import {
   Plus,
   RefreshCw,
   MapPin,
-  Building2,
   CheckCircle2,
   Clock,
-  AlertTriangle,
   Send,
   Check,
   X,
   Eye,
-  SlidersHorizontal,
   Layers,
-  Archive,
-  ArrowRight,
 } from 'lucide-react';
 
 interface RequestRow {
@@ -65,7 +60,7 @@ interface RequestDetail extends RequestRow {
   fulfillment_user_name?: string;
   fulfilled_at?: string;
   rejection_reason?: string;
-  type_specific_data?: Record<string, any>;
+  type_specific_data?: Record<string, unknown>;
   material_items: Array<{
     id: string;
     material_name: string;
@@ -120,7 +115,6 @@ export default function UniversalRequestsPage() {
 
   // Detail Drawer
   const [selectedRequest, setSelectedRequest] = useState<RequestDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [actionNotes, setActionNotes] = useState('');
   const [actionSubmitting, setActionSubmitting] = useState(false);
@@ -184,14 +178,11 @@ export default function UniversalRequestsPage() {
   }, [loadRequests]);
 
   const viewRequestDetail = async (id: string) => {
-    setDetailLoading(true);
     try {
       const data = await apiFetch<RequestDetail>(`/api/v1/requests/${id}`);
       setSelectedRequest(data);
     } catch (err) {
       console.error('Failed to load request details', err);
-    } finally {
-      setDetailLoading(false);
     }
   };
 
@@ -269,7 +260,7 @@ export default function UniversalRequestsPage() {
               }))
           : undefined;
 
-      const typeSpecificPayload: Record<string, any> = {};
+      const typeSpecificPayload: Record<string, unknown> = {};
       if (requiredSkill) typeSpecificPayload.required_skill = requiredSkill.trim();
       if (workScope) typeSpecificPayload.work_scope = workScope.trim();
       if (contractorName) typeSpecificPayload.contractor_name = contractorName.trim();
@@ -299,6 +290,8 @@ export default function UniversalRequestsPage() {
       setNewPurpose('');
       setNewDescription('');
       setNewLocationId(null);
+      setNewRequiredFrom('');
+      setNewRequiredTo('');
       setMaterials([{ name: '', part: '', qty: 1, unit: 'units' }]);
       setRequiredSkill('');
       setWorkScope('');
@@ -865,6 +858,27 @@ export default function UniversalRequestsPage() {
                     onChange={(id) => setNewLocationId(id)}
                     placeholder="Search plant, facility, area, or section..."
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="font-medium text-foreground">Required From (Optional)</label>
+                    <Input
+                      type="datetime-local"
+                      value={newRequiredFrom}
+                      onChange={(e) => setNewRequiredFrom(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-medium text-foreground">Required Until (Optional)</label>
+                    <Input
+                      type="datetime-local"
+                      value={newRequiredTo}
+                      onChange={(e) => setNewRequiredTo(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                  </div>
                 </div>
 
                 {/* Conditional Material Line Items */}

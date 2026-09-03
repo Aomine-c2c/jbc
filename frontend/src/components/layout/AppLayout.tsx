@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "./Sidebar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Shield, LogOut, Cloud } from "lucide-react";
@@ -16,8 +16,10 @@ import { NetworkStatusBar } from "./NetworkStatusBar";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { MobileNavDrawer } from "./MobileNavDrawer";
 import { ServerConfigDialog } from "@/components/config/ServerConfigDialog";
+import { RoleSwitcher } from "./RoleSwitcher";
+import { AccessRestricted } from "./AccessRestricted";
 
-import { resolveUserRole, ROLE_CONFIGS } from "@/lib/rbac";
+import { resolveUserRole, isRouteAllowed } from "@/lib/rbac";
 
 interface UserProfile {
   name: string;
@@ -61,6 +63,7 @@ function getUserProfile(): UserProfile {
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [timeStr, setTimeStr] = useState<string>("");
   const [userInfo, setUserInfo] = useState<UserProfile>(DEFAULT_PROFILE);
   const [isConfigured, setIsConfigured] = useState(true);
@@ -71,11 +74,28 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const isAuthPage = pathname === "/login" || pathname?.startsWith("/login");
   const isSetupPage = pathname === "/setup" || pathname?.startsWith("/setup");
 
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+
   useSyncManager(); // Mount sync manager globally
   useLiveEvents({ enabled: !isAuthPage && !isSetupPage }); // Mount real-time SSE stream globally conditionally
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__) {
+    const syncRole = () => {
+      setUserInfo(getUserProfile());
+      if (typeof window !== 'undefined') {
+        const email = localStorage.getItem("user_email");
+        const role = localStorage.getItem("user_role");
+        setCurrentUserRole(role || email);
+      }
+    };
+    syncRole();
+
+    window.addEventListener('role-changed', syncRole);
+    return () => window.removeEventListener('role-changed', syncRole);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__) {
       if (!localStorage.getItem('dwrms_active_profile_id')) {
         setIsConfigured(false);
       }
@@ -86,11 +106,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       const email = localStorage.getItem("user_email");
       const hasCookie = document.cookie.includes("dwrms_access_token");
       if (!email && !hasCookie) {
-        window.location.href = "/login";
+        router.push("/login");
       }
     }
-
-    setUserInfo(getUserProfile());
 
     const updateTime = () => {
       const now = new Date();
@@ -99,7 +117,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     updateTime();
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
-  }, [pathname, isAuthPage, isSetupPage]);
+  }, [pathname, isAuthPage, isSetupPage, router]);
 
   if (!isConfigured) {
     return (
@@ -164,6 +182,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               {showSyncPanel && <SyncStatusPanel />}
             </div>
 
+            <RoleSwitcher />
             <NotificationCenter />
             <ThemeToggle />
 
@@ -205,7 +224,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Main Content Area — with bottom padding on mobile for MobileBottomNav */}
         <main className="flex-1 overflow-auto bg-background/50 pb-16 md:pb-0">
-          {children}
+          {!pathname || isRouteAllowed(currentUserRole, pathname) ? (
+            children
+          ) : (
+            <AccessRestricted pathname={pathname} userRole={currentUserRole} />
+          )}
         </main>
       </div>
 

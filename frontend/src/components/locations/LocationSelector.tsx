@@ -8,13 +8,8 @@ import { Button } from '@/components/ui/button';
 import {
   MapPin,
   Search,
-  ChevronRight,
   Clock,
   X,
-  Building2,
-  Layers,
-  Check,
-  FolderTree,
 } from 'lucide-react';
 
 export interface LocationOption {

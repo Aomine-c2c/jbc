@@ -20,12 +20,16 @@ export function Protect({ capability, isPageGuard = false, moduleName, children 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let email: string | null = null;
-    if (typeof window !== 'undefined') {
-      email = localStorage.getItem('user_email');
-      const savedRole = localStorage.getItem('user_role');
-      setUserRole(savedRole || email);
-    }
+    const syncRole = () => {
+      if (typeof window !== 'undefined') {
+        const email = localStorage.getItem('user_email');
+        const savedRole = localStorage.getItem('user_role');
+        setUserRole(savedRole || email);
+      }
+    };
+    syncRole();
+
+    window.addEventListener('role-changed', syncRole);
 
     const fetchPermissions = async () => {
       try {
@@ -42,6 +46,8 @@ export function Protect({ capability, isPageGuard = false, moduleName, children 
       }
     };
     fetchPermissions();
+
+    return () => window.removeEventListener('role-changed', syncRole);
   }, []);
 
   if (loading) return null;

@@ -72,6 +72,7 @@ export function logout() {
     localStorage.removeItem('csrf_token');
     localStorage.removeItem('user_email');
     localStorage.removeItem('user_role');
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.href = '/login';
   }
 }

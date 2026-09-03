@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getDefaultLandingRoute, resolveUserRole } from "@/lib/rbac";
+import { getDefaultLandingRoute } from "@/lib/rbac";
 import { TelemetrySpinner } from "@/components/ui/loading-state";
 
 export default function RootRedirectPage() {

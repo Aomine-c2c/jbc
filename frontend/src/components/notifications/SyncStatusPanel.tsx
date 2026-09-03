@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { CloudOff, RefreshCw, AlertTriangle, CheckCircle2, Trash2 } from 'lucide-react';
+import { CloudOff, RefreshCw, AlertTriangle, Trash2 } from 'lucide-react';
 import { offlineStore, SyncRequest } from '@/lib/offlineStore';
 import { useConnection } from '@/lib/providers/ConnectionProvider';
 import { useSyncManager } from '@/lib/SyncManager';
@@ -38,7 +38,6 @@ export function SyncStatusPanel() {
   if (requests.length === 0) return null;
 
   const pendingCount = requests.filter(r => r.status === 'PENDING').length;
-  const errorCount = requests.filter(r => r.status === 'FAILED' || r.status === 'CONFLICTED').length;
 
   return (
     <div className="absolute right-0 top-14 w-80 bg-card border border-border shadow-lg rounded-b-lg p-4 z-50">

@@ -69,7 +69,7 @@ export function ConnectionProvider({ children }: { children: React.ReactNode }) 
       window.removeEventListener('server-config-changed', handleConfigChanged);
       clearInterval(interval);
     };
-  }, []);
+  }, [pingServer]);
 
   return (
     <ConnectionContext.Provider value={{ status, isOnline, pingServer }}>

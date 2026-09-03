@@ -53,6 +53,7 @@ function getCsrfToken(): string | null {
   return cookie ? decodeURIComponent(cookie.split('=', 2)[1]) : null;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function apiFetch<T = any>(endpoint: string, options: ApiRequestInit = {}): Promise<T> {
   let token: string | null = null;
   if (typeof window !== 'undefined') {
@@ -174,6 +175,7 @@ export async function apiFetch<T = any>(endpoint: string, options: ApiRequestIni
       localStorage.removeItem('session');
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('user_email');
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.href = '/login';
       return undefined as unknown as T;
     }

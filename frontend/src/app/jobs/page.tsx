@@ -93,8 +93,8 @@ export default function JobCardList() {
   };
 
   useEffect(() => {
-    let isMounted = true;
-    fetchJobs()
+    let _isMounted = true;
+    fetchJobs();
 
     // Real-time SSE Live Event Listener
     const handleLiveEvent = (e: Event) => {
@@ -107,7 +107,7 @@ export default function JobCardList() {
     window.addEventListener('dwrms-live-event', handleLiveEvent);
 
     return () => {
-      isMounted = false;
+      _isMounted = false;
       window.removeEventListener('dwrms-live-event', handleLiveEvent);
     };
   }, [fetchJobs]);
