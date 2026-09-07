@@ -17,7 +17,6 @@ import { MobileBottomNav } from "./MobileBottomNav";
 import { MobileNavDrawer } from "./MobileNavDrawer";
 import { ServerConfigDialog } from "@/components/config/ServerConfigDialog";
 import { RoleSwitcher } from "./RoleSwitcher";
-import { AccessRestricted } from "./AccessRestricted";
 
 import { resolveUserRole, isRouteAllowed, getDefaultLandingRoute } from "@/lib/rbac";
 
@@ -115,6 +114,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       setTimeStr(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + " CAT");
     };
     updateTime();
+    // Clean up live CAT operational clock timer
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
   }, [pathname, isAuthPage, isSetupPage, router]);
@@ -234,6 +234,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </header>
+        <NetworkStatusBar />
         {restrictedNotice && (
           <div className="fixed top-16 right-6 z-50 max-w-md p-3.5 bg-amber-500/15 border border-amber-500/30 text-amber-800 dark:text-amber-300 rounded-lg shadow-xl backdrop-blur-md flex items-start gap-2.5 text-xs animate-in fade-in slide-in-from-top-2">
             <ShieldAlert className="size-4 shrink-0 text-amber-600 mt-0.5" />

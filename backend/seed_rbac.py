@@ -113,6 +113,7 @@ ROLES_PERMISSIONS = {
         "job_card:read": Scope.GLOBAL,
         "job_card:approve": Scope.GLOBAL,
         "safety:clear": Scope.GLOBAL,
+        "cross_department_access": Scope.GLOBAL,
     },
     "System Administrator": {
         "global_override": Scope.GLOBAL,

@@ -5,6 +5,7 @@ from fastapi import FastAPI, Depends, HTTPException, status, Header, Request, Co
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from jose import jwt, JWTError
@@ -247,11 +248,11 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         )
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={
+        content=jsonable_encoder({
             "error": "VALIDATION_ERROR",
             "detail": exc.errors(),
             "request_id": request_id_ctx.get(),
-        },
+        }),
     )
 
 

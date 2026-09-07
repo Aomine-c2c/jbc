@@ -23,6 +23,8 @@ import { JobHandoverCertificate } from "@/components/jobs/JobHandoverCertificate
 import { NotificationBanner } from "@/components/ui/notification";
 import { TelemetrySpinner } from "@/components/ui/loading-state";
 import { ErrorState } from "@/components/ui/error-state";
+import { Textarea } from "@/components/ui/textarea";
+import { canViewFinancials, canExecuteAction, resolveUserRole } from "@/lib/rbac";
 import { useConnection } from "@/lib/providers/ConnectionProvider";
 import {
   JobReport,
@@ -125,6 +127,10 @@ interface JobCard {
   start_meter_hours?: number;
   end_meter_hours?: number;
   loto_tag_number?: string;
+  safety_cleared?: boolean;
+  safety_cleared_at?: string;
+  safety_cleared_by_id?: string;
+  safety_clearance_notes?: string;
   
   creator_id?: string;
   required_date?: string;
@@ -259,6 +265,43 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
   const [technicianSignData, setTechnicianSignData] = useState<SignatureData | null>(null);
   const [supervisorSignData, setSupervisorSignData] = useState<SignatureData | null>(null);
   const [safetySignData, setSafetySignData] = useState<SignatureData | null>(null);
+  const [showSafetyClearanceModal, setShowSafetyClearanceModal] = useState(false);
+  const [safetyNotes, setSafetyNotes] = useState("");
+  const [safetyLotoTag, setSafetyLotoTag] = useState("BK-LOTO-4091");
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const email = localStorage.getItem('user_email');
+      const savedRole = localStorage.getItem('user_role');
+      setCurrentUserRole(resolveUserRole(savedRole || email));
+    }
+  }, []);
+
+  const handleSafetyClearance = async () => {
+    setActionLoading(true);
+    try {
+      const res = await apiFetch<JobCard>(`/api/v1/job-cards/${id}/safety-clearance`, {
+        method: "POST",
+        body: JSON.stringify({
+          loto_tag_number: safetyLotoTag.trim() || undefined,
+          notes: safetyNotes.trim() || undefined,
+          signature_data: safetySignData || undefined,
+        }),
+      });
+      if (res) {
+        setJob(res);
+      }
+      setShowSafetyClearanceModal(false);
+      setSuccessMessage("HSE Safety Clearance granted and cryptographically stamped.");
+      fetchJob();
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      setErrorMessage(e.message || "Failed to grant safety clearance.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   // Quick Part Adder in Execution Console
   const [quickPart, setQuickPart] = useState({
@@ -389,9 +432,13 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
         // Fetch report for active execution statuses
         await fetchReport(res.status);
       }
-      const approvals = await getApprovalHistory('job_card', id);
-      if (approvals && approvals.length > 0) {
-        setApprovalRequest(approvals[0]);
+      try {
+        const approvals = await getApprovalHistory('job_card', id);
+        if (approvals && approvals.length > 0) {
+          setApprovalRequest(approvals[0]);
+        }
+      } catch (e) {
+        console.warn("Could not load approvals history (non-fatal):", e);
       }
     } catch (err: unknown) {
       const error = err as { message?: string };
@@ -399,7 +446,7 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
     } finally {
       setLoading(false);
     }
-  }, [id, fetchReport]);
+  }, [id, fetchReport, setCompleteForm, setPlanForm]);
 
   useEffect(() => {
     fetchJob();
@@ -587,6 +634,13 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
   const isRejected = s === "REJECTED";
   const isCancelled = s === "CANCELLED";
 
+  // Priority & HSE Safety Gating flags
+  const priorityNum = Number(job.priority);
+  const priorityStr = String(job.priority || "").toUpperCase();
+  const isHighRisk = priorityNum === 1 || priorityNum === 2 || priorityStr.includes("CRIT") || priorityStr.includes("HIGH") || priorityStr.includes("P1") || priorityStr.includes("P2");
+  const requiresSafetyClearance = isHighRisk || !!job.loto_tag_number;
+  const isSafetyCleared = !!job.safety_cleared;
+
   const handleApprovalAction = async (stepId: string, action: 'approve' | 'reject' | 'return' | 'delegate' | 'escalate', comments: string) => {
     setLoading(true);
     setErrorMessage(null);
@@ -747,7 +801,7 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
               )}
 
               {/* PENDING_APPROVAL -> APPROVE / RETURN / REJECT */}
-              {isPendingApproval && (
+              {isPendingApproval && canExecuteAction(currentUserRole, 'approve') && (
                 <Protect capability="job_card:approve">
                   <Button
                     size="sm"
@@ -783,6 +837,20 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
                     Reject
                   </Button>
                 </Protect>
+              )}
+
+              {/* HSE SAFETY CLEARANCE ACTION BUTTON */}
+              {requiresSafetyClearance && !isSafetyCleared && canExecuteAction(currentUserRole, 'safety_clear') && (
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold shadow-xs"
+                  onClick={() => setShowSafetyClearanceModal(true)}
+                  loading={actionLoading}
+                >
+                  <ShieldCheck className="size-3.5 mr-1.5" />
+                  Grant HSE Safety Clearance
+                </Button>
               )}
 
               {/* APPROVED -> MOVE TO PLANNING */}
@@ -834,16 +902,23 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
               {/* ASSIGNED -> START WITH LOTO GATE */}
               {isAssigned && (
                 <Protect capability="job_card:update">
-                  <Button
-                    size="sm"
-                    variant="default"
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
-                    onClick={() => setShowLotoModal(true)}
-                    loading={actionLoading}
-                  >
-                    <Lock className="size-3.5 mr-1.5 text-amber-300" />
-                    Pre-Start LOTO & Begin Work
-                  </Button>
+                  {requiresSafetyClearance && !isSafetyCleared ? (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-xs font-semibold">
+                      <AlertTriangle className="size-3.5 shrink-0 text-amber-600" />
+                      <span>Blocked: Awaiting HSE Clearance</span>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                      onClick={() => setShowLotoModal(true)}
+                      loading={actionLoading}
+                    >
+                      <Lock className="size-3.5 mr-1.5 text-amber-300" />
+                      Pre-Start LOTO & Begin Work
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"
@@ -920,34 +995,36 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
                     <Printer className="size-3.5 mr-1.5 text-primary" />
                     Handover Certificate
                   </Button>
-                  <Protect capability="job_card:verify">
-                    <Button
-                      size="sm"
-                      variant="default"
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                      onClick={() => setShowVerifyModal(true)}
-                      loading={actionLoading}
-                    >
-                      <ShieldCheck className="size-3.5 mr-1.5" />
-                      QA Supervisor Verify
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => executeTransition("review", { comments: "Passed for review" })}
-                    >
-                      <Check className="size-3.5 mr-1" />
-                      Submit Review
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => executeTransition("start", { comments: "Rework required" })}
-                    >
-                      <RotateCcw className="size-3.5 mr-1" />
-                      Rework
-                    </Button>
-                  </Protect>
+                  {canExecuteAction(currentUserRole, 'verify') && (
+                    <Protect capability="job_card:verify">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={() => setShowVerifyModal(true)}
+                        loading={actionLoading}
+                      >
+                        <ShieldCheck className="size-3.5 mr-1.5" />
+                        QA Supervisor Verify
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => executeTransition("review", { comments: "Passed for review" })}
+                      >
+                        <Check className="size-3.5 mr-1" />
+                        Submit Review
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => executeTransition("start", { comments: "Rework required" })}
+                      >
+                        <RotateCcw className="size-3.5 mr-1" />
+                        Rework
+                      </Button>
+                    </Protect>
+                  )}
                 </div>
               )}
 
@@ -974,18 +1051,20 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
                       Requester Confirm
                     </Button>
                   )}
-                  <Protect capability="job_card:verify">
-                    <Button
-                      size="sm"
-                      variant="default"
-                      className="bg-zinc-800 hover:bg-zinc-900 text-white dark:bg-zinc-200 dark:text-zinc-900"
-                      onClick={() => setShowCloseModal(true)}
-                      loading={actionLoading}
-                    >
-                      <CheckCircle2 className="size-3.5 mr-1.5" />
-                      Formal Sign-off & Close
-                    </Button>
-                  </Protect>
+                  {canExecuteAction(currentUserRole, 'close') && (
+                    <Protect capability="job_card:verify">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        className="bg-zinc-800 hover:bg-zinc-900 text-white dark:bg-zinc-200 dark:text-zinc-900"
+                        onClick={() => setShowCloseModal(true)}
+                        loading={actionLoading}
+                      >
+                        <CheckCircle2 className="size-3.5 mr-1.5" />
+                        Formal Sign-off & Close
+                      </Button>
+                    </Protect>
+                  )}
                 </div>
               )}
 
@@ -1056,12 +1135,14 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
                 {job.estimated_hours || 4.0} HRS / <span className="text-amber-500">{job.downtime_hours || 0} HRS</span>
               </span>
             </div>
-            <div className="bg-card/80 p-2.5 rounded border border-border/60">
-              <span className="text-muted-foreground text-[10px] block uppercase">Spares Cost (USD)</span>
-              <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
-                ${totalPartsCost.toFixed(2)}
-              </span>
-            </div>
+            {canViewFinancials(currentUserRole) && (
+              <div className="bg-card/80 p-2.5 rounded border border-border/60">
+                <span className="text-muted-foreground text-[10px] block uppercase">Spares Cost (USD)</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                  ${totalPartsCost.toFixed(2)}
+                </span>
+              </div>
+            )}
             <div className="bg-card/80 p-2.5 rounded border border-border/60">
               <span className="text-muted-foreground text-[10px] block uppercase">Required Date</span>
               <span className="font-bold text-foreground text-sm">
@@ -1083,6 +1164,45 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
           </div>
         </CardContent>
       </Card>
+
+      {/* 2B. HSE SAFETY CLEARANCE & HAZARD CONTROL BANNER */}
+      {requiresSafetyClearance && (
+        <div className={`p-4 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs ${
+          isSafetyCleared
+            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-300"
+            : "bg-amber-500/10 border-amber-500/30 text-amber-800 dark:text-amber-300"
+        }`}>
+          <div className="flex items-start sm:items-center gap-3">
+            {isSafetyCleared ? (
+              <ShieldCheck className="size-6 text-emerald-600 shrink-0 mt-0.5 sm:mt-0" />
+            ) : (
+              <AlertTriangle className="size-6 text-amber-600 shrink-0 mt-0.5 sm:mt-0 animate-pulse" />
+            )}
+            <div>
+              <div className="font-bold text-sm">
+                {isSafetyCleared
+                  ? "HSE Safety Clearance Active & LOTO Verified"
+                  : "High-Risk Maintenance: Awaiting Safety Officer (HSE) Clearance"}
+              </div>
+              <div className="text-xs opacity-90 mt-0.5">
+                {isSafetyCleared
+                  ? `Authorized on ${job.safety_cleared_at ? new Date(job.safety_cleared_at).toLocaleString() : 'Audit Log'} • Isolation Reference: ${job.loto_tag_number || 'BK-LOTO-VERIFIED'}${job.safety_clearance_notes ? ` • Note: ${job.safety_clearance_notes}` : ''}`
+                  : "Field execution is locked until an authorized HSE Officer or Superintendent verifies lockout/tagout isolation points and issues digital clearance."}
+              </div>
+            </div>
+          </div>
+          {!isSafetyCleared && canExecuteAction(currentUserRole, 'safety_clear') && (
+            <Button
+              size="sm"
+              className="bg-amber-600 hover:bg-amber-700 text-white font-bold shrink-0 text-xs gap-1.5 self-start sm:self-auto shadow-xs"
+              onClick={() => setShowSafetyClearanceModal(true)}
+            >
+              <ShieldCheck className="size-3.5" />
+              Grant Clearance
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* 3. WORKFLOW PIPELINE TIMELINE STEPPER */}
       <WorkflowTimeline
@@ -1184,10 +1304,12 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
                   <span className="text-[10px] font-mono text-muted-foreground block">EST. LABOUR HOURS</span>
                   <span className="font-bold font-mono text-sm text-foreground">{job.estimated_hours || 4.0} HRS</span>
                 </div>
-                <div className="p-2.5 rounded bg-muted/30 border border-border/60">
-                  <span className="text-[10px] font-mono text-muted-foreground block">EST. BUDGET COST</span>
-                  <span className="font-bold font-mono text-sm text-foreground">${job.estimated_cost || 1250.0}</span>
-                </div>
+                {canViewFinancials(currentUserRole) && (
+                  <div className="p-2.5 rounded bg-muted/30 border border-border/60">
+                    <span className="text-[10px] font-mono text-muted-foreground block">EST. BUDGET COST</span>
+                    <span className="font-bold font-mono text-sm text-foreground">${job.estimated_cost || 1250.0}</span>
+                  </div>
+                )}
                 <div className="p-2.5 rounded bg-muted/30 border border-border/60">
                   <span className="text-[10px] font-mono text-muted-foreground block">SUPERVISOR</span>
                   <span className="font-bold font-mono text-xs text-foreground truncate block">
@@ -1261,8 +1383,12 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
                         <TableHead>Part Name</TableHead>
                         <TableHead className="w-28">Part Number</TableHead>
                         <TableHead className="w-16 text-right">Qty</TableHead>
-                        <TableHead className="w-24 text-right">Unit ($)</TableHead>
-                        <TableHead className="w-24 text-right">Total ($)</TableHead>
+                        {canViewFinancials(currentUserRole) && (
+                          <>
+                            <TableHead className="w-24 text-right">Unit ($)</TableHead>
+                            <TableHead className="w-24 text-right">Total ($)</TableHead>
+                          </>
+                        )}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1271,23 +1397,29 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
                           <TableCell className="font-semibold text-foreground">{part.part_name}</TableCell>
                           <TableCell mono className="text-muted-foreground">{part.part_number || "-"}</TableCell>
                           <TableCell mono className="text-right">{part.quantity}</TableCell>
-                          <TableCell mono className="text-right">${(part.unit_cost || 0).toFixed(2)}</TableCell>
-                          <TableCell mono className="text-right font-bold text-foreground">
-                            ${((part.quantity || 1) * (part.unit_cost || 0)).toFixed(2)}
-                          </TableCell>
+                          {canViewFinancials(currentUserRole) && (
+                            <>
+                              <TableCell mono className="text-right">${(part.unit_cost || 0).toFixed(2)}</TableCell>
+                              <TableCell mono className="text-right font-bold text-foreground">
+                                ${((part.quantity || 1) * (part.unit_cost || 0)).toFixed(2)}
+                              </TableCell>
+                            </>
+                          )}
                         </TableRow>
                       ))}
                     </TableBody>
-                    <TableFooter>
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-right font-bold font-mono uppercase">
-                          Total Spares Cost:
-                        </TableCell>
-                        <TableCell mono className="text-right font-bold text-emerald-600 dark:text-emerald-400">
-                          ${totalPartsCost.toFixed(2)}
-                        </TableCell>
-                      </TableRow>
-                    </TableFooter>
+                    {canViewFinancials(currentUserRole) && (
+                      <TableFooter>
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-right font-bold font-mono uppercase">
+                            Total Spares Cost:
+                          </TableCell>
+                          <TableCell mono className="text-right font-bold text-emerald-600 dark:text-emerald-400">
+                            ${totalPartsCost.toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      </TableFooter>
+                    )}
                   </Table>
                 )}
               </div>
@@ -2538,6 +2670,87 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
             >
               <Play className="size-3.5 mr-1" />
               Authorize & Start Execution
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── HSE SAFETY OFFICER CLEARANCE MODAL ───────────────────────── */}
+      <Dialog open={showSafetyClearanceModal} onOpenChange={setShowSafetyClearanceModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-foreground">
+              <ShieldCheck className="size-5 text-amber-500" />
+              <span>HSE Safety Clearance & Hazard Control Verification</span>
+            </DialogTitle>
+            <DialogDescription>
+              Mandatory safety authority verification and digital sign-off before field technicians can break equipment ground.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2 text-xs">
+            <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/5 space-y-2">
+              <div className="text-[11px] font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                <AlertTriangle className="size-3.5" />
+                <span>High-Risk / LOTO Operations Clearance</span>
+              </div>
+              <p className="text-muted-foreground text-[11px]">
+                By signing this clearance, you confirm that physical Lockout/Tagout has been inspected or verified on site, environmental and atmospheric hazards are controlled, and technicians are permitted to proceed.
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-mono uppercase text-muted-foreground block">
+                Permit / LOTO Tag Reference <span className="text-destructive">*</span>
+              </label>
+              <Input
+                mono
+                value={safetyLotoTag}
+                onChange={(e) => setSafetyLotoTag(e.target.value)}
+                placeholder="e.g. BK-LOTO-4091"
+                className="h-8 text-xs font-mono"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-mono uppercase text-muted-foreground block">
+                Safety Conditions / Notes
+              </label>
+              <Textarea
+                rows={2}
+                value={safetyNotes}
+                onChange={(e) => setSafetyNotes(e.target.value)}
+                placeholder="Gas clearance verified, tagout verified on breaker CB-4..."
+                className="text-xs"
+              />
+            </div>
+
+            <SignaturePanel
+              title="HSE Safety Authority Sign-off"
+              signerRole="Safety Officer (HSE)"
+              requireLoto={false}
+              onSign={(sig) => setSafetySignData(sig)}
+              signed={!!safetySignData}
+              signedBy={safetySignData?.name}
+              signedAt={safetySignData?.timestamp}
+              signatureHash={safetySignData?.hash}
+              signatureImage={safetySignData?.signatureImage}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setShowSafetyClearanceModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-amber-600 hover:bg-amber-700 text-white font-bold"
+              size="sm"
+              loading={actionLoading}
+              disabled={!safetyLotoTag.trim() || !safetySignData}
+              onClick={handleSafetyClearance}
+            >
+              <ShieldCheck className="size-3.5 mr-1.5" />
+              Grant HSE Clearance
             </Button>
           </DialogFooter>
         </DialogContent>
