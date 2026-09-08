@@ -571,7 +571,7 @@ export function SafetyOpsDashboard() {
                 {hazardDistribution.map((item) => (
                   <div key={item.zone} className="space-y-1">
                     <div className="flex justify-between text-[11px]">
-                      <span className="font-medium text-foreground truncate max-w-[150px]">{item.zone}</span>
+                      <span className="font-medium text-foreground truncate max-w-37.5">{item.zone}</span>
                       <span className="font-mono text-muted-foreground">{item.count} ({item.percentage}%)</span>
                     </div>
                     <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">

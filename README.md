@@ -17,6 +17,7 @@ Bikita Minerals DWRMS is purpose-built and field-validated for seamless multi-de
 | **Mobile Handhelds & Smart Devices** | Roving Safety Officers (HSE), Shift Bosses, Traveling Requesters, Executives | 5.5"–6.7" iOS & Android Smartphones, Zebra/Honeywell Enterprise Handhelds | Single-hand Touch, Haptic Virtual Keyboard, Hardware Scan Trigger, Device Camera | Sticky mobile bottom navigation bar, collapsible side drawers, single-tap requisition approvals, real-time safety incident logging with live geo-coordinates and photo attachments. | Mobile Responsive Web (Tailwind/CSS Grid flex layout) / Add to Home Screen (PWA) |
 
 ### Responsive Adaptive Architecture Highlights
+
 - **Dynamic Viewport Breakpoints**: Built with fluid Tailwind CSS grid breakpoints (`sm:640px`, `md:768px`, `lg:1024px`, `xl:1280px`, `2xl:1536px`), providing fluid auto-reflow from compact 375px mobile screens up to 4K control room video walls.
 - **Touch-First UI Controls**: Minimum 44x44px interactive tap targets across all form fields, date pickers, dropdown selects, and approval action buttons to prevent mis-clicks in vibrating equipment or with gloved hands.
 - **Offline Resiliency**: Client-side state caching and background synchronization ensure pre-start inspections and fault entries are safely preserved even in low-signal open-pit quarry bottoms and underground processing tunnels.
@@ -35,12 +36,14 @@ All device setups are built, verified, and packaged in the unified distribution 
 | **Rugged Tablets & Mobile** | [`dist/tablet-mobile-pwa/`](dist/tablet-mobile-pwa/) | **~102 KB** | *Verified Service Worker + Manifest + Icons* | Offline PWA app shell for Samsung Galaxy Tab Active, Zebra & iOS/Android devices |
 | **Android Enterprise (MDM)** | [`dist/android/BUILD_INSTRUCTIONS.txt`](dist/android/BUILD_INSTRUCTIONS.txt) | **~1 KB** | *Tauri Android APK generation pipeline* | Standalone APK build configuration for corporate mobile device managers |
 
-### Build Setups for All Devices in One Command:
+### Build Setups for All Devices in One Command
+
 ```powershell
 .\deploy\build-all-device-setups.ps1
 ```
 
-### Build Specific Device Profiles:
+### Build Specific Device Profiles
+
 ```powershell
 # Desktop Workstations & Rugged Laptops (.exe / .msi)
 .\deploy\build-all-device-setups.ps1 -DevicePlatform desktop
@@ -91,17 +94,20 @@ The application login screen at `http://localhost:3000/login` includes one-click
 For production deployment on dedicated Ubuntu Server instances (22.04 LTS / 24.04 LTS):
 
 ### Single-Command Quick Install (Remote Server)
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Aomine-c2c/jbc/main/install.sh | sudo bash
 ```
 
 ### Or Run Locally from Repository
+
 ```bash
 sudo chmod +x install.sh
 sudo ./install.sh
 ```
 
-#### What `install.sh` provisions automatically:
+#### What `install.sh` provisions automatically
+
 1. **Host Dependencies**: Docker CE, Docker Compose plugin, UFW firewall, OpenSSL, curl, and jq.
 2. **Storage Structure**: Provisions and permissions `/var/dwrms/storage`, `/var/dwrms/backups`, and `/var/dwrms/logs` (`0750`).
 3. **Network Security**: UFW lockdown allowing HTTP (`80`), HTTPS (`443`), and SSH (`22`) while isolating internal database ports.
@@ -115,19 +121,26 @@ sudo ./install.sh
 ## 6. Development & Local Run
 
 ### Prerequisites
+
 - **Node.js**: v20+
 - **Python**: v3.12+ (or `.venv` in `/backend`)
 
 ### Launch All Services Concurrently
+
 ```powershell
 cd frontend
 npm run tauri:dev
 ```
+
 *Starts the FastAPI backend daemon (`http://localhost:8000`), Next.js App Router (`http://localhost:3000`), and native Tauri Desktop window.*
 
 ### Run Production Build & Lint Verification
+
 ```powershell
 cd frontend
 npm run build
+```
+
+```powershell
 npm run lint
 ```

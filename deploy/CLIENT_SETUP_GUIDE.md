@@ -1,6 +1,7 @@
 # Bikita Minerals DWRMS - Multi-Device Client Applications Setup & Deployment Guide
 
 Authoritative engineering and deployment guide for rolling out DWRMS across all operational hardware categories:
+
 1. **Desktop Workstations & Control Room Consoles** (Windows 10/11 x64)
 2. **Field Maintenance Laptops** (Semi/Fully Rugged Toughbooks, Dell Rugged)
 3. **Rugged Field Tablets** (Samsung Galaxy Tab Active4 Pro, Zebra ET51/ET56)
@@ -22,11 +23,13 @@ Authoritative engineering and deployment guide for rolling out DWRMS across all 
 ## 2. Automated Multi-Device Packaging Pipeline
 
 Run the unified packaging script from the repository root:
+
 ```powershell
 .\deploy\build-all-device-setups.ps1
 ```
 
-### Parameterized Target Packaging:
+### Parameterized Target Packaging
+
 ```powershell
 # Package only Desktop Workstations & Field Laptops
 .\deploy\build-all-device-setups.ps1 -DevicePlatform desktop
@@ -38,7 +41,8 @@ Run the unified packaging script from the repository root:
 .\deploy\build-all-device-setups.ps1 -DevicePlatform android
 ```
 
-### Generated Distribution Directory Structure (`/dist`):
+### Generated Distribution Directory Structure (`/dist`)
+
 ```text
 dist/
 ├── desktop/
@@ -58,12 +62,14 @@ dist/
 
 ## 3. Workstation & Field Laptop Setup (Windows x64)
 
-### Automated Silent Installation (Active Directory GPO / SCCM):
+### Automated Silent Installation (Active Directory GPO / SCCM)
+
 ```powershell
 msiexec /i dist\desktop\DWRMS_2.9.0_x64_en-US.msi /quiet /qn
 ```
 
-### Manual Interactive Installation:
+### Manual Interactive Installation
+
 1. Double-click `dist\desktop\DWRMS_2.9.0_x64-setup.exe`.
 2. Follow on-screen prompts; desktop shortcut and start menu entries are created automatically.
 
@@ -71,13 +77,15 @@ msiexec /i dist\desktop\DWRMS_2.9.0_x64_en-US.msi /quiet /qn
 
 ## 4. Rugged Field Tablet Setup (Android / Windows Rugged)
 
-### Deploying PWA on Samsung Galaxy Tab Active / Zebra ET5x:
+### Deploying PWA on Samsung Galaxy Tab Active / Zebra ET5x
+
 1. Connect device to the **Bikita-Mine-WLAN** or private mining APN.
 2. Launch Google Chrome and browse to `http://dwrms.bikita.com` or local server IP (e.g., `http://192.168.1.100`).
 3. Tap **"Install Bikita DWRMS App"** banner or tap Menu (⋮) → **"Install app"** / **"Add to Home screen"**.
 4. Launch DWRMS directly from the home screen in standalone immersive fullscreen mode.
 
-### Offline Field Capabilities:
+### Offline Field Capabilities
+
 - **Offline Inspection Checklists**: Pre-start machinery checks and meter readings operate without cellular or WiFi coverage.
 - **IndexedDB Sync Queue**: Mutations are stored locally in browser IndexedDB.
 - **Automatic Reconnection Sync**: The background sync engine automatically flushes queued operations to the central server when the vehicle returns to pit-rim or workshop WiFi range.
@@ -96,15 +104,20 @@ msiexec /i dist\desktop\DWRMS_2.9.0_x64_en-US.msi /quiet /qn
 ## 6. Native Android Enterprise APK Packaging (Optional)
 
 For managed fleets requiring an `.apk` file for Mobile Device Management (MDM / SOTI / Microsoft Intune):
+
 1. Install Android SDK (Platform 34, Build Tools 34.0.0) and OpenJDK 17+.
 2. Add Rust Android targets:
+
    ```bash
    rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
    ```
+
 3. Initialize and build APK via Tauri CLI:
+
    ```bash
    cd frontend
    npx tauri android init
    npx tauri android build --apk
    ```
+
 4. Output APK is created in `frontend/gen/android/app/build/outputs/apk/release/app-release-unsigned.apk`.
