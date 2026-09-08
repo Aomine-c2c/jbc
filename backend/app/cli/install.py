@@ -108,7 +108,9 @@ def install_command(skip_docker, skip_firewall):
 
     # 5. Create /usr/local/bin/ops Global Symlink
     if os.name == "posix":
-        ops_src = ROOT_DIR / "ops"
+        ops_src = ROOT_DIR / "scripts" / "ops" / "ops"
+        if not ops_src.exists():
+            ops_src = ROOT_DIR / "ops"
         ops_link = Path("/usr/local/bin/ops")
         try:
             if ops_link.exists() or ops_link.is_symlink():

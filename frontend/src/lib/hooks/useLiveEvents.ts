@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { getApiUrl } from './api';
+import { getApiUrl } from '../api';
 
 export interface LiveEventMessage {
   id: string;

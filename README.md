@@ -32,14 +32,41 @@ The application login screen at `http://localhost:3000/login` includes one-click
 
 ---
 
-## 3. Quick Start (Development & Local Run)
+## 3. Server Deployment (Automated One-Command Installer)
+
+For production deployment on an Ubuntu / Debian server, use the authoritative installer [`install.sh`](install.sh):
+
+### Single-Command Quick Install (Remote Server)
+```bash
+curl -fsSL https://raw.githubusercontent.com/Aomine-c2c/jbc/main/install.sh | sudo bash
+```
+
+### Or Run Locally from Cloned Repository
+```bash
+sudo chmod +x install.sh
+sudo ./install.sh
+```
+
+#### What `install.sh` does automatically:
+1. **Sudo / Root Enforcement**: Validates root execution and handles package installation.
+2. **System Dependencies**: Automatically installs Docker CE, Docker Compose plugin, UFW, OpenSSL, curl, and utilities.
+3. **Storage & Directory Structure**: Provisions and secures `/var/dwrms/storage`, `/var/dwrms/backups`, and `/var/dwrms/logs`.
+4. **Firewall Lockdown**: Configures UFW to allow HTTP (`80`), HTTPS (`443`), and SSH (`22`) while shielding internal databases.
+5. **Environment & TLS Certificates**: Generates `.env` with cryptographically secure keys and self-signed TLS certificates for Nginx.
+6. **Database & RBAC Initialization**: Boots MySQL 8.0, creates tables, seeds standard roles/admin (`seed.py`, `seed_rbac.py`), and seeds rich industrial mining operations data (`seed_faker.py`).
+7. **Full Stack Startup**: Launches the entire production stack (Backend, Frontend, Celery Worker, Celery Beat, Nginx).
+8. **Systemd Services**: Enables auto-restart on system reboot (`dwrms.service`) and automated daily backups at 02:00 CAT (`dwrms-backup.timer`).
+
+---
+
+## 4. Quick Start (Development & Local Run)
 
 ### Prerequisites
 
 - **Node.js**: v20+
 - **Python**: v3.12+ (or `.venv` in `/backend`)
 
-### Launch All Services
+### Launch All Services Locally
 
 ```powershell
 # In frontend directory
@@ -57,3 +84,4 @@ npm run build
 ```
 
 *Compiles all 28 application routes with strict TypeScript and RBAC route guard validation.*
+

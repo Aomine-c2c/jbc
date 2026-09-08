@@ -63,7 +63,7 @@ export async function getPendingApprovals(): Promise<ApprovalInboxItem[]> {
   } catch (e) {
     console.warn("Approvals endpoint offline, using cached synthetic inbox items", e);
   }
-  const { MOCK_APPROVALS_INBOX } = await import('./mockData');
+  const { MOCK_APPROVALS_INBOX } = await import('./mock/mockData');
   return MOCK_APPROVALS_INBOX as ApprovalInboxItem[];
 }
 

@@ -19,9 +19,10 @@ import app.modules.common.models
 
 async def init():
     async with engine.begin() as conn:
-        print("Creating all tables in PostgreSQL...")
+        dialect_name = engine.dialect.name
+        print(f"Creating all tables in {dialect_name} database...")
         await conn.run_sync(Base.metadata.create_all)
-        print(f"[SUCCESS] Created {len(Base.metadata.tables)} tables in PostgreSQL database.")
+        print(f"[SUCCESS] Created {len(Base.metadata.tables)} tables in {dialect_name} database.")
 
 if __name__ == "__main__":
     asyncio.run(init())

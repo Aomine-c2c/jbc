@@ -45,14 +45,22 @@ The deployment orchestrator automates the complete operational lifecycle:
 
 ### Automated Single-Command Deployment
 
+The fastest way to deploy the entire production stack is using the root [`install.sh`](../install.sh) script:
+
+#### Remote One-Liner (Fresh Server)
+```bash
+curl -fsSL https://raw.githubusercontent.com/Aomine-c2c/jbc/main/install.sh | sudo bash
+```
+
+#### Or Run from Cloned Repository
 ```bash
 # 1. Clone repository to server:
-sudo git clone https://github.com/bikita-minerals/dwrms.git /opt/dwrms
+sudo git clone https://github.com/Aomine-c2c/jbc.git /opt/dwrms
 cd /opt/dwrms
 
-# 2. Execute production deployment script:
-sudo chmod +x infrastructure/scripts/deploy_production.sh
-sudo ./infrastructure/scripts/deploy_production.sh
+# 2. Execute authoritative installer:
+sudo chmod +x install.sh
+sudo ./install.sh
 ```
 
 ---

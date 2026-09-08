@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { apiFetch, getApiUrl } from './api';
+import { apiFetch, getApiUrl } from '../api';
 
 export interface Notification {
   id: string;

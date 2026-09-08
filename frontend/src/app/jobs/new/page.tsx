@@ -14,7 +14,7 @@ import { PriorityBadge } from "@/components/ui/status-badge";
 import { NotificationBanner } from "@/components/ui/notification";
 import { useConnection } from "@/lib/providers/ConnectionProvider";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
-import { useDraftPreserver } from "@/lib/useDraftPreserver";
+import { useDraftPreserver } from "@/lib/hooks/useDraftPreserver";
 
 // Icons
 import {

@@ -10,7 +10,7 @@ import { NotificationCenter } from "@/components/notifications/NotificationCente
 import { SyncStatusPanel } from "@/components/notifications/SyncStatusPanel";
 import { useConnection } from "@/lib/providers/ConnectionProvider";
 import { useSyncManager } from "@/lib/SyncManager";
-import { useLiveEvents } from "@/lib/useLiveEvents";
+import { useLiveEvents } from "@/lib/hooks/useLiveEvents";
 import { ConnectionStatusBadge } from "./ConnectionStatusBadge";
 import { NetworkStatusBar } from "./NetworkStatusBar";
 import { MobileBottomNav } from "./MobileBottomNav";
