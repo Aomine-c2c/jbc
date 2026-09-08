@@ -235,7 +235,7 @@ export function SafetyOpsDashboard() {
       {/* 4 HSE KPI METRIC CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1: PENDING SAFETY GATED JOBS */}
-        <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-card to-card">
+        <Card className="border-amber-500/30 bg-linear-to-br from-amber-500/10 via-card to-card">
           <CardContent className="p-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-mono font-medium text-amber-600 dark:text-amber-400 uppercase tracking-wider">
@@ -260,7 +260,7 @@ export function SafetyOpsDashboard() {
         </Card>
 
         {/* KPI 2: ACTIVE LOTO ISOLATIONS */}
-        <Card className="border-rose-500/30 bg-gradient-to-br from-rose-500/10 via-card to-card">
+        <Card className="border-rose-500/30 bg-linear-to-br from-rose-500/10 via-card to-card">
           <CardContent className="p-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-mono font-medium text-rose-600 dark:text-rose-400 uppercase tracking-wider">
@@ -285,7 +285,7 @@ export function SafetyOpsDashboard() {
         </Card>
 
         {/* KPI 3: LTI-FREE DAYS MILESTONE */}
-        <Card className="border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-card to-card">
+        <Card className="border-emerald-500/30 bg-linear-to-br from-emerald-500/10 via-card to-card">
           <CardContent className="p-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-mono font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
@@ -310,7 +310,7 @@ export function SafetyOpsDashboard() {
         </Card>
 
         {/* KPI 4: CONTRACTOR & PERMIT QUEUE */}
-        <Card className="border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-card to-card">
+        <Card className="border-blue-500/30 bg-linear-to-br from-blue-500/10 via-card to-card">
           <CardContent className="p-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-mono font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">

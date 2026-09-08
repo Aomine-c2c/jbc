@@ -1,0 +1,15 @@
+# ==============================================================================
+# Bikita Minerals DWRMS - Android Enterprise APK Packaging Instructions
+# ==============================================================================
+# Requirements:
+# 1. Android Studio / Android SDK (Platform 34, Build-Tools 34.0.0)
+# 2. OpenJDK 17+ (JAVA_HOME set)
+# 3. Rust toolchain targets:
+#    rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
+#
+# Commands:
+# cd frontend
+# npx tauri android init
+# npx tauri android build --apk
+# Output APK location: frontend/gen/android/app/build/outputs/apk/release/app-release-unsigned.apk
+# ==============================================================================

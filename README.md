@@ -24,19 +24,35 @@ Bikita Minerals DWRMS is purpose-built and field-validated for seamless multi-de
 
 ---
 
-## 2. Desktop Packaging & Distribution Artifacts
+## 2. Multi-Device Packaging Pipeline & Distribution Setups
 
-The native Windows desktop packages are pre-compiled and verified in [`frontend/src-tauri/target/release/bundle/`](frontend/src-tauri/target/release/bundle/):
+All device setups are built, verified, and packaged in the unified distribution directory [`/dist`](dist/):
 
-| Package Format | Output Location | Size | SHA-256 Checksum | Target Deployment |
+| Target Device | Package / Distribution Artifact | Size | SHA-256 Checksum | Operational Target |
 | :--- | :--- | :---: | :--- | :--- |
-| **NSIS Setup (.exe)** | [`frontend/src-tauri/target/release/bundle/nsis/DWRMS_2.9.0_x64-setup.exe`](frontend/src-tauri/target/release/bundle/nsis/DWRMS_2.9.0_x64-setup.exe) | **2.64 MB** | `a49529a10d8ff8bda74f05d2c1ea7f93062677454cd58af4d4c585e410916dd8` | Self-contained Windows installer for workstations and field laptops |
-| **Windows Installer (.msi)** | [`frontend/src-tauri/target/release/bundle/msi/DWRMS_2.9.0_x64_en-US.msi`](frontend/src-tauri/target/release/bundle/msi/DWRMS_2.9.0_x64_en-US.msi) | **3.62 MB** | `78954c114608250af5d62f76d37e2ed40d74f6b2b0d0a762e1461fb0d4703a6a` | Enterprise Active Directory / Group Policy (GPO) silent domain rollout |
+| **Workstations & Laptops** | [`dist/desktop/DWRMS_2.9.0_x64-setup.exe`](dist/desktop/DWRMS_2.9.0_x64-setup.exe) | **2.64 MB** | `a49529a10d8ff8bda74f05d2c1ea7f93062677454cd58af4d4c585e410916dd8` | Self-contained Windows installer for workshop PCs & rugged field laptops |
+| **Active Directory Rollout** | [`dist/desktop/DWRMS_2.9.0_x64_en-US.msi`](dist/desktop/DWRMS_2.9.0_x64_en-US.msi) | **3.62 MB** | `78954c114608250af5d62f76d37e2ed40d74f6b2b0d0a762e1461fb0d4703a6a` | Silent GPO / SCCM domain-wide installation across mine office PCs |
+| **Rugged Tablets & Mobile** | [`dist/tablet-mobile-pwa/`](dist/tablet-mobile-pwa/) | **~102 KB** | *Verified Service Worker + Manifest + Icons* | Offline PWA app shell for Samsung Galaxy Tab Active, Zebra & iOS/Android devices |
+| **Android Enterprise (MDM)** | [`dist/android/BUILD_INSTRUCTIONS.txt`](dist/android/BUILD_INSTRUCTIONS.txt) | **~1 KB** | *Tauri Android APK generation pipeline* | Standalone APK build configuration for corporate mobile device managers |
 
-To compile fresh desktop binaries from source:
+### Build Setups for All Devices in One Command:
 ```powershell
-.\deploy\build-desktop-apps.ps1
+.\deploy\build-all-device-setups.ps1
 ```
+
+### Build Specific Device Profiles:
+```powershell
+# Desktop Workstations & Rugged Laptops (.exe / .msi)
+.\deploy\build-all-device-setups.ps1 -DevicePlatform desktop
+
+# Rugged Tablets & Mobile Handhelds (Offline PWA shell & assets)
+.\deploy\build-all-device-setups.ps1 -DevicePlatform pwa
+
+# Android Enterprise APK environment
+.\deploy\build-all-device-setups.ps1 -DevicePlatform android
+```
+
+*For step-by-step device deployment and silent installation commands, see [`deploy/CLIENT_SETUP_GUIDE.md`](deploy/CLIENT_SETUP_GUIDE.md).*
 
 ---
 
