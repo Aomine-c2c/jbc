@@ -122,13 +122,25 @@ export default function NewRequisition() {
         return;
       }
 
+      const trimmedPurpose = purpose.trim();
+      if (!trimmedPurpose) {
+        setFormError("Purpose / Operation Scope is required (minimum 3 characters).");
+        setIsSubmitting(false);
+        return;
+      }
+      if (trimmedPurpose.length < 3) {
+        setFormError("Purpose must be at least 3 characters long.");
+        setIsSubmitting(false);
+        return;
+      }
+
       const payload = {
         machine_type_id: machineTypeId || (machineTypes[0]?.id ?? "00000000-0000-0000-0000-000000000000"),
-        location: location?.trim() || undefined,
+        location: location?.trim() || "Bikita Mine Operations",
         start_time: start.toISOString(),
         end_time: end.toISOString(),
         job_card_id: jobCardId ? jobCardId : null,
-        purpose: purpose.trim() || undefined,
+        purpose: trimmedPurpose,
       };
 
       const res = await apiFetch("/api/v1/fleet/requisitions", {
@@ -265,7 +277,7 @@ export default function NewRequisition() {
 
               <div>
                 <label className="block text-xs font-medium text-foreground mb-1.5">
-                  Purpose / Operation Scope
+                  Purpose / Operation Scope <span className="text-destructive">*</span>
                 </label>
                 <input 
                   type="text" 
@@ -273,6 +285,8 @@ export default function NewRequisition() {
                   onChange={(e) => setPurpose(e.target.value)}
                   className="w-full bg-background border border-input rounded-md px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                   placeholder="e.g. Pit 4 Spodumene bench haulage & loading"
+                  required
+                  minLength={3}
                 />
               </div>
 

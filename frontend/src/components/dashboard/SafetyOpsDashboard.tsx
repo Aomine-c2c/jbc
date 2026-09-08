@@ -1,23 +1,18 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  ShieldAlert, 
-  ShieldCheck, 
-  Lock, 
-  AlertTriangle, 
-  CheckCircle2, 
-  Clock, 
-  Flame, 
-  FileText, 
-  HardHat, 
-  RefreshCw, 
-  ChevronRight, 
+import {
+  ShieldAlert,
+  ShieldCheck,
+  Lock,
+  AlertTriangle,
+  CheckCircle2,
+  Flame,
+  HardHat,
+  RefreshCw,
   ExternalLink,
   MapPin,
   Search,
-  Filter,
-  Users
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -225,6 +220,15 @@ export function SafetyOpsDashboard() {
             <span className="font-medium">{successBanner}</span>
           </div>
           <Button size="sm" variant="ghost" className="h-6 text-[11px]" onClick={() => setSuccessBanner(null)}>Dismiss</Button>
+        </div>
+      )}
+      {errorBanner && (
+        <div className="p-3.5 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="size-4 shrink-0" />
+            <span className="font-medium">{errorBanner}</span>
+          </div>
+          <Button size="sm" variant="ghost" className="h-6 text-[11px]" onClick={() => setErrorBanner(null)}>Dismiss</Button>
         </div>
       )}
 

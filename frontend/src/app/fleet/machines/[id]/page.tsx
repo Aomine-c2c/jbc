@@ -284,7 +284,7 @@ export default function MachineDetailPage() {
         )}
 
         {/* ── COMPACT HERO COMMAND HEADER ────────────────────────────── */}
-        <div className="p-4 md:p-5 rounded-xl bg-gradient-to-br from-card via-card to-muted/30 border border-border flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+        <div className="p-4 md:p-5 rounded-xl bg-linear-to-br from-card via-card to-muted/30 border border-border flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
           <div className="space-y-1">
             <div className="flex items-center gap-3 flex-wrap">
               <div className="p-2.5 bg-primary/10 text-primary rounded-xl shrink-0">

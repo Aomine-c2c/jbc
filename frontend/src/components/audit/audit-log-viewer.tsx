@@ -156,7 +156,7 @@ export function AuditLogViewer() {
               </SelectContent>
             </Select>
             <Select value={filters.resource} onValueChange={(v) => { if (v) { setSkip(0); setFilters({ ...filters, resource: v }); } }}>
-              <SelectTrigger className="w-[150px] h-8 text-xs">
+              <SelectTrigger className="w-37.5 h-8 text-xs">
                 <SelectValue placeholder="Resource" />
               </SelectTrigger>
               <SelectContent>
@@ -266,13 +266,13 @@ export function AuditLogViewer() {
                             <div className="grid grid-cols-2 gap-4 mt-2">
                               <div className="space-y-1.5">
                                 <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Previous Value</div>
-                                <pre className="bg-muted p-3 rounded-md text-[11px] font-mono overflow-auto max-h-[400px]">
+                                <pre className="bg-muted p-3 rounded-md text-[11px] font-mono overflow-auto max-h-100">
                                   {log.previous_value ? JSON.stringify(log.previous_value, null, 2) : "null"}
                                 </pre>
                               </div>
                               <div className="space-y-1.5">
                                 <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">New Value</div>
-                                <pre className="bg-muted p-3 rounded-md text-[11px] font-mono overflow-auto max-h-[400px]">
+                                <pre className="bg-muted p-3 rounded-md text-[11px] font-mono overflow-auto max-h-100">
                                   {log.new_value ? JSON.stringify(log.new_value, null, 2) : "null"}
                                 </pre>
                               </div>

@@ -31,3 +31,10 @@ backend/storage/
 *.tar.gz
 *.tar.gz.sha256
 infrastructure/certs/
+audit_screenshots/
+*.json.bak
+exhaustive_browser_audit_report.json
+exhaustive_click_audit_results.json
+.setup_state.json
+playwright_browser_audit.py
+*.db-journal
