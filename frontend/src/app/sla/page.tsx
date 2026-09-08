@@ -139,14 +139,14 @@ export default function SLAManagementPage() {
         setDashboardData(dash);
       } else {
         setDashboardData({
-          total_active: 8,
-          on_track_count: 6,
-          at_risk_count: 2,
+          total_active: 0,
+          on_track_count: 0,
+          at_risk_count: 0,
           breached_count: 0,
-          critical_open_count: 2,
-          compliance_percentage: 97.4,
-          avg_response_minutes: 18,
-          avg_completion_minutes: 320,
+          critical_open_count: 0,
+          compliance_percentage: 100.0,
+          avg_response_minutes: 0,
+          avg_completion_minutes: 0,
           recent_breaches: [],
           at_risk_trackers: [],
         });
@@ -158,91 +158,36 @@ export default function SLAManagementPage() {
         if (priorityFilter !== 'ALL') url += `&priority=${priorityFilter}`;
         if (searchQuery.trim()) url += `&search=${encodeURIComponent(searchQuery.trim())}`;
         const trData = await apiFetch<SLATrackerRow[]>(url);
-        if (Array.isArray(trData) && trData.length > 0) {
+        if (Array.isArray(trData)) {
           setTrackers(trData);
         } else {
-          const { MOCK_SLA_TRACKERS } = await import('@/lib/mockData');
-          const fallbackTrackers: SLATrackerRow[] = MOCK_SLA_TRACKERS.map((t) => ({
-            id: t.id,
-            resource_type: "job_card",
-            resource_id: t.id,
-            resource_reference: t.reference_number,
-            title: t.title,
-            priority: t.priority,
-            status: "IN_PROGRESS",
-            health: t.status,
-            current_escalation_level: t.breach_warning ? 1 : 0,
-            department_name: t.department,
-            policy_name: `${t.priority} Critical Plant Matrix`,
-            created_at: t.created_at,
-          }));
-          setTrackers(fallbackTrackers);
+          setTrackers([]);
         }
       }
 
       if (activeTab === 'POLICIES') {
         const pData = await apiFetch<SLAPolicyRow[]>('/api/v1/sla/policies');
-        if (Array.isArray(pData) && pData.length > 0) {
+        if (Array.isArray(pData)) {
           setPolicies(pData);
         } else {
-          setPolicies([
-            {
-              id: "pol-01",
-              name: "Emergency Breakdown Matrix",
-              description: "Immediate response for production critical crushing and haulage assets",
-              priority: "CRITICAL",
-              response_time_minutes: 15,
-              completion_time_minutes: 180,
-              warning_threshold_percentage: 80,
-              escalation_rules: [{ level: 1, trigger: "WARNING", after_percentage: 80 }],
-              is_active: true,
-              is_default: true
-            },
-            {
-              id: "pol-02",
-              name: "Urgent Shift Work Order SLA",
-              description: "Standard 30-minute acknowledgment window for operational bench delays",
-              priority: "HIGH",
-              response_time_minutes: 30,
-              completion_time_minutes: 360,
-              warning_threshold_percentage: 80,
-              escalation_rules: [{ level: 1, trigger: "WARNING", after_percentage: 80 }],
-              is_active: true,
-              is_default: false
-            }
-          ]);
+          setPolicies([]);
         }
       }
-    } catch (err) {
-      console.warn('Failed to load SLA data from server, using synthetic fallback', err);
-      const { MOCK_SLA_TRACKERS } = await import('@/lib/mockData');
+    } catch {
       setDashboardData({
-        total_active: 8,
-        on_track_count: 6,
-        at_risk_count: 2,
+        total_active: 0,
+        on_track_count: 0,
+        at_risk_count: 0,
         breached_count: 0,
-        critical_open_count: 2,
-        compliance_percentage: 97.4,
-        avg_response_minutes: 18,
-        avg_completion_minutes: 320,
+        critical_open_count: 0,
+        compliance_percentage: 100.0,
+        avg_response_minutes: 0,
+        avg_completion_minutes: 0,
         recent_breaches: [],
         at_risk_trackers: [],
       });
-      const fallbackTrackers: SLATrackerRow[] = MOCK_SLA_TRACKERS.map((t) => ({
-        id: t.id,
-        resource_type: "job_card",
-        resource_id: t.id,
-        resource_reference: t.reference_number,
-        title: t.title,
-        priority: t.priority,
-        status: "IN_PROGRESS",
-        health: t.status,
-        current_escalation_level: t.breach_warning ? 1 : 0,
-        department_name: t.department,
-        policy_name: `${t.priority} Critical Plant Matrix`,
-        created_at: t.created_at,
-      }));
-      setTrackers(fallbackTrackers);
+      setTrackers([]);
+      setPolicies([]);
     } finally {
       setLoading(false);
     }
@@ -425,19 +370,23 @@ export default function SLAManagementPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleTriggerEvaluation} className="text-xs gap-1.5 border-amber-500/30 text-amber-400 hover:bg-amber-500/10">
-            <BellRing className="size-3.5" />
-            Evaluate Escalations
-          </Button>
+          <Protect capability="sla:manage">
+            <Button variant="outline" size="sm" onClick={handleTriggerEvaluation} className="text-xs gap-1.5 border-amber-500/30 text-amber-400 hover:bg-amber-500/10">
+              <BellRing className="size-3.5" />
+              Evaluate Escalations
+            </Button>
+          </Protect>
           <Button variant="outline" size="sm" onClick={loadData} disabled={loading} className="text-xs gap-1.5">
             <RefreshCw className={`size-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           {activeTab === 'POLICIES' && (
-            <Button size="sm" onClick={() => setIsCreatePolicyOpen(true)} className="text-xs gap-1.5 bg-primary text-primary-foreground">
-              <Plus className="size-3.5" />
-              New Policy
-            </Button>
+            <Protect capability="sla:manage">
+              <Button size="sm" onClick={() => setIsCreatePolicyOpen(true)} className="text-xs gap-1.5 bg-primary text-primary-foreground">
+                <Plus className="size-3.5" />
+                New Policy
+              </Button>
+            </Protect>
           )}
         </div>
       </div>
@@ -861,36 +810,38 @@ export default function SLAManagementPage() {
               </div>
 
               {/* Actions Box */}
-              <div className="p-4 rounded-lg border border-border bg-card/60 space-y-3">
-                <div className="font-semibold text-foreground text-xs">Operational SLA Controls</div>
-                <Input
-                  placeholder="Action notes / reason for pause or acknowledgment..."
-                  value={actionNotes}
-                  onChange={(e) => setActionNotes(e.target.value)}
-                  className="h-8 text-xs"
-                />
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {!selectedTracker.actual_response_at && (
-                    <Button size="sm" onClick={handleAcknowledge} disabled={actionSubmitting} className="text-xs bg-blue-600 hover:bg-blue-700 text-white gap-1">
-                      <Check className="size-3" /> Acknowledge Response
-                    </Button>
-                  )}
-                  {selectedTracker.status !== 'PAUSED' ? (
-                    <Button size="sm" onClick={handlePause} disabled={actionSubmitting} variant="outline" className="text-xs border-amber-500/40 text-amber-400 hover:bg-amber-500/10 gap-1">
-                      <Pause className="size-3" /> Pause SLA Clock
-                    </Button>
-                  ) : (
-                    <Button size="sm" onClick={handleResume} disabled={actionSubmitting} className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1">
-                      <Play className="size-3" /> Resume SLA Clock
-                    </Button>
-                  )}
-                  {selectedTracker.status !== 'COMPLETED' && (
-                    <Button size="sm" onClick={handleComplete} disabled={actionSubmitting} className="text-xs bg-purple-600 hover:bg-purple-700 text-white gap-1">
-                      <CheckCircle2 className="size-3" /> Mark Completed
-                    </Button>
-                  )}
+              <Protect capability="sla:manage">
+                <div className="p-4 rounded-lg border border-border bg-card/60 space-y-3">
+                  <div className="font-semibold text-foreground text-xs">Operational SLA Controls</div>
+                  <Input
+                    placeholder="Action notes / reason for pause or acknowledgment..."
+                    value={actionNotes}
+                    onChange={(e) => setActionNotes(e.target.value)}
+                    className="h-8 text-xs"
+                  />
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {!selectedTracker.actual_response_at && (
+                      <Button size="sm" onClick={handleAcknowledge} disabled={actionSubmitting} className="text-xs bg-blue-600 hover:bg-blue-700 text-white gap-1">
+                        <Check className="size-3" /> Acknowledge Response
+                      </Button>
+                    )}
+                    {selectedTracker.status !== 'PAUSED' ? (
+                      <Button size="sm" onClick={handlePause} disabled={actionSubmitting} variant="outline" className="text-xs border-amber-500/40 text-amber-400 hover:bg-amber-500/10 gap-1">
+                        <Pause className="size-3" /> Pause SLA Clock
+                      </Button>
+                    ) : (
+                      <Button size="sm" onClick={handleResume} disabled={actionSubmitting} className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1">
+                        <Play className="size-3" /> Resume SLA Clock
+                      </Button>
+                    )}
+                    {selectedTracker.status !== 'COMPLETED' && (
+                      <Button size="sm" onClick={handleComplete} disabled={actionSubmitting} className="text-xs bg-purple-600 hover:bg-purple-700 text-white gap-1">
+                        <CheckCircle2 className="size-3" /> Mark Completed
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
+              </Protect>
 
               {/* Escalation Logs */}
               <div className="space-y-2">

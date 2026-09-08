@@ -57,14 +57,13 @@ export interface ApprovalInboxItem {
 export async function getPendingApprovals(): Promise<ApprovalInboxItem[]> {
   try {
     const res = await apiFetch(`/api/v1/approvals/pending`);
-    if (Array.isArray(res) && res.length > 0) {
+    if (Array.isArray(res)) {
       return res;
     }
-  } catch (e) {
-    console.warn("Approvals endpoint offline, using cached synthetic inbox items", e);
+  } catch {
+    // Non-blocking fallback to clean empty inbox
   }
-  const { MOCK_APPROVALS_INBOX } = await import('./mock/mockData');
-  return MOCK_APPROVALS_INBOX as ApprovalInboxItem[];
+  return [];
 }
 
 export async function getApprovalHistory(resourceType: string, resourceId: string): Promise<ApprovalRequestData[]> {

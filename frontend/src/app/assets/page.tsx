@@ -102,6 +102,7 @@ export default function AssetManagementPage() {
 
   // Detail drawer
   const [selectedAsset, setSelectedAsset] = useState<AssetDetail | null>(null);
+  const [errorBanner, setErrorBanner] = useState<string | null>(null);
 
   // Create Modal
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -133,59 +134,21 @@ export default function AssetManagementPage() {
         url += `&search=${encodeURIComponent(searchQuery.trim())}`;
       }
       const data = await apiFetch<AssetRow[]>(url);
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setAssets(data);
       } else {
-        const { MOCK_ASSETS } = await import('@/lib/mockData');
-        const fallbackAssets: AssetRow[] = MOCK_ASSETS.map((ast) => ({
-          id: ast.id,
-          asset_tag: ast.asset_tag,
-          name: ast.name,
-          asset_type: ast.asset_type,
-          manufacturer: ast.manufacturer,
-          model_number: ast.model_number,
-          serial_number: ast.serial_number,
-          department_id: "dept-mech",
-          department_name: ast.department_name,
-          location_breadcrumb: ast.location_name,
-          status: ast.status,
-          criticality: ast.criticality,
-          is_archived: false,
-          created_at: ast.commissioned_date,
-        }));
-        setAssets(fallbackAssets);
+        setAssets([]);
       }
 
       const deptData = await apiFetch<DepartmentOption[]>('/api/v1/iam/departments');
-      if (deptData && deptData.length > 0) {
+      if (Array.isArray(deptData)) {
         setDepartments(deptData);
       } else {
-        setDepartments([
-          { id: 'dept-mech', name: 'Mechanical Workshop' },
-          { id: 'dept-elec', name: 'Electrical & Instrumentation' },
-          { id: 'dept-mining', name: 'Mining Operations' },
-        ]);
+        setDepartments([]);
       }
-    } catch (err) {
-      console.warn('Failed to load assets from server, using synthetic fallback', err);
-      const { MOCK_ASSETS } = await import('@/lib/mockData');
-      const fallbackAssets: AssetRow[] = MOCK_ASSETS.map((ast) => ({
-        id: ast.id,
-        asset_tag: ast.asset_tag,
-        name: ast.name,
-        asset_type: ast.asset_type,
-        manufacturer: ast.manufacturer,
-        model_number: ast.model_number,
-        serial_number: ast.serial_number,
-        department_id: "dept-mech",
-        department_name: ast.department_name,
-        location_breadcrumb: ast.location_name,
-        status: ast.status,
-        criticality: ast.criticality,
-        is_archived: false,
-        created_at: ast.commissioned_date,
-      }));
-      setAssets(fallbackAssets);
+    } catch {
+      setAssets([]);
+      setDepartments([]);
     } finally {
       setLoading(false);
     }
@@ -196,10 +159,14 @@ export default function AssetManagementPage() {
   }, [loadAssets]);
 
   const viewAssetDetail = async (id: string) => {
+    if (!id) return;
     try {
+      setErrorBanner(null);
       const data = await apiFetch<AssetDetail>(`/api/v1/assets/${id}`);
       setSelectedAsset(data);
-    } catch (err) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to load asset details';
+      setErrorBanner(msg);
       console.error('Failed to load asset details', err);
     }
   };
@@ -302,12 +269,26 @@ export default function AssetManagementPage() {
             <RefreshCw className={`size-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button size="sm" onClick={() => setIsCreateOpen(true)} className="text-xs gap-1.5 bg-primary text-primary-foreground">
-            <Plus className="size-3.5" />
-            Register Asset
-          </Button>
+          <Protect capability="assets:manage">
+            <Button size="sm" onClick={() => setIsCreateOpen(true)} className="text-xs gap-1.5 bg-primary text-primary-foreground">
+              <Plus className="size-3.5" />
+              Register Asset
+            </Button>
+          </Protect>
         </div>
       </div>
+
+      {errorBanner && (
+        <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="size-4 shrink-0" />
+            <span>{errorBanner}</span>
+          </div>
+          <button onClick={() => setErrorBanner(null)} className="text-muted-foreground hover:text-foreground">
+            <X className="size-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Metrics Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -648,8 +629,9 @@ export default function AssetManagementPage() {
       )}
 
       {/* Create Asset Modal */}
-      {isCreateOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+      <Protect capability="assets:manage">
+        {isCreateOpen && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <Card className="w-full max-w-xl bg-card border-border shadow-xl">
             <CardHeader className="border-b border-border pb-3">
               <CardTitle className="text-base font-bold flex items-center gap-2">
@@ -820,8 +802,9 @@ export default function AssetManagementPage() {
               </div>
             </form>
           </Card>
-        </div>
-      )}
+          </div>
+        )}
+      </Protect>
       </div>
     </Protect>
   );

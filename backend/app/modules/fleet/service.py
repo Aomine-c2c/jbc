@@ -366,6 +366,7 @@ class FleetService:
         department_id: Optional[uuid.UUID],
         job_card_id: Optional[uuid.UUID],
         current_user: User,
+        machine_id: Optional[uuid.UUID] = None,
     ) -> list[MachineRequisition]:
         user_perms = _get_user_permissions(current_user)
         query = select(MachineRequisition)
@@ -378,6 +379,8 @@ class FleetService:
             )
         if job_card_id:
             query = query.where(MachineRequisition.job_card_id == job_card_id)
+        if machine_id:
+            query = query.where(MachineRequisition.machine_id == machine_id)
 
         query = query.order_by(MachineRequisition.created_at.desc())
         result = await db.execute(query)

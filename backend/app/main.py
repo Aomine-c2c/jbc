@@ -306,7 +306,7 @@ from app.modules.search.api import search_router
 from app.modules.approvals.api import approvals_router
 from app.modules.notifications.api import router as notifications_router
 from app.modules.audit.api import audit_router
-from app.modules.work.api import router as work_router
+from app.modules.work.api import router as work_router, work_alias_router
 from app.modules.assets.api import router as assets_router
 from app.modules.requests.api import router as requests_router
 from app.modules.materials.api import router as materials_router
@@ -333,6 +333,7 @@ app.include_router(approvals_router)
 app.include_router(notifications_router)
 app.include_router(audit_router)
 app.include_router(work_router, prefix="/api/v1")
+app.include_router(work_alias_router, prefix="/api/v1")
 app.include_router(assets_router, prefix="/api/v1")
 app.include_router(requests_router, prefix="/api/v1")
 app.include_router(materials_router, prefix="/api/v1")

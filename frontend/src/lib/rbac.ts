@@ -28,6 +28,9 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
       'my_work:view',
       'job_card:create',
       'job_card:read',
+      'work_item:create',
+      'work_item:read',
+      'pre_start:create',
       'fleet:view',
       'requisition:create',
       'fleet_calendar:view',
@@ -106,6 +109,8 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
       'contractors:view',
       'approvals:view',
       'sla:view',
+      'sla:manage',
+      'assets:manage',
     ],
     deniedRoutes: [
       '/admin/org',
@@ -151,6 +156,8 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
       'contractors:view',
       'approvals:view',
       'sla:view',
+      'sla:manage',
+      'assets:manage',
       'org:manage',
       'locations:manage',
       'workflows:manage',
@@ -230,6 +237,8 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
       'contractors:view',
       'approvals:view',
       'sla:view',
+      'sla:manage',
+      'assets:manage',
       'org:manage',
       'locations:manage',
       'workflows:manage',
@@ -313,22 +322,21 @@ export function hasCapability(
   const role = resolveUserRole(userRoleOrEmail);
   const config = ROLE_CONFIGS[role];
 
-  if (userPermissions.includes('global_override') || role === 'Administrator') {
+  // Administrator persona has full access
+  if (role === 'Administrator') {
     return true;
   }
 
   const reqs = Array.isArray(capability) ? capability : [capability];
 
-  // Check against explicit server permissions first
-  const hasServerPerm = reqs.some((req) => userPermissions.includes(req));
-  if (hasServerPerm) return true;
-
-  // Check against role-configured allowed capabilities
+  // When a non-admin persona is active (e.g. Safety Officer, Technician),
+  // strictly enforce the active persona's allowedCapabilities
   if (config) {
     return reqs.some((req) => config.allowedCapabilities.includes(req));
   }
 
-  return false;
+  // Fallback to server permissions only if role has no local config
+  return reqs.some((req) => userPermissions.includes(req) && req !== 'global_override');
 }
 
 /**

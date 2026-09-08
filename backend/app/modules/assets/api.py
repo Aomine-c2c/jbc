@@ -26,12 +26,34 @@ def _get_current_user():
     return get_current_user
 
 
+def _assert_asset_manage_permission(current_user: User):
+    if current_user.is_superuser:
+        return
+
+    user_roles = []
+    if hasattr(current_user, "roles") and current_user.roles:
+        for ur in current_user.roles:
+            if hasattr(ur, "role") and ur.role:
+                user_roles.append(ur.role.name.lower())
+            elif hasattr(ur, "role_name"):
+                user_roles.append(str(ur.role_name).lower())
+
+    email_lower = (current_user.email or "").lower()
+    is_safety = any("safety" in r or "hse" in r for r in user_roles) or ("safety" in email_lower)
+    if is_safety:
+        raise HTTPException(
+            status_code=403,
+            detail="Safety Officers are not authorized to register or modify assets. Asset management is restricted to Maintenance and Engineering."
+        )
+
+
 @router.post("", response_model=AssetResponse)
 async def create_asset(
     data: AssetCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_get_current_user()),
 ):
+    _assert_asset_manage_permission(current_user)
     asset = await AssetService.create_asset(db, data, current_user)
     return await AssetService.get_asset(db, asset.id, current_user)
 
@@ -69,11 +91,21 @@ async def list_assets(
 
 @router.get("/{id}", response_model=AssetResponse)
 async def get_asset(
-    id: uuid.UUID,
+    id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_get_current_user()),
 ):
-    return await AssetService.get_asset(db, id, current_user)
+    from app.modules.assets.models import Asset
+    from sqlalchemy import select
+    try:
+        asset_uuid = uuid.UUID(id)
+    except (ValueError, AttributeError):
+        res = await db.execute(select(Asset).where(Asset.asset_tag == id))
+        found = res.scalar_one_or_none()
+        if not found:
+            raise HTTPException(status_code=404, detail=f"Asset '{id}' not found")
+        asset_uuid = found.id
+    return await AssetService.get_asset(db, asset_uuid, current_user)
 
 
 @router.patch("/{id}", response_model=AssetResponse)
@@ -83,6 +115,7 @@ async def update_asset(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_get_current_user()),
 ):
+    _assert_asset_manage_permission(current_user)
     await AssetService.update_asset(db, id, data, current_user)
     return await AssetService.get_asset(db, id, current_user)
 
@@ -94,6 +127,7 @@ async def transition_asset_status(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_get_current_user()),
 ):
+    _assert_asset_manage_permission(current_user)
     await AssetService.transition_status(db, id, data, current_user)
     return await AssetService.get_asset(db, id, current_user)
 
@@ -105,6 +139,7 @@ async def record_asset_maintenance(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_get_current_user()),
 ):
+    _assert_asset_manage_permission(current_user)
     return await AssetService.record_maintenance(db, id, data, current_user)
 
 
@@ -115,6 +150,7 @@ async def archive_asset(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_get_current_user()),
 ):
+    _assert_asset_manage_permission(current_user)
     await AssetService.archive_asset(db, id, data.reason, current_user)
     return await AssetService.get_asset(db, id, current_user)
 
@@ -125,6 +161,7 @@ async def restore_asset(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_get_current_user()),
 ):
+    _assert_asset_manage_permission(current_user)
     await AssetService.restore_asset(db, id, current_user)
     return await AssetService.get_asset(db, id, current_user)
 

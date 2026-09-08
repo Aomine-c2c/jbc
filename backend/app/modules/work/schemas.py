@@ -182,3 +182,38 @@ class WorkItemMigrationSummary(BaseModel):
     updated_work_items: int = 0
     skipped: int = 0
     details: List[str] = []
+
+
+# ── Pre-Start Equipment Walkaround Inspection Schemas ───────────────────────
+
+class ChecklistItemResult(BaseModel):
+    category: str
+    item: str
+    status: str  # PASS, MINOR_DEFECT, CRITICAL_RED_TAG
+    notes: Optional[str] = None
+
+
+class PreStartInspectionCreate(BaseModel):
+    machine_id: UUID
+    hour_meter_reading: float = Field(..., ge=0, description="Current machine hour-meter reading")
+    checklist_results: List[ChecklistItemResult] = Field(..., min_length=1)
+    operator_notes: Optional[str] = None
+
+
+class PreStartInspectionResponse(BaseModel):
+    id: UUID
+    reference_number: str
+    machine_id: UUID
+    machine_name: str
+    machine_status: str
+    hour_meter_reading: float
+    overall_status: str  # PASSED, DEFECTS_NOTED, CRITICAL_RED_TAG
+    is_grounded: bool
+    spawned_job_card_id: Optional[UUID] = None
+    spawned_job_card_number: Optional[str] = None
+    created_at: Optional[datetime] = None
+    operator_name: Optional[str] = None
+    checklist_results: List[ChecklistItemResult] = []
+    operator_notes: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True)
+

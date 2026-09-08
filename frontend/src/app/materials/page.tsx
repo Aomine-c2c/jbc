@@ -85,16 +85,14 @@ interface DepartmentOption {
   name: string;
 }
 
-import { MOCK_DEPARTMENTS, MOCK_MATERIAL_REQUIREMENTS, MOCK_MATERIALS_CATALOG } from '@/lib/mock/mockData';
-
 export default function MaterialsManagementPage() {
   const [activeTab, setActiveTab] = useState<'REQUIREMENTS' | 'CATALOG'>('REQUIREMENTS');
-  const [requirements, setRequirements] = useState<MaterialReqRow[]>(MOCK_MATERIAL_REQUIREMENTS);
-  const [catalog, setCatalog] = useState<CatalogItem[]>(MOCK_MATERIALS_CATALOG);
+  const [requirements, setRequirements] = useState<MaterialReqRow[]>([]);
+  const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [departments, setDepartments] = useState<DepartmentOption[]>(MOCK_DEPARTMENTS);
+  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
 
   // Detail & Action Drawer
   const [selectedReq, setSelectedReq] = useState<MaterialReqDetail | null>(null);
@@ -127,28 +125,27 @@ export default function MaterialsManagementPage() {
         apiFetch<DepartmentOption[]>('/api/v1/iam/departments')
       ]);
 
-      if (reqsRes.status === 'fulfilled' && Array.isArray(reqsRes.value) && reqsRes.value.length > 0) {
+      if (reqsRes.status === 'fulfilled' && Array.isArray(reqsRes.value)) {
         setRequirements(reqsRes.value);
       } else {
-        setRequirements(MOCK_MATERIAL_REQUIREMENTS);
+        setRequirements([]);
       }
 
-      if (catRes.status === 'fulfilled' && Array.isArray(catRes.value) && catRes.value.length > 0) {
+      if (catRes.status === 'fulfilled' && Array.isArray(catRes.value)) {
         setCatalog(catRes.value);
       } else {
-        setCatalog(MOCK_MATERIALS_CATALOG);
+        setCatalog([]);
       }
 
-      if (deptsRes.status === 'fulfilled' && Array.isArray(deptsRes.value) && deptsRes.value.length > 0) {
+      if (deptsRes.status === 'fulfilled' && Array.isArray(deptsRes.value)) {
         setDepartments(deptsRes.value);
       } else {
-        setDepartments(MOCK_DEPARTMENTS);
+        setDepartments([]);
       }
-    } catch (err) {
-      console.warn('Failed to load materials from server, using synthetic fallback:', err);
-      setRequirements(MOCK_MATERIAL_REQUIREMENTS);
-      setCatalog(MOCK_MATERIALS_CATALOG);
-      setDepartments(MOCK_DEPARTMENTS);
+    } catch {
+      setRequirements([]);
+      setCatalog([]);
+      setDepartments([]);
     } finally {
       setLoading(false);
     }

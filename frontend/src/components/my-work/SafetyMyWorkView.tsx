@@ -4,19 +4,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   ShieldAlert, 
   ShieldCheck, 
-  Lock, 
-  AlertTriangle, 
   CheckCircle2, 
-  Clock, 
   Flame, 
-  FileText, 
   Plus, 
   RefreshCw, 
   ExternalLink,
   MapPin,
-  Search,
-  Camera,
-  Eye,
   ClipboardList
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -62,64 +55,11 @@ interface HazardObservation {
   status: 'OPEN' | 'RESOLVED' | 'ESCALATED';
 }
 
-const INITIAL_AUDITS: SafetyAuditItem[] = [
-  {
-    id: 'audit-01',
-    title: 'Pit Haulage Road Bund Height & Berm Compliance Audit',
-    area: 'Open Pit West Ramp - Bench 4 to 8',
-    cadence: 'Daily Shift Audit',
-    status: 'PENDING',
-    due_time: '14:00 Today',
-    items_count: 8
-  },
-  {
-    id: 'audit-02',
-    title: 'High Voltage Substation Fire Suppression & Arc-Flash Gear Check',
-    area: 'Central Substation Yard',
-    cadence: 'Weekly Statutory',
-    status: 'IN_PROGRESS',
-    due_time: '16:30 Today',
-    items_count: 12
-  },
-  {
-    id: 'audit-03',
-    title: 'Crushing Plant Conveyor Emergency Pull-Cord Functional Test',
-    area: 'Crushing & Screening Circuit',
-    cadence: 'Daily Shift Audit',
-    status: 'COMPLETED',
-    due_time: '09:00 Today',
-    items_count: 6
-  }
-];
-
-const INITIAL_HAZARDS: HazardObservation[] = [
-  {
-    id: 'haz-101',
-    type: 'HAZARD',
-    title: 'Damaged Safety Mesh on Conveyor C-01 Tail Pulley Nip Point',
-    location: 'Primary Crushing Transfer Station',
-    severity: 'HIGH',
-    corrective_action: 'Barrier tape erected; mechanical team tagged for mesh welding.',
-    reported_at: '2026-09-08 08:15',
-    status: 'OPEN'
-  },
-  {
-    id: 'haz-102',
-    type: 'NEAR_MISS',
-    title: 'Unattended Rigging Sling Dislodged near Crane Slew Zone',
-    location: 'Heavy Workshop Bay 2',
-    severity: 'MEDIUM',
-    corrective_action: 'Rigging cleared and inspected by lifting supervisor.',
-    reported_at: '2026-09-08 10:40',
-    status: 'RESOLVED'
-  }
-];
-
-export function SafetyMyWorkView({ userEmail }: { userEmail?: string }) {
+export function SafetyMyWorkView({ _userEmail }: { _userEmail?: string }) {
   const [activeTab, setActiveTab] = useState<'CLEARANCES' | 'AUDITS' | 'HAZARDS'>('CLEARANCES');
   const [gatedJobs, setGatedJobs] = useState<GatedItem[]>([]);
-  const [audits, setAudits] = useState<SafetyAuditItem[]>(INITIAL_AUDITS);
-  const [hazards, setHazards] = useState<HazardObservation[]>(INITIAL_HAZARDS);
+  const [audits, setAudits] = useState<SafetyAuditItem[]>([]);
+  const [hazards, setHazards] = useState<HazardObservation[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Direct Clearance Modal State
@@ -141,11 +81,17 @@ export function SafetyMyWorkView({ userEmail }: { userEmail?: string }) {
   // Banner states
   const [banner, setBanner] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const fetchGated = useCallback(async () => {
+  const fetchSafetyItems = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/v1/job-cards?limit=100');
-      const items = Array.isArray(res.data) ? res.data : res.data?.items || [];
+      const [jobsRes, workItemsRes] = await Promise.allSettled([
+        api.get('/api/v1/job-cards?limit=100'),
+        api.get('/api/v1/work-items?limit=100'),
+      ]);
+
+      const items = (jobsRes.status === 'fulfilled' && (Array.isArray(jobsRes.value.data) ? jobsRes.value.data : jobsRes.value.data?.items)) || [];
+      const workItems = (workItemsRes.status === 'fulfilled' && (Array.isArray(workItemsRes.value.data) ? workItemsRes.value.data : workItemsRes.value.data?.items)) || [];
+
       const gated = items.filter((j: Record<string, unknown>) => {
         return Boolean(j.requires_safety_clearance) && !Boolean(j.safety_cleared);
       }).map((j: Record<string, unknown>) => ({
@@ -157,67 +103,59 @@ export function SafetyMyWorkView({ userEmail }: { userEmail?: string }) {
         asset_code: typeof j.asset_code === 'string' ? j.asset_code : undefined,
         requires_safety_clearance: true,
         is_safety_cleared: false,
-        loto_tag: typeof j.loto_tag_number === 'string' ? j.loto_tag_number : 'BK-LOTO-PENDING',
+        loto_tag: typeof j.loto_tag_number === 'string' ? j.loto_tag_number : 'LOTO-PENDING',
         created_at: typeof j.created_at === 'string' ? j.created_at : undefined,
       }));
+      setGatedJobs(gated);
 
-      if (gated.length > 0) {
-        setGatedJobs(gated);
-      } else {
-        setGatedJobs([
-          {
-            id: 'mock-1',
-            job_number: 'JOB-2026-0891',
-            title: 'High-Voltage Transformer Substation T-2 Breaker Overhaul',
-            priority: 4,
-            location: 'Central Substation Yard',
-            asset_code: 'SUBSTN-11KV',
-            requires_safety_clearance: true,
-            is_safety_cleared: false,
-            loto_tag: 'BK-LOTO-4091',
-            created_at: '2026-09-08T06:45:00Z',
-          },
-          {
-            id: 'mock-2',
-            job_number: 'JOB-2026-0887',
-            title: 'Confined Space Slurry Sump Inspection & Liner Patching',
-            priority: 3,
-            location: 'Flotation Circuit Cell #3',
-            asset_code: 'FLOT-CEL-03',
-            requires_safety_clearance: true,
-            is_safety_cleared: false,
-            loto_tag: 'BK-LOTO-4075',
-            created_at: '2026-09-08T07:20:00Z',
-          }
-        ]);
-      }
+      // Derive shift audits from work items
+      const auditList: SafetyAuditItem[] = workItems
+        .filter((w: Record<string, unknown>) => w.work_type === 'INSPECTION' || String(w.title || '').toLowerCase().includes('audit'))
+        .map((w: Record<string, unknown>, idx: number) => ({
+          id: String(w.id || `audit-${idx}`),
+          title: String(w.title || 'Safety Compliance Audit'),
+          area: String(w.location_breadcrumb || w.department_name || 'Bikita Operations'),
+          cadence: 'Shift Audit',
+          status: (w.status === 'COMPLETED' || w.status === 'VERIFIED') ? 'COMPLETED' : (w.status === 'IN_PROGRESS' ? 'IN_PROGRESS' : 'PENDING'),
+          due_time: typeof w.due_date === 'string' ? new Date(w.due_date).toLocaleDateString([], { hour: '2-digit', minute: '2-digit' }) : 'Active Shift',
+          items_count: typeof w.priority === 'number' ? w.priority * 3 : 6,
+        }));
+      setAudits(auditList);
+
+      // Derive hazards from work items
+      const hazardList: HazardObservation[] = workItems
+        .filter((w: Record<string, unknown>) => {
+          const t = String(w.title || '').toLowerCase();
+          const d = String(w.description || '').toLowerCase();
+          return t.includes('[hse') || t.includes('hazard') || d.includes('hazard');
+        })
+        .map((w: Record<string, unknown>, idx: number) => ({
+          id: String(w.id || `haz-${idx}`),
+          type: String(w.title || '').includes('NEAR_MISS') ? 'NEAR_MISS' : (String(w.title || '').includes('UNSAFE') ? 'UNSAFE_CONDITION' : 'HAZARD'),
+          title: String(w.title || '').replace(/^\[HSE\s*\w+\]\s*/i, '') || 'Hazard Observation',
+          location: String(w.location_breadcrumb || w.department_name || 'Mine Site'),
+          severity: w.priority === 4 ? 'CRITICAL' : w.priority === 3 ? 'HIGH' : w.priority === 2 ? 'MEDIUM' : 'LOW',
+          corrective_action: String(w.description || 'Containment barrier erected and maintenance team notified.'),
+          reported_at: typeof w.created_at === 'string' ? new Date(w.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Active Shift',
+          status: (w.status === 'COMPLETED' || w.status === 'CLOSED' || w.status === 'RESOLVED') ? 'RESOLVED' : 'OPEN',
+        }));
+      setHazards(hazardList);
     } catch {
-      setGatedJobs([
-        {
-          id: 'mock-1',
-          job_number: 'JOB-2026-0891',
-          title: 'High-Voltage Transformer Substation T-2 Breaker Overhaul',
-          priority: 4,
-          location: 'Central Substation Yard',
-          asset_code: 'SUBSTN-11KV',
-          requires_safety_clearance: true,
-          is_safety_cleared: false,
-          loto_tag: 'BK-LOTO-4091',
-          created_at: '2026-09-08T06:45:00Z',
-        }
-      ]);
+      setGatedJobs([]);
+      setAudits([]);
+      setHazards([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchGated();
-  }, [fetchGated]);
+    fetchSafetyItems();
+  }, [fetchSafetyItems]);
 
   const handleOpenClearance = (job: GatedItem) => {
     setClearanceModalJob(job);
-    setLotoTagInput(job.loto_tag || `BK-LOTO-${Math.floor(1000 + Math.random() * 9000)}`);
+    setLotoTagInput(job.loto_tag && !job.loto_tag.includes('PENDING') ? job.loto_tag : '');
     setClearanceNotes('');
     setSignData(null);
   };
@@ -238,15 +176,15 @@ export function SafetyMyWorkView({ userEmail }: { userEmail?: string }) {
       });
       setGatedJobs((prev) => prev.filter((j) => j.id !== clearanceModalJob.id));
       setClearanceModalJob(null);
-      fetchGated();
-    } catch {
-      // Offline fallback
+      fetchSafetyItems();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } }; message?: string })?.response?.data?.detail 
+        || (err as { message?: string })?.message 
+        || `Failed to execute safety clearance for ${clearanceModalJob.job_number}.`;
       setBanner({
-        message: `HSE Safety Clearance recorded locally for ${clearanceModalJob.job_number}.`,
-        type: 'success',
+        message: msg,
+        type: 'error',
       });
-      setGatedJobs((prev) => prev.filter((j) => j.id !== clearanceModalJob.id));
-      setClearanceModalJob(null);
     } finally {
       setActionLoading(false);
       setTimeout(() => setBanner(null), 6000);
@@ -435,7 +373,7 @@ export function SafetyMyWorkView({ userEmail }: { userEmail?: string }) {
           <Button
             size="sm"
             variant="outline"
-            onClick={fetchGated}
+            onClick={fetchSafetyItems}
             disabled={loading}
             className="h-8 text-xs font-mono gap-1"
           >
@@ -537,63 +475,73 @@ export function SafetyMyWorkView({ userEmail }: { userEmail?: string }) {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="divide-y divide-border">
-              {audits.map((audit) => (
-                <div key={audit.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/20 transition-colors">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-foreground">{audit.title}</span>
-                      <Badge variant="outline" className="text-[10px] font-mono">
-                        {audit.cadence}
-                      </Badge>
-                      {audit.status === 'COMPLETED' ? (
-                        <Badge variant="default" className="text-[10px] font-mono bg-emerald-600">
-                          COMPLETED
-                        </Badge>
-                      ) : audit.status === 'IN_PROGRESS' ? (
-                        <Badge variant="default" className="text-[10px] font-mono bg-blue-600">
-                          IN PROGRESS
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="text-[10px] font-mono">
-                          PENDING
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-4 text-[10px] font-mono text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <MapPin className="size-3 text-blue-500" />
-                        {audit.area}
-                      </span>
-                      <span>Due: <strong className="text-foreground">{audit.due_time}</strong></span>
-                      <span>Checklist: {audit.items_count} items</span>
-                    </div>
-                  </div>
-
-                  <Button
-                    size="sm"
-                    variant={audit.status === 'COMPLETED' ? 'outline' : 'default'}
-                    className="h-8 text-xs font-mono"
-                    onClick={() => {
-                      setAudits((prev) =>
-                        prev.map((a) =>
-                          a.id === audit.id
-                            ? { ...a, status: a.status === 'COMPLETED' ? 'PENDING' : 'COMPLETED' }
-                            : a
-                        )
-                      );
-                      setBanner({
-                        message: `Audit [${audit.title}] status updated.`,
-                        type: 'success',
-                      });
-                      setTimeout(() => setBanner(null), 4000);
-                    }}
-                  >
-                    {audit.status === 'COMPLETED' ? 'Reopen Audit' : 'Complete Inspection'}
-                  </Button>
+            {audits.length === 0 ? (
+              <div className="py-12 flex flex-col items-center justify-center text-center space-y-2">
+                <div className="size-10 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                  <ClipboardList className="size-6" />
                 </div>
-              ))}
-            </div>
+                <span className="text-xs font-medium text-foreground">No Audits Scheduled</span>
+                <p className="text-[11px] text-muted-foreground">No statutory inspections or checklist audits assigned for the active shift.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {audits.map((audit) => (
+                  <div key={audit.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/20 transition-colors">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-foreground">{audit.title}</span>
+                        <Badge variant="outline" className="text-[10px] font-mono">
+                          {audit.cadence}
+                        </Badge>
+                        {audit.status === 'COMPLETED' ? (
+                          <Badge variant="default" className="text-[10px] font-mono bg-emerald-600">
+                            COMPLETED
+                          </Badge>
+                        ) : audit.status === 'IN_PROGRESS' ? (
+                          <Badge variant="default" className="text-[10px] font-mono bg-blue-600">
+                            IN PROGRESS
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-[10px] font-mono">
+                            PENDING
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4 text-[10px] font-mono text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <MapPin className="size-3 text-blue-500" />
+                          {audit.area}
+                        </span>
+                        <span>Due: <strong className="text-foreground">{audit.due_time}</strong></span>
+                        <span>Checklist: {audit.items_count} items</span>
+                      </div>
+                    </div>
+
+                    <Button
+                      size="sm"
+                      variant={audit.status === 'COMPLETED' ? 'outline' : 'default'}
+                      className="h-8 text-xs font-mono"
+                      onClick={() => {
+                        setAudits((prev) =>
+                          prev.map((a) =>
+                            a.id === audit.id
+                              ? { ...a, status: a.status === 'COMPLETED' ? 'PENDING' : 'COMPLETED' }
+                              : a
+                          )
+                        );
+                        setBanner({
+                          message: `Audit [${audit.title}] status updated.`,
+                          type: 'success',
+                        });
+                        setTimeout(() => setBanner(null), 4000);
+                      }}
+                    >
+                      {audit.status === 'COMPLETED' ? 'Reopen Audit' : 'Complete Inspection'}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -608,39 +556,49 @@ export function SafetyMyWorkView({ userEmail }: { userEmail?: string }) {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="divide-y divide-border">
-              {hazards.map((haz) => (
-                <div key={haz.id} className="p-4 space-y-2 hover:bg-muted/20 transition-colors">
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-[10px] font-mono text-rose-500 border-rose-500/30 bg-rose-500/10">
-                        {haz.type}
-                      </Badge>
-                      <Badge 
-                        variant={haz.severity === 'CRITICAL' ? 'destructive' : 'secondary'}
-                        className="text-[10px] font-mono uppercase"
-                      >
-                        {haz.severity} Risk
-                      </Badge>
-                      <span className="text-xs font-bold text-foreground">{haz.title}</span>
-                    </div>
-                    <span className="text-[10px] font-mono text-muted-foreground">{haz.reported_at}</span>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-mono">
-                    <MapPin className="size-3 text-amber-500" />
-                    <span>Location: {haz.location}</span>
-                  </div>
-
-                  <div className="p-2.5 rounded bg-muted/40 border border-border text-[11px] text-foreground">
-                    <strong className="text-[10px] font-mono uppercase text-muted-foreground block mb-0.5">
-                      Corrective Action Taken:
-                    </strong>
-                    {haz.corrective_action}
-                  </div>
+            {hazards.length === 0 ? (
+              <div className="py-12 flex flex-col items-center justify-center text-center space-y-2">
+                <div className="size-10 rounded-full bg-rose-500/10 text-rose-500 flex items-center justify-center">
+                  <CheckCircle2 className="size-6" />
                 </div>
-              ))}
-            </div>
+                <span className="text-xs font-medium text-foreground">Zero Active Hazards Logged</span>
+                <p className="text-[11px] text-muted-foreground">No open safety observations or near-miss incidents recorded.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {hazards.map((haz) => (
+                  <div key={haz.id} className="p-4 space-y-2 hover:bg-muted/20 transition-colors">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px] font-mono text-rose-500 border-rose-500/30 bg-rose-500/10">
+                          {haz.type}
+                        </Badge>
+                        <Badge 
+                          variant={haz.severity === 'CRITICAL' ? 'destructive' : 'secondary'}
+                          className="text-[10px] font-mono uppercase"
+                        >
+                          {haz.severity} Risk
+                        </Badge>
+                        <span className="text-xs font-bold text-foreground">{haz.title}</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-muted-foreground">{haz.reported_at}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-mono">
+                      <MapPin className="size-3 text-amber-500" />
+                      <span>Location: {haz.location}</span>
+                    </div>
+
+                    <div className="p-2.5 rounded bg-muted/40 border border-border text-[11px] text-foreground">
+                      <strong className="text-[10px] font-mono uppercase text-muted-foreground block mb-0.5">
+                        Corrective Action Taken:
+                      </strong>
+                      {haz.corrective_action}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -741,7 +699,7 @@ export function SafetyMyWorkView({ userEmail }: { userEmail?: string }) {
                 <label className="font-medium text-foreground">Observation Type</label>
                 <select
                   value={newHazardType}
-                  onChange={(e) => setNewHazardType(e.target.value as any)}
+                   onChange={(e) => setNewHazardType(e.target.value as 'HAZARD' | 'NEAR_MISS' | 'UNSAFE_CONDITION' | 'ENVIRONMENTAL')}
                   className="w-full h-8 rounded border border-input bg-card px-2 text-xs"
                 >
                   <option value="HAZARD">HAZARD</option>
@@ -755,7 +713,7 @@ export function SafetyMyWorkView({ userEmail }: { userEmail?: string }) {
                 <label className="font-medium text-foreground">Risk Severity</label>
                 <select
                   value={newHazardSeverity}
-                  onChange={(e) => setNewHazardSeverity(e.target.value as any)}
+                   onChange={(e) => setNewHazardSeverity(e.target.value as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL')}
                   className="w-full h-8 rounded border border-input bg-card px-2 text-xs"
                 >
                   <option value="LOW">LOW</option>

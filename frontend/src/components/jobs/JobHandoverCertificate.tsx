@@ -129,19 +129,19 @@ export function JobHandoverCertificate({ data, onClose }: JobHandoverCertificate
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-lg bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-mono">
         <div>
           <span className="text-zinc-500 block text-[10px] uppercase">Task Department</span>
-          <span className="font-bold text-zinc-900 dark:text-zinc-100">{data.department || 'Mechanical'}</span>
+          <span className="font-bold text-zinc-900 dark:text-zinc-100">{data.department || 'Operations'}</span>
         </div>
         <div>
           <span className="text-zinc-500 block text-[10px] uppercase">Workshop Code</span>
-          <span className="font-bold text-zinc-900 dark:text-zinc-100">{data.workshopCode || 'WS-MAIN'}</span>
+          <span className="font-bold text-zinc-900 dark:text-zinc-100">{data.workshopCode || '-'}</span>
         </div>
         <div>
           <span className="text-zinc-500 block text-[10px] uppercase">Asset / Equipment</span>
-          <span className="font-bold text-zinc-900 dark:text-zinc-100">{data.machineIdentifier || data.assetTag || 'Central Plant'}</span>
+          <span className="font-bold text-zinc-900 dark:text-zinc-100">{data.machineIdentifier || data.assetTag || '-'}</span>
         </div>
         <div>
           <span className="text-zinc-500 block text-[10px] uppercase">Location / Site</span>
-          <span className="font-bold text-zinc-900 dark:text-zinc-100">{data.location || 'Pit 4 Bench'}</span>
+          <span className="font-bold text-zinc-900 dark:text-zinc-100">{data.location || '-'}</span>
         </div>
       </div>
 
@@ -243,12 +243,14 @@ export function JobHandoverCertificate({ data, onClose }: JobHandoverCertificate
           <div className="border border-border rounded-lg p-3.5 bg-card/60 space-y-2 text-xs font-mono">
             <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
               <span className="font-bold text-foreground">Lead Technician</span>
-              <span className="text-[9px] text-emerald-600 dark:text-emerald-400 uppercase font-bold">Signed</span>
+              <span className={`text-[9px] uppercase font-bold ${data.technicianSign ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400'}`}>
+                {data.technicianSign ? 'Signed' : 'Pending'}
+              </span>
             </div>
             <div className="text-[11px] space-y-1">
-              <div><span className="text-muted-foreground text-[10px]">NAME: </span><span className="font-bold">{data.technicianSign?.name || 'T. Mukamuri'}</span></div>
-              <div><span className="text-muted-foreground text-[10px]">ROLE: </span><span>{data.technicianSign?.role || 'Mechanical Tech'}</span></div>
-              <div><span className="text-muted-foreground text-[10px]">STAMP: </span><span className="text-emerald-600 dark:text-emerald-400 font-bold text-[10px] truncate block">{data.technicianSign?.hash || 'BK-SIG-TECH-8821'}</span></div>
+              <div><span className="text-muted-foreground text-[10px]">NAME: </span><span className="font-bold">{data.technicianSign?.name || 'Pending Assigned Technician'}</span></div>
+              <div><span className="text-muted-foreground text-[10px]">ROLE: </span><span>{data.technicianSign?.role || 'Technician'}</span></div>
+              <div><span className="text-muted-foreground text-[10px]">STAMP: </span><span className="text-emerald-600 dark:text-emerald-400 font-bold text-[10px] truncate block">{data.technicianSign?.hash || (data.technicianSign ? 'DIGITAL-VERIFIED' : 'PENDING')}</span></div>
             </div>
             {data.technicianSign?.signatureImage ? (
               <div className="bg-white p-1 rounded border border-border/80 inline-block mt-1">
@@ -257,7 +259,7 @@ export function JobHandoverCertificate({ data, onClose }: JobHandoverCertificate
               </div>
             ) : (
               <div className="pt-2 text-[10px] text-muted-foreground italic border-t border-border/40">
-                Verified via DWRMS Touch Signature Pad
+                {data.technicianSign ? 'Verified via DWRMS Touch Signature Pad' : 'Awaiting technician execution sign-off'}
               </div>
             )}
           </div>
@@ -266,12 +268,14 @@ export function JobHandoverCertificate({ data, onClose }: JobHandoverCertificate
           <div className="border border-border rounded-lg p-3.5 bg-card/60 space-y-2 text-xs font-mono">
             <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
               <span className="font-bold text-foreground">Workshop Supervisor</span>
-              <span className="text-[9px] text-emerald-600 dark:text-emerald-400 uppercase font-bold">QA Verified</span>
+              <span className={`text-[9px] uppercase font-bold ${data.supervisorSign ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400'}`}>
+                {data.supervisorSign ? 'QA Verified' : 'Pending'}
+              </span>
             </div>
             <div className="text-[11px] space-y-1">
-              <div><span className="text-muted-foreground text-[10px]">NAME: </span><span className="font-bold">{data.supervisorSign?.name || 'C. Moyo'}</span></div>
-              <div><span className="text-muted-foreground text-[10px]">ROLE: </span><span>{data.supervisorSign?.role || 'Shift Supervisor'}</span></div>
-              <div><span className="text-muted-foreground text-[10px]">STAMP: </span><span className="text-emerald-600 dark:text-emerald-400 font-bold text-[10px] truncate block">{data.supervisorSign?.hash || 'BK-SIG-SUP-9904'}</span></div>
+              <div><span className="text-muted-foreground text-[10px]">NAME: </span><span className="font-bold">{data.supervisorSign?.name || 'Pending Supervisor Authorization'}</span></div>
+              <div><span className="text-muted-foreground text-[10px]">ROLE: </span><span>{data.supervisorSign?.role || 'Workshop Supervisor'}</span></div>
+              <div><span className="text-muted-foreground text-[10px]">STAMP: </span><span className="text-emerald-600 dark:text-emerald-400 font-bold text-[10px] truncate block">{data.supervisorSign?.hash || (data.supervisorSign ? 'DIGITAL-VERIFIED' : 'PENDING')}</span></div>
             </div>
             {data.supervisorSign?.signatureImage ? (
               <div className="bg-white p-1 rounded border border-border/80 inline-block mt-1">
@@ -280,7 +284,7 @@ export function JobHandoverCertificate({ data, onClose }: JobHandoverCertificate
               </div>
             ) : (
               <div className="pt-2 text-[10px] text-muted-foreground italic border-t border-border/40">
-                Authorized via DWRMS Supervisor Console
+                {data.supervisorSign ? 'Authorized via DWRMS Supervisor Console' : 'Awaiting supervisory QA verification'}
               </div>
             )}
           </div>
@@ -292,7 +296,9 @@ export function JobHandoverCertificate({ data, onClose }: JobHandoverCertificate
               {data.safetySign?.notRequired || data.requiresSafetyClearance === false ? (
                 <span className="text-[9px] text-zinc-500 uppercase font-bold bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">Exempt</span>
               ) : (
-                <span className="text-[9px] text-emerald-600 dark:text-emerald-400 uppercase font-bold">Passed</span>
+                <span className={`text-[9px] uppercase font-bold ${data.safetySign ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500'}`}>
+                  {data.safetySign ? 'Cleared' : 'Gate Active'}
+                </span>
               )}
             </div>
             {data.safetySign?.notRequired || data.requiresSafetyClearance === false ? (
@@ -310,9 +316,9 @@ export function JobHandoverCertificate({ data, onClose }: JobHandoverCertificate
             ) : (
               <>
                 <div className="text-[11px] space-y-1">
-                  <div><span className="text-muted-foreground text-[10px]">NAME: </span><span className="font-bold">{data.safetySign?.name || 'K. Sibanda'}</span></div>
+                  <div><span className="text-muted-foreground text-[10px]">NAME: </span><span className="font-bold">{data.safetySign?.name || 'Pending HSE Review'}</span></div>
                   <div><span className="text-muted-foreground text-[10px]">ROLE: </span><span>{data.safetySign?.role || 'Safety Officer (HSE)'}</span></div>
-                  <div><span className="text-muted-foreground text-[10px]">STAMP: </span><span className="text-emerald-600 dark:text-emerald-400 font-bold text-[10px] truncate block">{data.safetySign?.hash || 'BK-SIG-HSE-3310'}</span></div>
+                  <div><span className="text-muted-foreground text-[10px]">STAMP: </span><span className="text-emerald-600 dark:text-emerald-400 font-bold text-[10px] truncate block">{data.safetySign?.hash || (data.safetySign ? 'HSE-VERIFIED' : 'PENDING_CLEARANCE')}</span></div>
                 </div>
                 {data.safetySign?.signatureImage ? (
                   <div className="bg-white p-1 rounded border border-border/80 inline-block mt-1">
@@ -321,7 +327,7 @@ export function JobHandoverCertificate({ data, onClose }: JobHandoverCertificate
                   </div>
                 ) : (
                   <div className="pt-2 text-[10px] text-muted-foreground italic border-t border-border/40">
-                    Pre-Start LOTO Clearance Verified & Archived
+                    {data.safetySign ? 'Pre-Start LOTO Clearance Verified & Archived' : 'Awaiting HSE authority clearance'}
                   </div>
                 )}
               </>

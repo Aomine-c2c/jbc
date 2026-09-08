@@ -10,9 +10,9 @@ Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=/opt/dwrms
 Environment=COMPOSE_FILE=docker-compose.prod.yml
-ExecStart=/usr/bin/docker compose -f docker-compose.prod.yml up -d --remove-orphans
-ExecStop=/usr/bin/docker compose -f docker-compose.prod.yml down
-ExecReload=/usr/bin/docker compose -f docker-compose.prod.yml up -d --remove-orphans
+ExecStart=/usr/bin/docker compose --project-directory /opt/dwrms --env-file /opt/dwrms/.env -f docker-compose.prod.yml up -d --remove-orphans
+ExecStop=/usr/bin/docker compose --project-directory /opt/dwrms --env-file /opt/dwrms/.env -f docker-compose.prod.yml down
+ExecReload=/usr/bin/docker compose --project-directory /opt/dwrms --env-file /opt/dwrms/.env -f docker-compose.prod.yml up -d --remove-orphans
 TimeoutStartSec=300
 TimeoutStopSec=60
 

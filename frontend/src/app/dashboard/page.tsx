@@ -10,42 +10,26 @@ import { Button } from '@/components/ui/button';
 import { Protect } from '@/components/auth/Protect';
 import { resolveUserRole } from '@/lib/rbac';
 
-const FALLBACK_DASHBOARD_METRICS: DashboardData = {
+const EMPTY_DASHBOARD_METRICS: DashboardData = {
   job_metrics: {
-    open_jobs: 24,
-    pending_approval: 5,
-    in_progress: 8,
-    on_hold: 2,
-    overdue: 1,
-    avg_completion_time_hours: 3.4,
-    actual_cost: 14850,
-    estimated_cost: 18500,
+    open_jobs: 0,
+    pending_approval: 0,
+    in_progress: 0,
+    on_hold: 0,
+    overdue: 0,
+    avg_completion_time_hours: 0,
+    actual_cost: 0,
+    estimated_cost: 0,
   },
   fleet_metrics: {
-    utilization_percentage: 82.4,
-    in_use: 14,
-    total_equipment: 17,
-    pending_requisitions: 3,
-    equipment_utilization_breakdown: [
-      { status: "OPERATING", count: 14 },
-      { status: "MAINTENANCE", count: 3 },
-    ],
+    utilization_percentage: 0,
+    in_use: 0,
+    total_equipment: 0,
+    pending_requisitions: 0,
+    equipment_utilization_breakdown: [],
   },
-  timeseries_data: [
-    { date: "2026-08-27", jobs_created: 4, jobs_completed: 3 },
-    { date: "2026-08-28", jobs_created: 6, jobs_completed: 5 },
-    { date: "2026-08-29", jobs_created: 5, jobs_completed: 6 },
-    { date: "2026-08-30", jobs_created: 7, jobs_completed: 6 },
-    { date: "2026-08-31", jobs_created: 3, jobs_completed: 4 },
-    { date: "2026-09-01", jobs_created: 8, jobs_completed: 7 },
-    { date: "2026-09-02", jobs_created: 5, jobs_completed: 4 },
-  ],
-  department_workload: [
-    { department_name: "Mechanical Workshop", active_jobs: 12 },
-    { department_name: "Electrical Section", active_jobs: 6 },
-    { department_name: "Mining / Pit Ops", active_jobs: 4 },
-    { department_name: "Processing Plant", active_jobs: 2 },
-  ],
+  timeseries_data: [],
+  department_workload: [],
 };
 
 export default function DashboardPage() {
@@ -74,10 +58,9 @@ export default function DashboardPage() {
     const fetchDepartments = async () => {
       try {
         const res = await api.get('/api/v1/iam/departments');
-        setDepartments(res.data || []);
+        setDepartments(Array.isArray(res.data) ? res.data : []);
       } catch {
-        const { MOCK_DEPARTMENTS } = await import('@/lib/mockData');
-        setDepartments(MOCK_DEPARTMENTS);
+        setDepartments([]);
       }
     };
     fetchDepartments();
@@ -96,11 +79,11 @@ export default function DashboardPage() {
       if (res && res.data) {
         setData(res.data);
       } else {
-        setData(FALLBACK_DASHBOARD_METRICS);
+        setData(EMPTY_DASHBOARD_METRICS);
       }
       setIsCachedSnapshot(false);
     } catch {
-      setData(FALLBACK_DASHBOARD_METRICS);
+      setData(EMPTY_DASHBOARD_METRICS);
       setIsCachedSnapshot(true);
     } finally {
       setLoading(false);

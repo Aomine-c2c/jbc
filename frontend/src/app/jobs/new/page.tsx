@@ -103,12 +103,9 @@ export default function CreateJobCard() {
   const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([]);
 
   useEffect(() => {
-    import('@/lib/mockData').then((m) => {
-      setDepartments(m.MOCK_DEPARTMENTS);
-    });
     apiFetch<Array<{ id: string; name: string }>>('/api/v1/iam/departments')
       .then((res) => {
-        if (Array.isArray(res) && res.length > 0) {
+        if (Array.isArray(res)) {
           setDepartments(res);
         }
       })

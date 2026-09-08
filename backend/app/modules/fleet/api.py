@@ -141,10 +141,11 @@ async def create_requisition(
 async def list_requisitions(
     department_id: Optional[uuid.UUID] = None,
     job_card_id: Optional[uuid.UUID] = None,
+    machine_id: Optional[uuid.UUID] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_get_current_user()),
 ):
-    return await FleetService.list_requisitions(db, department_id, job_card_id, current_user)
+    return await FleetService.list_requisitions(db, department_id, job_card_id, current_user, machine_id=machine_id)
 
 
 @fleet_router.get("/requisitions/{req_id}", response_model=RequisitionResponse)

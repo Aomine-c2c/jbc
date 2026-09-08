@@ -102,6 +102,12 @@ interface JobCardComment {
   created_at: string;
 }
 
+interface JobUser {
+  id?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
 interface JobCard {
   id: string;
   job_number?: string;
@@ -160,6 +166,10 @@ interface JobCard {
   verified_at?: string;
   closure_date?: string;
   closed_by_id?: string;
+
+  // Populated relations (may be absent in API responses)
+  supervisor?: JobUser;
+  safety_cleared_by?: JobUser;
 
   parts: JobCardPart[];
   comments: JobCardComment[];
@@ -245,8 +255,8 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
 
   // Field Execution & LOTO Gate State
   const [showLotoModal, setShowLotoModal] = useState(false);
-  const [lotoTagNumber, setLotoTagNumber] = useState("BK-LOTO-4091");
-  const [lotoStartMeter, setLotoStartMeter] = useState<number>(1420.5);
+  const [lotoTagNumber, setLotoTagNumber] = useState("");
+  const [lotoStartMeter, setLotoStartMeter] = useState<number | undefined>(undefined);
   const [lotoChecks, setLotoChecks] = useState({
     electrical: true,
     hydraulic: true,
@@ -267,7 +277,7 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
   const [safetySignData, setSafetySignData] = useState<SignatureData | null>(null);
   const [showSafetyClearanceModal, setShowSafetyClearanceModal] = useState(false);
   const [safetyNotes, setSafetyNotes] = useState("");
-  const [safetyLotoTag, setSafetyLotoTag] = useState("BK-LOTO-4091");
+  const [safetyLotoTag, setSafetyLotoTag] = useState("");
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
   useEffect(() => {
@@ -413,19 +423,23 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
       const res = await apiFetch(`/api/v1/job-cards/${id}`);
       if (res) {
         setJob(res);
+        if (res.loto_tag_number) {
+          setLotoTagNumber(res.loto_tag_number);
+          setSafetyLotoTag(res.loto_tag_number);
+        }
         if (res.action_taken) {
           setCompleteForm((prev) => ({
             ...prev,
             action_taken: res.action_taken || "",
-            downtime_hours: res.downtime_hours || 2.5,
+            downtime_hours: res.downtime_hours || 0,
             labour_details: res.labour_details || prev.labour_details,
           }));
         }
         if (res.estimated_hours) {
           setPlanForm((prev) => ({
             ...prev,
-            estimated_hours: res.estimated_hours || 4.0,
-            estimated_cost: res.estimated_cost || 1250.0,
+            estimated_hours: res.estimated_hours || 0,
+            estimated_cost: res.estimated_cost || 0,
             job_instruction: res.job_instruction || "",
           }));
         }
@@ -1186,7 +1200,7 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
               </div>
               <div className="text-xs opacity-90 mt-0.5">
                 {isSafetyCleared
-                  ? `Authorized on ${job.safety_cleared_at ? new Date(job.safety_cleared_at).toLocaleString() : 'Audit Log'} • Isolation Reference: ${job.loto_tag_number || 'BK-LOTO-VERIFIED'}${job.safety_clearance_notes ? ` • Note: ${job.safety_clearance_notes}` : ''}`
+                  ? `Authorized on ${job.safety_cleared_at ? new Date(job.safety_cleared_at).toLocaleString() : 'Audit Log'} • Isolation Reference: ${job.loto_tag_number || 'LOTO-CLEARED'}${job.safety_clearance_notes ? ` • Note: ${job.safety_clearance_notes}` : ''}`
                   : "Field execution is locked until an authorized HSE Officer or Superintendent verifies lockout/tagout isolation points and issues digital clearance."}
               </div>
             </div>
@@ -2940,36 +2954,44 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
               location: job.location,
               createdAt: job.created_at,
               completedAt: job.completed_at || new Date().toISOString(),
-              durationHours: completeForm.downtime_hours || (timerSeconds > 0 ? parseFloat((timerSeconds / 3600).toFixed(2)) : 3.5),
+              durationHours: completeForm.downtime_hours || (timerSeconds > 0 ? parseFloat((timerSeconds / 3600).toFixed(2)) : (job.downtime_hours || undefined)),
               startMeterHours: lotoStartMeter,
-              endMeterHours: lotoStartMeter ? lotoStartMeter + (completeForm.downtime_hours || 3.5) : undefined,
-              lotoTagNumber: lotoTagNumber || "BK-LOTO-4091",
-              lotoVerified: true,
+              endMeterHours: lotoStartMeter !== undefined && completeForm.downtime_hours ? lotoStartMeter + completeForm.downtime_hours : undefined,
+              lotoTagNumber: lotoTagNumber || job.loto_tag_number || undefined,
+              lotoVerified: !!(lotoTagNumber || job.loto_tag_number),
               parts: job.parts && job.parts.length > 0 ? job.parts : completeForm.parts,
-              technicianSign: technicianSignData || {
-                name: "Tendai Mukamuri",
-                role: "Lead Mechanical Technician",
-                timestamp: job.created_at || new Date().toISOString(),
-                hash: "BK-SIG-TECH-8821",
-              },
+              technicianSign: technicianSignData || (job.assigned_personnel ? {
+                name: job.assigned_personnel,
+                role: "Technician / Artisan",
+                timestamp: job.actual_end_time || job.created_at || new Date().toISOString(),
+                hash: job.job_number ? `SIG-TECH-${job.job_number}` : (job.id ? `SIG-TECH-${job.id.slice(0, 8).toUpperCase()}` : "SIG-TECH"),
+                signatureImage: undefined,
+              } : undefined),
               supervisorSign: supervisorSignData || (job.verified_at ? {
-                name: "Christopher Moyo",
+                name: job.supervisor?.first_name 
+                  ? `${job.supervisor.first_name} ${job.supervisor.last_name || ''}`.trim() 
+                  : (job.supervisor_id ? `Supervisor (${job.workshop_code || 'Ops'})` : "Workshop Supervisor"),
                 role: "Workshop Supervisor",
                 timestamp: job.verified_at,
-                hash: "BK-SIG-SUP-9904",
+                hash: job.job_number ? `SIG-SUP-${job.job_number}` : (job.id ? `SIG-SUP-${job.id.slice(0, 8).toUpperCase()}` : "SIG-SUP"),
+                signatureImage: undefined,
               } : undefined),
               requiresSafetyClearance: requiresSafetyClearance,
               safetySign: !requiresSafetyClearance ? {
                 name: "N/A",
                 role: "Safety Officer (HSE)",
-                timestamp: new Date().toISOString(),
-                hash: "BK-HSE-EXEMPT",
+                timestamp: job.created_at || new Date().toISOString(),
+                hash: "HSE-EXEMPT",
                 notRequired: true,
               } : (safetySignData || (job.safety_cleared ? {
-                name: "Kudakwashe Sibanda",
+                name: job.safety_cleared_by?.first_name 
+                  ? `${job.safety_cleared_by.first_name} ${job.safety_cleared_by.last_name || ''}`.trim()
+                  : (job.comments?.find((c: JobCardComment) => c.comment?.includes('HSE SAFETY CLEARANCE GRANTED by'))?.comment?.match(/GRANTED by ([^( -]+ [^( -]+)/)?.[1])
+                    || (currentUserRole === 'Safety Officer' ? (typeof window !== 'undefined' ? localStorage.getItem('user_name') || localStorage.getItem('user_email') || "HSE Authority" : "HSE Authority") : "Safety Officer (HSE)"),
                 role: "Safety Officer (HSE)",
-                timestamp: job.safety_cleared_at || new Date().toISOString(),
-                hash: job.loto_tag_number ? `BK-SIG-HSE-${job.loto_tag_number}` : "BK-SIG-HSE-3310",
+                timestamp: job.safety_cleared_at || job.created_at || new Date().toISOString(),
+                hash: job.loto_tag_number ? `SIG-HSE-${job.loto_tag_number}` : (job.job_number ? `SIG-HSE-${job.job_number}` : "SIG-HSE"),
+                signatureImage: undefined,
               } : undefined)),
             }}
             onClose={() => setShowCertificateModal(false)}

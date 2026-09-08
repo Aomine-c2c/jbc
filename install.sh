@@ -84,7 +84,9 @@ apt-get install -y \
     cron \
     logrotate \
     tar \
-    rsync || {
+    rsync \
+    python3-venv \
+    python3-pip || {
     echo -e "${RED}[ERROR] Failed to install core packages via apt-get.${NC}"
     exit 1
 }
@@ -113,6 +115,13 @@ fi
 # Ensure docker service is running
 systemctl is-active --quiet docker || systemctl start docker
 
+# Add non-root executing user to docker group
+if [[ -n "$SUDO_USER" && "$SUDO_USER" != "root" ]]; then
+    echo -e "Configuring Docker group permissions for user: ${CYAN}${SUDO_USER}${NC}..."
+    groupadd -f docker
+    usermod -aG docker "$SUDO_USER" || true
+fi
+
 # ── DIRECTORIES & PERMISSIONS ─────────────────────────────────────────────────
 echo -e "\n${CYAN}[4/7] Configuring Platform Directories & Storage...${NC}"
 STORAGE_DIR="/var/dwrms/storage"
@@ -130,11 +139,36 @@ chmod -R 750 "${STORAGE_DIR}"
 chmod 700 "${BACKUP_DIR}"
 chmod -R 755 "${LOG_DIR}"
 
+# Ensure compose files and build contexts resolve from any directory
+ln -sf "${TARGET_DIR}/infrastructure/docker-compose.prod.yml" "${TARGET_DIR}/docker-compose.prod.yml"
+ln -sf "${TARGET_DIR}/infrastructure/docker-compose.yml" "${TARGET_DIR}/docker-compose.yml"
+ln -sf "${TARGET_DIR}/backend" "${TARGET_DIR}/infrastructure/backend"
+ln -sf "${TARGET_DIR}/frontend" "${TARGET_DIR}/infrastructure/frontend"
+ln -sf "${TARGET_DIR}/infrastructure" "${TARGET_DIR}/infrastructure/infrastructure"
+
+# Set up host Python management environment for instant, native 'ops' CLI execution
+echo -e "Setting up host Python management environment for 'ops' CLI..."
+VENV_DIR="${TARGET_DIR}/backend/.venv"
+if [[ ! -d "${VENV_DIR}" ]]; then
+    python3 -m venv "${VENV_DIR}" || true
+fi
+if [[ -f "${VENV_DIR}/bin/pip" ]]; then
+    "${VENV_DIR}/bin/pip" install --upgrade pip --quiet 2>/dev/null || true
+    "${VENV_DIR}/bin/pip" install -r "${TARGET_DIR}/backend/requirements.txt" --quiet 2>/dev/null || {
+        "${VENV_DIR}/bin/pip" install click psutil pydantic pydantic-settings python-dotenv --quiet 2>/dev/null || true
+    }
+fi
+
 # Set up global CLI symlink
 if [[ -f "${TARGET_DIR}/scripts/ops/ops" ]]; then
     chmod +x "${TARGET_DIR}/scripts/ops/ops"
     ln -sf "${TARGET_DIR}/scripts/ops/ops" /usr/local/bin/ops
     echo -e "${GREEN}[OK] Global management command installed: /usr/local/bin/ops${NC}"
+fi
+
+# Grant directory ownership to executing user if under sudo
+if [[ -n "$SUDO_USER" && "$SUDO_USER" != "root" ]]; then
+    chown -R "$SUDO_USER":"$SUDO_USER" "${TARGET_DIR}" 2>/dev/null || true
 fi
 
 # ── CONFIGURE ENVIRONMENT & TLS ───────────────────────────────────────────────
@@ -238,6 +272,9 @@ else
     fi
 fi
 
+# Ensure infrastructure/.env symlink stays synced with root .env
+ln -sf "${ENV_FILE}" "${TARGET_DIR}/infrastructure/.env"
+
 
 # TLS Certificates
 CERT_FILE="${CERT_DIR}/dwrms.crt"
@@ -274,24 +311,31 @@ fi
 
 # ── START PLATFORM & INITIALIZE DATABASE ──────────────────────────────────────
 echo -e "\n${CYAN}[6/7] Launching Docker Containers & Initializing Schema...${NC}"
-COMPOSE_FILE="${TARGET_DIR}/infrastructure/docker-compose.prod.yml"
+COMPOSE_FILE="${TARGET_DIR}/docker-compose.prod.yml"
+if [[ ! -f "${COMPOSE_FILE}" ]]; then
+    COMPOSE_FILE="${TARGET_DIR}/infrastructure/docker-compose.prod.yml"
+fi
 
 if [[ ! -f "${COMPOSE_FILE}" ]]; then
     echo -e "${RED}[ERROR] Compose file not found: ${COMPOSE_FILE}${NC}"
     exit 1
 fi
 
+dcompose() {
+    docker compose --project-directory "${TARGET_DIR}" --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" "$@"
+}
+
 echo -e "Starting Database and Redis..."
-docker compose -f "${COMPOSE_FILE}" up -d db redis
+dcompose up -d db redis
 
 echo -e "Waiting for database to pass health check..."
 ATTEMPTS=0
 MAX_ATTEMPTS=35
-until docker compose -f "${COMPOSE_FILE}" ps db | grep -qi "healthy"; do
+until dcompose ps db | grep -qi "healthy"; do
     ATTEMPTS=$((ATTEMPTS + 1))
     if [[ $ATTEMPTS -ge $MAX_ATTEMPTS ]]; then
         echo -e "${RED}[ERROR] Database container failed to become healthy within timeout.${NC}"
-        docker compose -f "${COMPOSE_FILE}" logs db --tail 50
+        dcompose logs db --tail 50
         exit 1
     fi
     sleep 2
@@ -299,22 +343,22 @@ done
 echo -e "${GREEN}[OK] Database container is healthy.${NC}"
 
 echo -e "Creating tables and applying database schema..."
-docker compose -f "${COMPOSE_FILE}" run --rm backend python init_db_all.py || {
+dcompose run --rm backend python init_db_all.py || {
     echo -e "${YELLOW}[WARN] init_db_all.py returned non-zero, checking alembic...${NC}"
-    docker compose -f "${COMPOSE_FILE}" run --rm backend alembic upgrade head || true
+    dcompose run --rm backend alembic upgrade head || true
 }
 
 echo -e "Seeding administrative roles, permissions, and default accounts..."
-docker compose -f "${COMPOSE_FILE}" run --rm backend python seed.py
-docker compose -f "${COMPOSE_FILE}" run --rm backend python seed_rbac.py
+dcompose run --rm backend python seed.py
+dcompose run --rm backend python seed_rbac.py
 
 echo -e "Seeding rich industrial mining operations data (Fleet, Assets, Job Cards, Inventory, SLAs)..."
-docker compose -f "${COMPOSE_FILE}" run --rm backend python seed_faker.py || {
+dcompose run --rm backend python seed_faker.py || {
     echo -e "${YELLOW}[WARN] Rich faker seeding encountered a notice, proceeding with verified baseline.${NC}"
 }
 
 echo -e "Building and starting full production stack (Backend, Frontend, Celery Worker, Celery Beat, Nginx)..."
-docker compose -f "${COMPOSE_FILE}" up -d --build --remove-orphans
+dcompose up -d --build --remove-orphans
 
 # ── SYSTEMD SERVICE INSTALLATION ──────────────────────────────────────────────
 echo -e "\n${CYAN}[7/7] Registering Systemd Services and Automated Timers...${NC}"
@@ -363,6 +407,10 @@ fi
 echo -e "API Gateway:         ${BLUE}${BOLD}https://${HOST_LAN_IP}/api/v1${NC}"
 echo -e "Default Admin:       ${YELLOW}admin@bikita.com${NC} / ${YELLOW}password123${NC} (change after login)"
 echo -e "Auto-Pull Updates:   ${GREEN}Active (Running every 60s via dwrms-autoupdate.timer)${NC}"
+if [[ -n "${SUDO_USER}" && "${SUDO_USER}" != "root" ]]; then
+echo -e "Docker Group:        ${GREEN}User '${SUDO_USER}' added to 'docker' group.${NC}"
+echo -e "                     ${YELLOW}(Note: Run 'newgrp docker' in your active shell to use ops without sudo)${NC}"
+fi
 echo -e ""
 echo -e "Management Commands:"
 echo -e "  Live Monitor TUI:  ${CYAN}ops monitor${NC}"

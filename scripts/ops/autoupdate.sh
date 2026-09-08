@@ -67,8 +67,12 @@ if [[ -n "${LOCAL_HASH}" && -n "${REMOTE_HASH}" && "${LOCAL_HASH}" != "${REMOTE_
         }
     else
         git pull --ff-only origin "${BRANCH}" >> "${LOG_FILE}" 2>&1 || true
-        if [[ -f "${APP_DIR}/infrastructure/docker-compose.prod.yml" ]]; then
-            docker compose -f "${APP_DIR}/infrastructure/docker-compose.prod.yml" up -d --build --remove-orphans >> "${LOG_FILE}" 2>&1 || true
+        COMPOSE_FILE="${APP_DIR}/docker-compose.prod.yml"
+        if [[ ! -f "${COMPOSE_FILE}" ]]; then
+            COMPOSE_FILE="${APP_DIR}/infrastructure/docker-compose.prod.yml"
+        fi
+        if [[ -f "${COMPOSE_FILE}" ]]; then
+            docker compose --project-directory "${APP_DIR}" --env-file "${APP_DIR}/.env" -f "${COMPOSE_FILE}" up -d --build --remove-orphans >> "${LOG_FILE}" 2>&1 || true
         fi
     fi
 

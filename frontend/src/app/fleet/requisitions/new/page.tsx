@@ -37,7 +37,7 @@ export default function NewRequisition() {
     endTime: "",
     jobCardId: "",
     purpose: "",
-    location: "Bikita Open Pit - Bench 5",
+    location: "",
   };
 
   const {
@@ -124,7 +124,7 @@ export default function NewRequisition() {
 
       const payload = {
         machine_type_id: machineTypeId || (machineTypes[0]?.id ?? "00000000-0000-0000-0000-000000000000"),
-        location: location?.trim() || "Bikita Open Pit - Bench 5",
+        location: location?.trim() || undefined,
         start_time: start.toISOString(),
         end_time: end.toISOString(),
         job_card_id: jobCardId ? jobCardId : null,
@@ -273,6 +273,19 @@ export default function NewRequisition() {
                   onChange={(e) => setPurpose(e.target.value)}
                   className="w-full bg-background border border-input rounded-md px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                   placeholder="e.g. Pit 4 Spodumene bench haulage & loading"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1.5">
+                  Deployment / Work Location
+                </label>
+                <input 
+                  type="text" 
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  className="w-full bg-background border border-input rounded-md px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  placeholder="e.g. Pit 4 West Ramp, Processing Plant Feed Chute"
                 />
               </div>
 

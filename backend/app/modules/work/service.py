@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple, Dict, Any
 from sqlalchemy import select, func, or_, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,13 +26,15 @@ from app.modules.work.schemas import (
     WorkItemCommentResponse,
     WorkItemPartResponse,
     WorkItemMigrationSummary,
+    PreStartInspectionCreate,
+    PreStartInspectionResponse,
+    ChecklistItemResult,
 )
 from app.modules.iam.models import User, Department, Location, Scope
 from app.modules.jobs.models import JobCard
 from app.modules.fleet.models import Machine
-from app.core.authz import AuthzGuard
+from app.core.authz import AuthzGuard, _get_user_permissions
 from app.modules.audit.service import AuditService
-from app.modules.iam.api import _get_user_permissions
 
 
 # Validated State Transition Graph for Work Items
@@ -558,3 +560,234 @@ class WorkItemService:
                 summary.skipped += 1
 
         return summary
+
+    @staticmethod
+    async def record_pre_start_inspection(
+        db: AsyncSession, data: PreStartInspectionCreate, current_user: User
+    ) -> PreStartInspectionResponse:
+        """
+        Records a mandatory daily equipment pre-start walkaround inspection.
+        Enforces two-tier defect gating:
+        - Critical Red-Tag: Machine status -> OUT_OF_SERVICE, auto-spawns urgent JobCard.
+        - Minor Defect: Spawns maintenance follow-up WorkItem, machine remains operational.
+        - Clean Pass: Updates hour meter telemetry, confirms equipment operational readiness.
+        """
+        # 1. Fetch machine
+        machine_res = await db.execute(select(Machine).where(Machine.id == data.machine_id))
+        machine = machine_res.scalar_one_or_none()
+        if not machine:
+            raise HTTPException(status_code=404, detail=f"Machine {data.machine_id} not found")
+
+        # 2. Update hour meter (must not decrease)
+        if data.hour_meter_reading < (machine.current_hour_meter or 0.0):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Hour-meter reading ({data.hour_meter_reading}) cannot be less than current recorded hours ({machine.current_hour_meter})"
+            )
+        machine.current_hour_meter = data.hour_meter_reading
+
+        # 3. Analyze checklist for defects
+        has_critical = False
+        has_minor = False
+        critical_items = []
+        minor_items = []
+        for chk in data.checklist_results:
+            if chk.status == "CRITICAL_RED_TAG":
+                has_critical = True
+                critical_items.append(chk)
+            elif chk.status == "MINOR_DEFECT":
+                has_minor = True
+                minor_items.append(chk)
+
+        if has_critical:
+            overall_status = "CRITICAL_RED_TAG"
+            is_grounded = True
+        elif has_minor:
+            overall_status = "DEFECTS_NOTED"
+            is_grounded = False
+        else:
+            overall_status = "PASSED"
+            is_grounded = False
+
+        # 4. Create WorkItem for the inspection
+        now = datetime.now(timezone.utc)
+        count_res = await db.execute(select(func.count(WorkItem.id)).where(WorkItem.work_type == WorkItemType.INSPECTION.value))
+        count = (count_res.scalar() or 0) + 1
+        ref_num = f"PSI-{now.year}-{count:04d}"
+
+        dept_id = current_user.department_id
+        if not dept_id:
+            dept_res = await db.execute(select(Department.id))
+            dept_id = dept_res.scalars().first()
+
+        inspection_item = WorkItem(
+            id=uuid.uuid4(),
+            reference_number=ref_num,
+            work_type=WorkItemType.INSPECTION.value,
+            title=f"Pre-Start Inspection: {machine.identifier} ({overall_status})",
+            description=f"Shift pre-start equipment walkaround completed by {current_user.first_name} {current_user.last_name}. "
+                        f"Hour meter: {data.hour_meter_reading} hrs. Result: {overall_status}.",
+            status=WorkItemStatus.COMPLETED.value if not is_grounded else WorkItemStatus.ON_HOLD.value,
+            priority=4 if has_critical else (2 if has_minor else 1),
+            department_id=dept_id,
+            location_id=machine.location_id,
+            location=machine.location,
+            machine_id=machine.id,
+            requester_id=current_user.id,
+            type_specific_data={
+                "inspection_type": "PRE_START",
+                "hour_meter_reading": data.hour_meter_reading,
+                "overall_status": overall_status,
+                "is_grounded": is_grounded,
+                "operator_notes": data.operator_notes,
+                "checklist_results": [c.model_dump() for c in data.checklist_results],
+            },
+        )
+        db.add(inspection_item)
+
+        spawned_jc = None
+        # 5. Two-Tier Defect Gating
+        if has_critical:
+            # Transition machine to OUT_OF_SERVICE
+            machine.status = "OUT_OF_SERVICE"
+
+            # Auto-spawn Urgent Maintenance Job Card
+            jc_count_res = await db.execute(select(func.count(JobCard.id)))
+            jc_count = (jc_count_res.scalar() or 0) + 1
+            jc_num = f"JC-{now.year}-{1000 + jc_count}"
+            defects_summary = ", ".join([f"{c.category}: {c.item}" for c in critical_items])
+
+            spawned_jc = JobCard(
+                id=uuid.uuid4(),
+                job_number=jc_num,
+                title=f"CRITICAL RED-TAG DEFECT: {machine.identifier}",
+                description=f"Auto-generated from pre-start walkaround safety failure ({ref_num}) by Operator {current_user.first_name} {current_user.last_name}. "
+                            f"Critical defects flagged: {defects_summary}. Operator notes: {data.operator_notes or 'None'}.",
+                status="SUBMITTED",
+                priority=4,
+                department_id=dept_id,
+                location_id=machine.location_id,
+                location=machine.location,
+                machine_id=machine.id,
+                creator_id=current_user.id,
+                reported_issue=defects_summary,
+                job_instruction="Unit grounded. Perform immediate mechanical/safety diagnostic and repair before returning to service.",
+            )
+            db.add(spawned_jc)
+            await db.flush()
+
+            inspection_item.job_card_id = spawned_jc.id
+
+            try:
+                await AuditService.log_event(
+                    db=db,
+                    user=current_user,
+                    action="PRE_START_CRITICAL_LOCKOUT",
+                    resource="MACHINE",
+                    resource_id=str(machine.id),
+                    new_value={
+                        "machine": machine.identifier,
+                        "inspection_ref": ref_num,
+                        "spawned_job_card": jc_num,
+                        "defects": [c.item for c in critical_items],
+                    },
+                    reason="Machine grounded due to critical safety defect during pre-start inspection",
+                )
+            except Exception:
+                pass
+        elif has_minor:
+            minor_summary = ", ".join([f"{c.category}: {c.item}" for c in minor_items])
+            minor_work = WorkItem(
+                id=uuid.uuid4(),
+                reference_number=f"WI-{now.year}-{count + 100:04d}",
+                work_type=WorkItemType.MAINTENANCE.value,
+                title=f"Maintenance Follow-up: {machine.identifier} Minor Defects",
+                description=f"Non-critical defect reported during pre-start ({ref_num}): {minor_summary}. Notes: {data.operator_notes or 'None'}.",
+                status=WorkItemStatus.SUBMITTED.value,
+                priority=2,
+                department_id=dept_id,
+                location_id=machine.location_id,
+                location=machine.location,
+                machine_id=machine.id,
+                requester_id=current_user.id,
+                parent_work_item_id=inspection_item.id,
+            )
+            db.add(minor_work)
+
+        await db.commit()
+        await db.refresh(inspection_item)
+        await db.refresh(machine)
+
+        return PreStartInspectionResponse(
+            id=inspection_item.id,
+            reference_number=inspection_item.reference_number,
+            machine_id=machine.id,
+            machine_name=machine.identifier,
+            machine_status=machine.status,
+            hour_meter_reading=data.hour_meter_reading,
+            overall_status=overall_status,
+            is_grounded=is_grounded,
+            spawned_job_card_id=spawned_jc.id if spawned_jc else None,
+            spawned_job_card_number=spawned_jc.job_number if spawned_jc else None,
+            created_at=inspection_item.created_at,
+            operator_name=f"{current_user.first_name} {current_user.last_name}",
+            checklist_results=data.checklist_results,
+            operator_notes=data.operator_notes,
+        )
+
+    @staticmethod
+    async def list_pre_start_inspections(
+        db: AsyncSession,
+        machine_id: Optional[uuid.UUID] = None,
+        operator_id: Optional[uuid.UUID] = None,
+        limit: int = 50,
+    ) -> List[PreStartInspectionResponse]:
+        query = select(WorkItem).where(
+            WorkItem.work_type == WorkItemType.INSPECTION.value,
+            WorkItem.reference_number.like("PSI-%"),
+        )
+        if machine_id:
+            query = query.where(WorkItem.machine_id == machine_id)
+        if operator_id:
+            query = query.where(WorkItem.requester_id == operator_id)
+
+        query = query.order_by(WorkItem.created_at.desc()).limit(limit)
+        res = await db.execute(query)
+        items = res.scalars().all()
+
+        out = []
+        for item in items:
+            t_data = item.type_specific_data or {}
+            m_res = await db.execute(select(Machine).where(Machine.id == item.machine_id))
+            m = m_res.scalar_one_or_none()
+            u_res = await db.execute(select(User).where(User.id == item.requester_id))
+            u = u_res.scalar_one_or_none()
+            jc_num = None
+            if item.job_card_id:
+                jc_res = await db.execute(select(JobCard.job_number).where(JobCard.id == item.job_card_id))
+                jc_num = jc_res.scalar()
+
+            chks = []
+            for c in t_data.get("checklist_results", []):
+                chks.append(ChecklistItemResult(**c))
+
+            out.append(
+                PreStartInspectionResponse(
+                    id=item.id,
+                    reference_number=item.reference_number,
+                    machine_id=item.machine_id or uuid.uuid4(),
+                    machine_name=m.identifier if m else "Equipment",
+                    machine_status=m.status if m else "UNKNOWN",
+                    hour_meter_reading=float(t_data.get("hour_meter_reading", 0.0)),
+                    overall_status=t_data.get("overall_status", "PASSED"),
+                    is_grounded=bool(t_data.get("is_grounded", False)),
+                    spawned_job_card_id=item.job_card_id,
+                    spawned_job_card_number=jc_num,
+                    created_at=item.created_at,
+                    operator_name=f"{u.first_name} {u.last_name}" if u else "Operator",
+                    checklist_results=chks,
+                    operator_notes=t_data.get("operator_notes"),
+                )
+            )
+        return out
+

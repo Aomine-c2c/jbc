@@ -216,7 +216,12 @@ class JobCardService:
         return job
 
     @staticmethod
-    async def list(db: AsyncSession, department_id: Optional[uuid.UUID], current_user: User) -> list[JobCard]:
+    async def list(
+        db: AsyncSession,
+        department_id: Optional[uuid.UUID],
+        current_user: User,
+        machine_id: Optional[uuid.UUID] = None,
+    ) -> list[JobCard]:
         user_perms = _get_user_permissions(current_user)
         if department_id:
             if not AuthzGuard.check_permission(current_user, "job_card:read", user_perms, resource_dept_id=department_id):
@@ -225,9 +230,14 @@ class JobCardService:
         query = select(JobCard)
         if department_id:
             query = query.where(JobCard.department_id == department_id)
+        elif machine_id:
+            query = query.where(JobCard.machine_id == machine_id)
         else:
             if current_user.department_id and "global_override" not in user_perms and "cross_department_access" not in user_perms:
                 query = query.where(JobCard.department_id == current_user.department_id)
+
+        if machine_id and department_id:
+            query = query.where(JobCard.machine_id == machine_id)
 
         query = query.order_by(JobCard.created_at.desc())
         result = await db.execute(query)

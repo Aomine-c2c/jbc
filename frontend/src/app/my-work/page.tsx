@@ -7,6 +7,7 @@ import { apiFetch } from '@/lib/api';
 import { Protect } from '@/components/auth/Protect';
 import { getPendingApprovals, ApprovalInboxItem } from '@/lib/approvals';
 import { SafetyMyWorkView } from '@/components/my-work/SafetyMyWorkView';
+import { OperatorMyWorkView } from '@/components/my-work/OperatorMyWorkView';
 import { resolveUserRole } from '@/lib/rbac';
 
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -63,7 +64,7 @@ export default function MyWorkPage() {
   const [requisitions, setRequisitions] = useState<RequisitionItem[]>([]);
   const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<'HSE' | 'GENERAL'>('GENERAL');
+  const [activeView, setActiveView] = useState<'HSE' | 'GENERAL' | 'OPERATOR'>('GENERAL');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -73,6 +74,8 @@ export default function MyWorkPage() {
       setCurrentUserRole(resolved);
       if (resolved === 'Safety Officer') {
         setActiveView('HSE');
+      } else if (resolved === 'Operator') {
+        setActiveView('OPERATOR');
       }
     }
   }, []);
@@ -89,45 +92,24 @@ export default function MyWorkPage() {
         apiFetch('/api/v1/fleet/requisitions'),
       ]);
 
-      if (jobsRes.status === 'fulfilled' && Array.isArray(jobsRes.value) && jobsRes.value.length > 0) {
+      if (jobsRes.status === 'fulfilled' && Array.isArray(jobsRes.value)) {
         setAssignedJobs(jobsRes.value);
       } else {
-        const { MOCK_JOB_CARDS } = await import('@/lib/mockData');
-        setAssignedJobs(MOCK_JOB_CARDS);
+        setAssignedJobs([]);
       }
 
       if (approvalsRes.status === 'fulfilled' && Array.isArray(approvalsRes.value)) {
         setPendingApprovals(approvalsRes.value);
       }
 
-      if (reqsRes.status === 'fulfilled' && Array.isArray(reqsRes.value) && reqsRes.value.length > 0) {
+      if (reqsRes.status === 'fulfilled' && Array.isArray(reqsRes.value)) {
         setRequisitions(reqsRes.value);
       } else {
-        setRequisitions([
-          {
-            id: 'mreq-3001',
-            requisition_number: 'MREQ-2026-3001',
-            resource_type: 'Rigid Dump Truck (CAT 777D)',
-            purpose: 'Production bench load and haul ore transfer at Bench 5',
-            status: 'PENDING_APPROVAL',
-            required_start_time: '2026-09-02T14:00:00Z',
-            estimated_duration_hours: 12.0,
-          },
-          {
-            id: 'mreq-3002',
-            requisition_number: 'MREQ-2026-3002',
-            resource_type: 'Rough Terrain Crane (Tadano 70T)',
-            purpose: 'Primary Jaw Crusher toggle plate rigging & installation',
-            status: 'ALLOCATED',
-            required_start_time: '2026-09-03T06:00:00Z',
-            estimated_duration_hours: 8.0,
-          }
-        ]);
+        setRequisitions([]);
       }
-    } catch (err) {
-      console.warn('Failed to load My Work data from server, using synthetic fallback:', err);
-      const { MOCK_JOB_CARDS } = await import('@/lib/mockData');
-      setAssignedJobs(MOCK_JOB_CARDS);
+    } catch {
+      setAssignedJobs([]);
+      setRequisitions([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -183,6 +165,13 @@ export default function MyWorkPage() {
                   HSE Safety Console
                 </h1>
               </>
+            ) : activeView === 'OPERATOR' ? (
+              <>
+                <Truck className="size-6 text-emerald-500" />
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                  Operator Work Hub
+                </h1>
+              </>
             ) : (
               <>
                 <Briefcase className="size-6 text-primary" />
@@ -195,6 +184,8 @@ export default function MyWorkPage() {
           <p className="text-xs text-muted-foreground font-mono mt-0.5">
             {activeView === 'HSE'
               ? 'Safety authority actions, high-risk job gating, and workplace hazard register'
+              : activeView === 'OPERATOR'
+              ? 'Mobile plant pre-start walkarounds, defect red-tag gating, and shift fleet requisition tracking'
               : 'Personal Action Console • Logged in as ' + (currentUserEmail || 'Operator')}
           </p>
         </div>
@@ -213,6 +204,21 @@ export default function MyWorkPage() {
             >
               <Briefcase className="size-3.5" />
               General Tasks
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveView('OPERATOR')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-colors ${
+                activeView === 'OPERATOR'
+                  ? 'bg-emerald-600 text-white font-semibold shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Truck className="size-3.5" />
+              Operator Desk
+              {currentUserRole === 'Operator' && (
+                <span className="ml-1 px-1 py-0.2 bg-emerald-500/20 text-[9px] rounded">Role Default</span>
+              )}
             </button>
             <button
               type="button"
@@ -254,7 +260,9 @@ export default function MyWorkPage() {
       </div>
 
       {activeView === 'HSE' ? (
-        <SafetyMyWorkView userEmail={currentUserEmail} />
+        <SafetyMyWorkView _userEmail={currentUserEmail} />
+      ) : activeView === 'OPERATOR' ? (
+        <OperatorMyWorkView />
       ) : (
         <>
       {/* ── OVERDUE ALERT BANNER (High Visibility) ──────────────────────── */}

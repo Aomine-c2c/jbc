@@ -82,48 +82,16 @@ export function AuditLogViewer() {
       if (filters.resource_id) queryParams.append("resource_id", filters.resource_id);
 
       const res = await apiFetch(`/api/v1/audit?${queryParams.toString()}`);
-      if (res && Array.isArray(res.items) && res.items.length > 0) {
+      if (res && Array.isArray(res.items)) {
         setLogs(res.items);
-        setTotal(res.total || res.items.length);
+        setTotal(res.total ?? res.items.length);
       } else {
-        const { MOCK_AUDIT_LOGS } = await import('@/lib/mockData');
-        const fallbackLogs: AuditLog[] = MOCK_AUDIT_LOGS.map((a) => ({
-          id: a.id,
-          timestamp: a.timestamp,
-          action: a.action,
-          resource: a.resource,
-          resource_id: a.resource_id,
-          user_name: a.user_name,
-          user_email: `${a.user_name.toLowerCase().replace(' ', '.')}@bikita.com`,
-          department_name: a.department_name,
-          role_name: a.role_names,
-          ip_address: a.ip_address,
-          reason: a.reason,
-          previous_value: null,
-          new_value: null,
-        }));
-        setLogs(fallbackLogs);
-        setTotal(fallbackLogs.length);
+        setLogs([]);
+        setTotal(0);
       }
     } catch {
-      const { MOCK_AUDIT_LOGS } = await import('@/lib/mockData');
-      const fallbackLogs: AuditLog[] = MOCK_AUDIT_LOGS.map((a) => ({
-        id: a.id,
-        timestamp: a.timestamp,
-        action: a.action,
-        resource: a.resource,
-        resource_id: a.resource_id,
-        user_name: a.user_name,
-        user_email: `${a.user_name.toLowerCase().replace(' ', '.')}@bikita.com`,
-        department_name: a.department_name,
-        role_name: a.role_names,
-        ip_address: a.ip_address,
-        reason: a.reason,
-        previous_value: null,
-        new_value: null,
-      }));
-      setLogs(fallbackLogs);
-      setTotal(fallbackLogs.length);
+      setLogs([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -173,7 +141,7 @@ export function AuditLogViewer() {
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <Select value={filters.action} onValueChange={(v) => { if (v) { setSkip(0); setFilters({ ...filters, action: v }); } }}>
-              <SelectTrigger className="w-[140px] h-8 text-xs">
+              <SelectTrigger className="w-35 h-8 text-xs">
                 <SelectValue placeholder="Action" />
               </SelectTrigger>
               <SelectContent>
@@ -199,7 +167,7 @@ export function AuditLogViewer() {
                 <SelectItem value="APPROVAL_REQUEST">Approval</SelectItem>
               </SelectContent>
             </Select>
-            <div className="relative w-full sm:w-[220px]">
+            <div className="relative w-full sm:w-55">
               <Search className="absolute left-2.5 top-2 size-3.5 text-muted-foreground" />
               <Input
                 placeholder="Search Resource ID..."
@@ -219,11 +187,11 @@ export function AuditLogViewer() {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="w-[160px]">Timestamp</TableHead>
-              <TableHead className="w-[100px]">Action</TableHead>
-              <TableHead className="w-[140px]">Resource</TableHead>
-              <TableHead className="w-[160px]">Actor</TableHead>
-              <TableHead className="w-[140px]">Target ID</TableHead>
+              <TableHead className="w-40">Timestamp</TableHead>
+              <TableHead className="w-25">Action</TableHead>
+              <TableHead className="w-35">Resource</TableHead>
+              <TableHead className="w-40">Actor</TableHead>
+              <TableHead className="w-35">Target ID</TableHead>
               <TableHead>Details / Diff</TableHead>
             </TableRow>
           </TableHeader>
@@ -279,7 +247,7 @@ export function AuditLogViewer() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2 justify-between">
-                      <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                      <span className="text-xs text-muted-foreground truncate max-w-50">
                         {log.reason || "-"}
                       </span>
                       {Boolean(log.previous_value || log.new_value) && (

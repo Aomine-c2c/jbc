@@ -17,10 +17,13 @@ from app.modules.work.schemas import (
     WorkItemResponse,
     WorkItemListResponse,
     WorkItemMigrationSummary,
+    PreStartInspectionCreate,
+    PreStartInspectionResponse,
 )
 from app.modules.work.service import WorkItemService
 
 router = APIRouter(prefix="/work-items", tags=["Unified Work Management"])
+work_alias_router = APIRouter(prefix="/work", tags=["Unified Work Management"])
 
 
 def _get_current_user():
@@ -162,3 +165,30 @@ async def migrate_historical_job_cards(
     if not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Superuser required to run historical migrations")
     return await WorkItemService.migrate_historical_job_cards(db)
+
+
+# ── Pre-Start Inspection Endpoints ──────────────────────────────────────────
+
+@router.post("/pre-starts", response_model=PreStartInspectionResponse)
+@work_alias_router.post("/pre-starts", response_model=PreStartInspectionResponse)
+async def record_pre_start_inspection(
+    data: PreStartInspectionCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(_get_current_user()),
+):
+    return await WorkItemService.record_pre_start_inspection(db, data, current_user)
+
+
+@router.get("/pre-starts", response_model=List[PreStartInspectionResponse])
+@work_alias_router.get("/pre-starts", response_model=List[PreStartInspectionResponse])
+async def list_pre_start_inspections(
+    machine_id: Optional[uuid.UUID] = Query(None),
+    operator_id: Optional[uuid.UUID] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(_get_current_user()),
+):
+    return await WorkItemService.list_pre_start_inspections(
+        db=db, machine_id=machine_id, operator_id=operator_id, limit=limit
+    )
+

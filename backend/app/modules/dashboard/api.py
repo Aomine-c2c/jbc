@@ -1,3 +1,4 @@
+from typing import Optional
 from uuid import UUID as UUIDType
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +28,38 @@ async def get_dashboard_metrics(
     """
     Get operational dashboard metrics respecting user scope and applying filters.
     """
+    return await DashboardService.get_dashboard_data(db, filters, current_user)
+
+
+@dashboard_router.get("/metrics", response_model=DashboardDataResponse)
+async def get_dashboard_metrics_get(
+    department_id: Optional[UUIDType] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get operational dashboard metrics via GET query params.
+    """
+    from datetime import datetime
+    date_from = None
+    date_to = None
+    if start_date:
+        try:
+            date_from = datetime.fromisoformat(start_date)
+        except Exception:
+            pass
+    if end_date:
+        try:
+            date_to = datetime.fromisoformat(end_date)
+        except Exception:
+            pass
+    filters = DashboardFilterParams(
+        department_id=department_id,
+        date_from=date_from,
+        date_to=date_to,
+    )
     return await DashboardService.get_dashboard_data(db, filters, current_user)
 
 

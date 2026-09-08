@@ -143,13 +143,13 @@ export function SignaturePanel({
     const rawStamp = `${name.trim()}-${signerRole}-${empId.trim()}-${now}`;
     
     // Generate quick cryptographic hash
-    let hash = `BK-SIG-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    let hash = `SIG-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
     if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
       try {
         const msgBuffer = new TextEncoder().encode(rawStamp);
         const hashBuffer = await window.crypto.subtle.digest("SHA-256", msgBuffer);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
-        hash = `BK-SHA256-${hashArray.slice(0, 8).map(b => b.toString(16).padStart(2, "0")).join("").toUpperCase()}`;
+        hash = `SHA256-${hashArray.slice(0, 8).map(b => b.toString(16).padStart(2, "0")).join("").toUpperCase()}`;
       } catch {
         // fallback
       }
@@ -195,7 +195,7 @@ export function SignaturePanel({
           <div>
             <span className="text-muted-foreground block text-[10px]">SECURITY STAMP:</span>
             <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[11px] truncate block">
-              {signatureHash || "BK-SIG-VERIFIED"}
+              {signatureHash || "SIG-VERIFIED"}
             </span>
           </div>
         </div>
@@ -203,19 +203,8 @@ export function SignaturePanel({
         {signatureImage && (
           <div className="pt-2 border-t border-emerald-500/20 flex items-center gap-3">
             <span className="text-[10px] font-mono text-muted-foreground">SIGNATURE:</span>
-            <div className="bg-white px-3 py-1 rounded border border-emerald-500/30 inline-block shadow-2xs">
-              {/* signatureImage is a client-generated data: URL from canvas.toDataURL().
-                  next/image cannot optimize data URLs, so we use a plain <img> with
-                  explicit dimensions to avoid CLS. The image is already small (h-8). */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={signatureImage}
-                alt="Handwritten Signature"
-                width={160}
-                height={32}
-                className="h-8 max-w-40 w-auto object-contain"
-              />
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={signatureImage} alt="Signature" className="h-8 max-w-[120px] object-contain dark:invert" />
           </div>
         )}
       </div>
@@ -223,32 +212,33 @@ export function SignaturePanel({
   }
 
   return (
-    <div className={cn("space-y-3 rounded-lg border border-border bg-card p-4 text-xs shadow-xs", className)}>
+    <div className={cn("rounded-lg border border-border bg-card p-4 space-y-4", className)}>
       <div className="flex items-center justify-between border-b border-border pb-2">
-        <div className="flex items-center gap-1.5 font-bold text-foreground">
-          <PenTool className="size-3.5 text-primary" />
+        <div className="flex items-center gap-2 text-foreground font-semibold text-xs">
+          <Stamp className="size-4 text-primary" />
           <span>{title}</span>
         </div>
-        <span className="text-[10px] font-mono text-muted-foreground uppercase bg-muted px-2 py-0.5 rounded">
+        <span className="text-[10px] font-mono text-muted-foreground uppercase">
           Role: {signerRole}
         </span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="space-y-3 text-xs">
         <div>
-          <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">
-            Signatory Full Name <span className="text-destructive">*</span>
+          <label className="block text-muted-foreground text-[11px] mb-1 font-mono uppercase">
+            Full Name of Signatory <span className="text-destructive">*</span>
           </label>
-          <Input
+          <input
+            type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Tendai Moyo"
+            placeholder="e.g. Authorized Signatory"
             disabled={disabled}
-            className="h-8 text-xs"
+            className="h-8 text-xs flex w-full rounded-md border border-input bg-transparent px-3 py-1 shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
           />
         </div>
         <div>
-          <label className="text-[10px] font-mono uppercase text-muted-foreground block mb-1">
+          <label className="block text-muted-foreground text-[11px] mb-1 font-mono uppercase">
             Employee / Badge Number
           </label>
           <Input

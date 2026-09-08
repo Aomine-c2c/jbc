@@ -92,10 +92,11 @@ async def create_job_card(
 @job_router.get("", response_model=list[JobCardListResponse])
 async def list_job_cards(
     department_id: Optional[uuid.UUID] = None,
+    machine_id: Optional[uuid.UUID] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_get_current_user()),
 ):
-    jobs = await JobCardService.list(db, department_id, current_user)
+    jobs = await JobCardService.list(db, department_id, current_user, machine_id=machine_id)
     return jobs
 
 

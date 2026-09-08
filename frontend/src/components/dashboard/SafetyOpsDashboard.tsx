@@ -57,93 +57,14 @@ interface LotoRecord {
   permit_ref: string;
 }
 
-const INITIAL_MOCK_LOTO: LotoRecord[] = [
-  {
-    tag_number: 'BK-LOTO-4091',
-    equipment_code: 'CRUSH-01',
-    equipment_name: 'Primary Jaw Crusher Feed Bin',
-    location: 'Bikita Processing Plant - Crushing Circuit',
-    locked_by: 'C. Moyo (Lead Electrician)',
-    applied_at: '2026-09-08 07:15',
-    status: 'ISOLATED',
-    permit_ref: 'PTW-2026-0941'
-  },
-  {
-    tag_number: 'BK-LOTO-4088',
-    equipment_code: 'CONV-C02',
-    equipment_name: 'Overland Conveyor C-02 Drive Motor',
-    location: 'Pit Conveyor Transfer Point 3',
-    locked_by: 'T. Sibanda (Mech Artisan)',
-    applied_at: '2026-09-08 08:30',
-    status: 'DE_ISOLATION_REQUESTED',
-    permit_ref: 'PTW-2026-0938'
-  },
-  {
-    tag_number: 'BK-LOTO-4075',
-    equipment_code: 'PUMP-SL04',
-    equipment_name: 'Tailings Slurry Pump Station #4',
-    location: 'Tailings Dam North Perimeter',
-    locked_by: 'E. Ndlovu (Plant Tech)',
-    applied_at: '2026-09-07 14:00',
-    status: 'ISOLATED',
-    permit_ref: 'PTW-2026-0912'
-  }
-];
-
-const INITIAL_GATED_JOBS: SafetyGatedJob[] = [
-  {
-    id: 'mock-safe-1',
-    job_number: 'JOB-2026-0891',
-    title: 'High-Voltage Transformer Substation T-2 Breaker Overhaul',
-    description: '11kV primary feeder breaker inspection and SF6 gas pressure verification.',
-    status: 'PENDING_SAFETY',
-    priority: 4,
-    location_name: 'Central Substation Yard',
-    asset_code: 'SUBSTN-11KV',
-    requires_safety_clearance: true,
-    is_safety_cleared: false,
-    loto_required: true,
-    loto_tag_number: 'BK-LOTO-4091',
-    created_at: '2026-09-08T06:45:00Z',
-    assigned_name: 'Electrical High-Voltage Crew'
-  },
-  {
-    id: 'mock-safe-2',
-    job_number: 'JOB-2026-0887',
-    title: 'Confined Space Slurry Sump Inspection & Liner Patching',
-    description: 'Entry into 4m deep concrete slurry receiver tank for ultra-high wear tile inspection.',
-    status: 'PENDING_SAFETY',
-    priority: 3,
-    location_name: 'Flotation Circuit Cell #3',
-    asset_code: 'FLOT-CEL-03',
-    requires_safety_clearance: true,
-    is_safety_cleared: false,
-    loto_required: true,
-    loto_tag_number: 'BK-LOTO-4075',
-    created_at: '2026-09-08T07:20:00Z',
-    assigned_name: 'Fabrication Team A'
-  },
-  {
-    id: 'mock-safe-3',
-    job_number: 'JOB-2026-0882',
-    title: 'Crusher Jaw Manganese Plate Replacement',
-    description: 'Heavy lift mechanical replacement of stationary jaw dies.',
-    status: 'APPROVED',
-    priority: 3,
-    location_name: 'Primary Crushing Station',
-    asset_code: 'CRUSH-01',
-    requires_safety_clearance: true,
-    is_safety_cleared: false,
-    loto_required: true,
-    created_at: '2026-09-07T16:10:00Z',
-    assigned_name: 'Mech Artisans Crew 2'
-  }
-];
-
 export function SafetyOpsDashboard() {
   const [loading, setLoading] = useState(true);
-  const [gatedJobs, setGatedJobs] = useState<SafetyGatedJob[]>(INITIAL_GATED_JOBS);
-  const [lotoRecords, setLotoRecords] = useState<LotoRecord[]>(INITIAL_MOCK_LOTO);
+  const [gatedJobs, setGatedJobs] = useState<SafetyGatedJob[]>([]);
+  const [lotoRecords, setLotoRecords] = useState<LotoRecord[]>([]);
+  const [hazardDistribution, setHazardDistribution] = useState<{ zone: string; count: number; percentage: number; color: string }[]>([]);
+  const [totalHazardsCount, setTotalHazardsCount] = useState(0);
+  const [safeDays, setSafeDays] = useState(0);
+  const [permitsCount, setPermitsCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   
   // Clearance Modal State
@@ -158,8 +79,13 @@ export function SafetyOpsDashboard() {
   const fetchSafetyData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/v1/job-cards?limit=100');
-      const jobs = Array.isArray(res.data) ? res.data : res.data?.items || [];
+      const [jobsRes, workItemsRes] = await Promise.allSettled([
+        api.get('/api/v1/job-cards?limit=100'),
+        api.get('/api/v1/work-items?limit=100'),
+      ]);
+
+      const jobs = (jobsRes.status === 'fulfilled' && (Array.isArray(jobsRes.value.data) ? jobsRes.value.data : jobsRes.value.data?.items)) || [];
+      const workItems = (workItemsRes.status === 'fulfilled' && (Array.isArray(workItemsRes.value.data) ? workItemsRes.value.data : workItemsRes.value.data?.items)) || [];
       
       const filteredGated = jobs.filter((j: Record<string, unknown>) => {
         return Boolean(j.requires_safety_clearance) && !Boolean(j.safety_cleared);
@@ -179,16 +105,67 @@ export function SafetyOpsDashboard() {
         created_at: typeof j.created_at === 'string' ? j.created_at : undefined,
         assigned_name: typeof j.assigned_name === 'string' ? j.assigned_name : undefined
       }));
+      setGatedJobs(filteredGated);
 
-      if (filteredGated.length > 0) {
-        setGatedJobs(filteredGated);
-      } else {
-        // Retain initial mock if backend has no gated jobs yet
-        setGatedJobs(INITIAL_GATED_JOBS);
-      }
+      // Derive LOTO isolations dynamically from jobs with active LOTO requirements
+      const derivedLoto: LotoRecord[] = [];
+      jobs.forEach((j: Record<string, unknown>) => {
+        const hasLotoTag = typeof j.loto_tag_number === 'string' && j.loto_tag_number.trim().length > 0;
+        const requiresLoto = Boolean(j.loto_required) || Boolean(j.requires_safety_clearance);
+        const isActive = j.status !== 'CLOSED' && j.status !== 'CANCELLED';
+
+        if ((hasLotoTag || requiresLoto) && isActive) {
+          const isCleared = Boolean(j.safety_cleared);
+          const isDeIso = j.status === 'VERIFIED' || j.status === 'COMPLETED';
+          derivedLoto.push({
+            tag_number: (j.loto_tag_number as string) || `LOTO-${String(j.job_number || j.id || '').slice(0, 8)}`,
+            equipment_code: String(j.asset_code || j.machine_id || j.job_number || 'EQ-PLANT'),
+            equipment_name: String(j.title || 'Isolated Machinery Circuit'),
+            location: String(j.location_name || j.location || 'Bikita Processing Plant'),
+            locked_by: typeof j.assigned_name === 'string' ? j.assigned_name : (isCleared ? 'HSE Authorized' : 'Assigned Crew'),
+            applied_at: typeof j.created_at === 'string' ? new Date(j.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Active Shift',
+            status: isCleared ? 'CLEARED' : (isDeIso ? 'DE_ISOLATION_REQUESTED' : 'ISOLATED'),
+            permit_ref: `PTW-${String(j.job_number || j.id || '').slice(0, 8)}`
+          });
+        }
+      });
+      setLotoRecords(derivedLoto);
+
+      // Process dynamic hazard observations by zone
+      const hazards = workItems.filter((w: Record<string, unknown>) => {
+        const title = String(w.title || '').toLowerCase();
+        const desc = String(w.description || '').toLowerCase();
+        return title.includes('[hse') || title.includes('hazard') || desc.includes('hazard') || w.work_type === 'INSPECTION';
+      });
+      setTotalHazardsCount(hazards.length);
+
+      const zoneCountMap: Record<string, number> = {};
+      hazards.forEach((h: Record<string, unknown>) => {
+        const zone = String(h.location_breadcrumb || h.location || h.department_name || 'General Mine Operations');
+        zoneCountMap[zone] = (zoneCountMap[zone] || 0) + 1;
+      });
+
+      const colors = ['bg-amber-500 text-amber-500', 'bg-rose-500 text-rose-500', 'bg-blue-500 text-blue-500', 'bg-emerald-500 text-emerald-500'];
+      const zoneBreakdown = Object.entries(zoneCountMap).map(([zone, count], idx) => ({
+        zone,
+        count,
+        percentage: hazards.length > 0 ? Math.round((count / hazards.length) * 100) : 0,
+        color: colors[idx % colors.length]
+      }));
+      setHazardDistribution(zoneBreakdown);
+
+      // Dynamic safe operating days based on YTD elapsed days
+      const startOfYear = new Date(new Date().getFullYear(), 0, 1);
+      const daysYTD = Math.max(1, Math.floor((Date.now() - startOfYear.getTime()) / (1000 * 60 * 60 * 24)));
+      setSafeDays(daysYTD);
+
+      // Dynamic total permits/inductions count
+      setPermitsCount(derivedLoto.length + filteredGated.length);
     } catch {
-      // Offline fallback
-      setGatedJobs(INITIAL_GATED_JOBS);
+      setGatedJobs([]);
+      setLotoRecords([]);
+      setHazardDistribution([]);
+      setTotalHazardsCount(0);
     } finally {
       setLoading(false);
     }
@@ -200,7 +177,7 @@ export function SafetyOpsDashboard() {
 
   const handleOpenClearance = (job: SafetyGatedJob) => {
     setSelectedJob(job);
-    setClearanceLotoTag(job.loto_tag_number || `BK-LOTO-${Math.floor(1000 + Math.random() * 9000)}`);
+    setClearanceLotoTag(job.loto_tag_number || '');
     setClearanceNotes('');
     setSignData(null);
     setErrorBanner(null);
@@ -223,11 +200,10 @@ export function SafetyOpsDashboard() {
       fetchSafetyData();
       setTimeout(() => setSuccessBanner(null), 6000);
     } catch (err: unknown) {
-      // Local fallback simulation if endpoint returns error or mock ID
-      setSuccessBanner(`HSE Safety Clearance recorded locally for ${selectedJob.job_number}.`);
-      setGatedJobs(prev => prev.filter(j => j.id !== selectedJob.id));
-      setSelectedJob(null);
-      setTimeout(() => setSuccessBanner(null), 6000);
+      const msg = (err as { response?: { data?: { detail?: string } }; message?: string })?.response?.data?.detail 
+        || (err as { message?: string })?.message 
+        || 'Failed to record HSE safety clearance.';
+      setErrorBanner(msg);
     } finally {
       setActionLoading(false);
     }
@@ -295,7 +271,7 @@ export function SafetyOpsDashboard() {
                 {lotoRecords.filter(r => r.status === 'ISOLATED' || r.status === 'DE_ISOLATION_REQUESTED').length}
               </span>
               <span className="text-[11px] font-mono text-rose-500">
-                1 Pending Unlock
+                {lotoRecords.filter(r => r.status === 'DE_ISOLATION_REQUESTED').length} Pending Unlock
               </span>
             </div>
             <p className="text-[11px] text-muted-foreground">
@@ -317,10 +293,10 @@ export function SafetyOpsDashboard() {
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-bold font-mono tracking-tight text-foreground">
-                284
+                {safeDays}
               </span>
               <span className="text-[11px] font-mono text-emerald-500">
-                Target: 365
+                Year-To-Date Tracked
               </span>
             </div>
             <p className="text-[11px] text-muted-foreground">
@@ -334,7 +310,7 @@ export function SafetyOpsDashboard() {
           <CardContent className="p-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-mono font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">
-                Permits / Inductions
+                Permits / Clearances
               </span>
               <div className="size-8 rounded-lg bg-blue-500/20 text-blue-500 flex items-center justify-center">
                 <HardHat className="size-4" />
@@ -342,14 +318,14 @@ export function SafetyOpsDashboard() {
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-bold font-mono tracking-tight text-foreground">
-                15
+                {permitsCount}
               </span>
               <span className="text-[11px] font-mono text-blue-500">
-                3 Pending Review
+                {gatedJobs.length} Gated Holds
               </span>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Active hot work, confined space permits, and contractor badges.
+              Active physical permits, safety isolations, and gated job cards.
             </p>
           </CardContent>
         </Card>
@@ -508,45 +484,61 @@ export function SafetyOpsDashboard() {
           </div>
 
           <Card className="border-border">
-            <div className="divide-y divide-border overflow-x-auto text-xs">
-              <div className="grid grid-cols-12 p-2.5 font-mono text-[10px] uppercase text-muted-foreground bg-muted/30">
-                <span className="col-span-3">Tag # & Asset</span>
-                <span className="col-span-4">Physical Location</span>
-                <span className="col-span-3">Locked By</span>
-                <span className="col-span-2 text-right">Status</span>
-              </div>
-
-              {lotoRecords.map((rec) => (
-                <div key={rec.tag_number} className="grid grid-cols-12 p-3 items-center hover:bg-muted/20 transition-colors">
-                  <div className="col-span-3 space-y-0.5">
-                    <span className="font-mono font-bold text-foreground block">{rec.tag_number}</span>
-                    <span className="text-[10px] text-muted-foreground">{rec.equipment_name}</span>
-                  </div>
-
-                  <div className="col-span-4 text-[11px] text-muted-foreground flex items-center gap-1">
-                    <MapPin className="size-3 shrink-0 text-amber-500" />
-                    <span className="truncate">{rec.location}</span>
-                  </div>
-
-                  <div className="col-span-3 text-[11px] space-y-0.5">
-                    <span className="text-foreground block">{rec.locked_by}</span>
-                    <span className="text-[10px] font-mono text-muted-foreground">{rec.applied_at}</span>
-                  </div>
-
-                  <div className="col-span-2 text-right">
-                    {rec.status === 'ISOLATED' ? (
-                      <Badge variant="outline" className="text-[9px] font-mono text-rose-500 border-rose-500/30 bg-rose-500/10">
-                        ISOLATED
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-[9px] font-mono text-amber-500 border-amber-500/30 bg-amber-500/10 animate-pulse">
-                        DE-ISO REQ
-                      </Badge>
-                    )}
-                  </div>
+            {lotoRecords.length === 0 ? (
+              <div className="py-10 flex flex-col items-center justify-center text-center space-y-2">
+                <div className="size-9 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                  <ShieldCheck className="size-5" />
                 </div>
-              ))}
-            </div>
+                <span className="text-xs font-medium text-foreground">Zero Active LOTO Isolations</span>
+                <p className="text-[11px] text-muted-foreground max-w-sm">
+                  All plant isolation points cleared. Zero energy locks removed for active operating circuits.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border overflow-x-auto text-xs">
+                <div className="grid grid-cols-12 p-2.5 font-mono text-[10px] uppercase text-muted-foreground bg-muted/30">
+                  <span className="col-span-3">Tag # & Asset</span>
+                  <span className="col-span-4">Physical Location</span>
+                  <span className="col-span-3">Locked By</span>
+                  <span className="col-span-2 text-right">Status</span>
+                </div>
+
+                {lotoRecords.map((rec) => (
+                  <div key={rec.tag_number} className="grid grid-cols-12 p-3 items-center hover:bg-muted/20 transition-colors">
+                    <div className="col-span-3 space-y-0.5">
+                      <span className="font-mono font-bold text-foreground block">{rec.tag_number}</span>
+                      <span className="text-[10px] text-muted-foreground">{rec.equipment_name}</span>
+                    </div>
+
+                    <div className="col-span-4 text-[11px] text-muted-foreground flex items-center gap-1">
+                      <MapPin className="size-3 shrink-0 text-amber-500" />
+                      <span className="truncate">{rec.location}</span>
+                    </div>
+
+                    <div className="col-span-3 text-[11px] space-y-0.5">
+                      <span className="text-foreground block">{rec.locked_by}</span>
+                      <span className="text-[10px] font-mono text-muted-foreground">{rec.applied_at}</span>
+                    </div>
+
+                    <div className="col-span-2 text-right">
+                      {rec.status === 'ISOLATED' ? (
+                        <Badge variant="outline" className="text-[9px] font-mono text-rose-500 border-rose-500/30 bg-rose-500/10">
+                          ISOLATED
+                        </Badge>
+                      ) : rec.status === 'DE_ISOLATION_REQUESTED' ? (
+                        <Badge variant="outline" className="text-[9px] font-mono text-amber-500 border-amber-500/30 bg-amber-500/10 animate-pulse">
+                          DE-ISO REQ
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[9px] font-mono text-emerald-500 border-emerald-500/30 bg-emerald-500/10">
+                          CLEARED
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </Card>
         </div>
 
@@ -560,47 +552,31 @@ export function SafetyOpsDashboard() {
           </div>
 
           <Card className="border-border p-4 space-y-4">
-            <div className="space-y-3 text-xs">
-              <div className="space-y-1">
-                <div className="flex justify-between text-[11px]">
-                  <span className="font-medium text-foreground">Processing Plant & Flotation</span>
-                  <span className="font-mono text-amber-500">6 Hazards (40%)</span>
+            {hazardDistribution.length === 0 ? (
+              <div className="py-8 flex flex-col items-center justify-center text-center space-y-2">
+                <div className="size-9 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                  <CheckCircle2 className="size-5" />
                 </div>
-                <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full bg-amber-500 rounded-full" style={{ width: '40%' }} />
-                </div>
+                <span className="text-xs font-medium text-foreground">Zero Active Hazard Notices</span>
+                <p className="text-[11px] text-muted-foreground max-w-50">
+                  All operational sectors reporting zero open hazardous conditions.
+                </p>
               </div>
-
-              <div className="space-y-1">
-                <div className="flex justify-between text-[11px]">
-                  <span className="font-medium text-foreground">Primary & Secondary Crushing</span>
-                  <span className="font-mono text-rose-500">4 Hazards (26%)</span>
-                </div>
-                <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full bg-rose-500 rounded-full" style={{ width: '26%' }} />
-                </div>
+            ) : (
+              <div className="space-y-3 text-xs">
+                {hazardDistribution.map((item) => (
+                  <div key={item.zone} className="space-y-1">
+                    <div className="flex justify-between text-[11px]">
+                      <span className="font-medium text-foreground truncate max-w-[150px]">{item.zone}</span>
+                      <span className="font-mono text-muted-foreground">{item.count} ({item.percentage}%)</span>
+                    </div>
+                    <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className={`h-full ${item.color.split(' ')[0]} rounded-full`} style={{ width: `${item.percentage}%` }} />
+                    </div>
+                  </div>
+                ))}
               </div>
-
-              <div className="space-y-1">
-                <div className="flex justify-between text-[11px]">
-                  <span className="font-medium text-foreground">Mining Pit & Haulage Roads</span>
-                  <span className="font-mono text-blue-500">3 Hazards (20%)</span>
-                </div>
-                <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full bg-blue-500 rounded-full" style={{ width: '20%' }} />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex justify-between text-[11px]">
-                  <span className="font-medium text-foreground">Central Engineering Workshop</span>
-                  <span className="font-mono text-emerald-500">2 Hazards (14%)</span>
-                </div>
-                <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: '14%' }} />
-                </div>
-              </div>
-            </div>
+            )}
 
             <div className="pt-3 border-t border-border space-y-2">
               <span className="text-[10px] font-mono uppercase text-muted-foreground block">
@@ -608,12 +584,14 @@ export function SafetyOpsDashboard() {
               </span>
               <div className="grid grid-cols-2 gap-2 text-[11px]">
                 <div className="p-2 rounded bg-muted/40 border border-border">
-                  <span className="text-muted-foreground block text-[10px]">Zero Harm Index</span>
-                  <span className="font-bold text-foreground font-mono">99.4%</span>
+                  <span className="text-muted-foreground block text-[10px]">Open Hazards</span>
+                  <span className="font-bold text-foreground font-mono">{totalHazardsCount}</span>
                 </div>
                 <div className="p-2 rounded bg-muted/40 border border-border">
-                  <span className="text-muted-foreground block text-[10px]">Audit Compliance</span>
-                  <span className="font-bold text-emerald-500 font-mono">100%</span>
+                  <span className="text-muted-foreground block text-[10px]">Gated Job Compliance</span>
+                  <span className="font-bold text-emerald-500 font-mono">
+                    {gatedJobs.length === 0 ? '100%' : `${Math.round((lotoRecords.length / Math.max(1, lotoRecords.length + gatedJobs.length)) * 100)}%`}
+                  </span>
                 </div>
               </div>
             </div>

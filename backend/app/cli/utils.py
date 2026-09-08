@@ -90,11 +90,62 @@ def print_table(headers: list[str], rows: list[list[Any]], title: Optional[str] 
         click.echo("  ".join(formatted_row))
 
 
+def get_compose_file() -> Path:
+    """Returns the primary production or development docker compose file."""
+    candidates = [
+        ROOT_DIR / "docker-compose.prod.yml",
+        ROOT_DIR / "infrastructure" / "docker-compose.prod.yml",
+        ROOT_DIR / "docker-compose.yml",
+        ROOT_DIR / "infrastructure" / "docker-compose.yml",
+    ]
+    for c in candidates:
+        if c.exists():
+            return c
+    return ROOT_DIR / "infrastructure" / "docker-compose.prod.yml"
+
+
+def get_docker_cmd() -> list[str]:
+    """Returns ['docker'] or ['sudo', 'docker'] if non-root user lacks socket permissions."""
+    if os.name != "nt" and hasattr(os, "geteuid") and os.geteuid() != 0:
+        res = subprocess.run(["docker", "ps"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if res.returncode != 0:
+            return ["sudo", "docker"]
+    return ["docker"]
+
+
 def run_command_capture(cmd: list[str], cwd: Optional[str] = None) -> tuple[int, str, str]:
-    """Executes a system command and returns (exit_code, stdout, stderr)."""
+    """Executes a system command with automatic docker socket handling and compose context resolution."""
+    final_cmd = list(cmd)
+    if final_cmd and final_cmd[0] == "docker":
+        prefix = get_docker_cmd()
+        if prefix != ["docker"]:
+            final_cmd = prefix + final_cmd[1:]
+
+        # Normalize docker compose invocations
+        if "compose" in final_cmd:
+            comp_idx = final_cmd.index("compose")
+            insertions = []
+            if "--project-directory" not in final_cmd:
+                insertions.extend(["--project-directory", str(ROOT_DIR)])
+            if ENV_FILE.exists() and "--env-file" not in final_cmd:
+                insertions.extend(["--env-file", str(ENV_FILE)])
+
+            # If -f is used with a relative file, ensure it resolves
+            if "-f" in final_cmd:
+                f_idx = final_cmd.index("-f")
+                if f_idx + 1 < len(final_cmd):
+                    cf_val = final_cmd[f_idx + 1]
+                    if not Path(cf_val).is_absolute() and not (Path(cwd or ROOT_DIR) / cf_val).exists():
+                        final_cmd[f_idx + 1] = str(get_compose_file())
+            elif "-f" not in final_cmd and len(final_cmd) > comp_idx + 1 and not final_cmd[comp_idx + 1].startswith("-"):
+                insertions.extend(["-f", str(get_compose_file())])
+
+            if insertions:
+                final_cmd = final_cmd[:comp_idx + 1] + insertions + final_cmd[comp_idx + 1:]
+
     try:
         proc = subprocess.run(
-            cmd,
+            final_cmd,
             cwd=cwd or str(ROOT_DIR),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

@@ -110,73 +110,25 @@ export default function WorkManagementHubPage() {
         url += `&search=${encodeURIComponent(searchQuery.trim())}`;
       }
       const data = await apiFetch<WorkItemRow[]>(url);
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         if (selectedType === 'SAFETY_CLEARANCE') {
           setItems(data.filter((i) => i.priority >= 2 || i.title.toLowerCase().includes('loto') || i.title.toLowerCase().includes('safety') || i.work_type === 'INSPECTION'));
         } else {
           setItems(data);
         }
       } else {
-        const { MOCK_JOB_CARDS } = await import('@/lib/mockData');
-        const fallbackItems: WorkItemRow[] = MOCK_JOB_CARDS.map((jc) => ({
-          id: jc.id,
-          reference_number: jc.job_number,
-          work_type: jc.job_type || 'JOB_CARD',
-          title: jc.title,
-          status: jc.status,
-          priority: jc.priority,
-          department_id: jc.department_id,
-          department_name: jc.department_name,
-          location_breadcrumb: jc.location,
-          machine_identifier: jc.machine_identifier,
-          supervisor_name: jc.supervisor_name,
-          assigned_personnel: jc.assigned_personnel,
-          due_date: jc.required_date,
-          sla_status: 'ON_TRACK',
-          job_card_id: jc.id,
-          created_at: jc.created_at,
-        }));
-        if (selectedType === 'SAFETY_CLEARANCE') {
-          setItems(fallbackItems.filter((i) => i.priority >= 2 || i.title.toLowerCase().includes('loto') || i.title.toLowerCase().includes('safety')));
-        } else {
-          setItems(fallbackItems);
-        }
+        setItems([]);
       }
 
       const deptData = await apiFetch<DepartmentOption[]>('/api/v1/iam/departments');
-      if (deptData && deptData.length > 0) {
+      if (Array.isArray(deptData)) {
         setDepartments(deptData);
       } else {
-        const { MOCK_DEPARTMENTS } = await import('@/lib/mockData');
-        setDepartments(MOCK_DEPARTMENTS);
+        setDepartments([]);
       }
-    } catch (err) {
-      console.warn('Failed to load work items from central server, using synthetic fallback', err);
-      const { MOCK_JOB_CARDS, MOCK_DEPARTMENTS } = await import('@/lib/mockData');
-      const fallbackItems: WorkItemRow[] = MOCK_JOB_CARDS.map((jc) => ({
-        id: jc.id,
-        reference_number: jc.job_number,
-        work_type: jc.job_type || 'JOB_CARD',
-        title: jc.title,
-        status: jc.status,
-        priority: jc.priority,
-        department_id: jc.department_id,
-        department_name: jc.department_name,
-        location_breadcrumb: jc.location,
-        machine_identifier: jc.machine_identifier,
-        supervisor_name: jc.supervisor_name,
-        assigned_personnel: jc.assigned_personnel,
-        due_date: jc.required_date,
-        sla_status: 'ON_TRACK',
-        job_card_id: jc.id,
-        created_at: jc.created_at,
-      }));
-      if (selectedType === 'SAFETY_CLEARANCE') {
-        setItems(fallbackItems.filter((i) => i.priority >= 2 || i.title.toLowerCase().includes('loto') || i.title.toLowerCase().includes('safety')));
-      } else {
-        setItems(fallbackItems);
-      }
-      setDepartments(MOCK_DEPARTMENTS);
+    } catch {
+      setItems([]);
+      setDepartments([]);
     } finally {
       setLoading(false);
     }

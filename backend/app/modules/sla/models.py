@@ -168,7 +168,7 @@ class SLATracker(Base, TimestampMixin):
     response_warning_fired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completion_warning_fired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    policy = relationship("SLAPolicy", back_populates="trackers")
+    policy = relationship("SLAPolicy", back_populates="trackers", lazy="selectin")
     department = relationship("Department", lazy="selectin")
     location = relationship("Location", lazy="selectin", foreign_keys=[location_id])
     escalation_logs = relationship(
