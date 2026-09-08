@@ -110,6 +110,25 @@ export async function apiFetch<T = any>(endpoint: string, options: ApiRequestIni
       networkResilience.setStatus('ONLINE');
       break; // Success
     } catch (err: unknown) {
+      // Automatic Local Fallback Failover: if primary endpoint failed, attempt localhost fallback
+      if (apiUrl !== 'http://localhost:8000') {
+        const fallbackUrl = 'http://localhost:8000';
+        const fallbackFullUrl = endpoint.startsWith('http') ? endpoint : `${fallbackUrl}${endpoint}`;
+        try {
+          res = await fetch(fallbackFullUrl, {
+            ...options,
+            headers,
+            credentials: 'include',
+          });
+          if (res) {
+            networkResilience.setStatus('ONLINE');
+            break; // Succeeded on local server fallback
+          }
+        } catch {
+          // Fallback also failed, proceed with standard retry logic
+        }
+      }
+
       attempt++;
 
       // If offline queueing is enabled and network fails or client is offline

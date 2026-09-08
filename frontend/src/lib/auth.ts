@@ -3,18 +3,46 @@ import { resolveUserRole, getDefaultLandingRoute } from './rbac';
 
 export async function login(email: string, password: string) {
   try {
-    const apiUrl = await getApiUrl();
-    const response = await fetch(`${apiUrl}/api/v1/iam/auth/login`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        username: email,
-        password: password,
-      }),
-    });
+    let apiUrl = await getApiUrl();
+    let response: Response | null = null;
+
+    try {
+      response = await fetch(`${apiUrl}/api/v1/iam/auth/login`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: email,
+          password: password,
+        }),
+      });
+    } catch (netErr) {
+      // Automatic Fallback Failover: if primary endpoint failed, attempt localhost fallback
+      const fallbackUrl = 'http://localhost:8000';
+      if (apiUrl !== fallbackUrl) {
+        console.warn(`[DWRMS Auth] Primary server ${apiUrl} unreachable (${netErr}). Attempting local server failover at ${fallbackUrl}...`);
+        try {
+          response = await fetch(`${fallbackUrl}/api/v1/iam/auth/login`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              username: email,
+              password: password,
+            }),
+          });
+          apiUrl = fallbackUrl;
+        } catch {
+          throw netErr;
+        }
+      } else {
+        throw netErr;
+      }
+    }
 
     const data = await response.json().catch(() => null);
 
@@ -41,7 +69,11 @@ export async function login(email: string, password: string) {
     }
   } catch (e: unknown) {
     const err = e as { message?: string };
-    return { error: err.message || 'Unable to connect to authentication server.' };
+    return {
+      error: err.message === 'Failed to fetch'
+        ? 'Authentication server unreachable. Please select "Local Development Server" from the environment selector in the top right, or verify server connection.'
+        : (err.message || 'Unable to connect to authentication server.'),
+    };
   }
 }
 

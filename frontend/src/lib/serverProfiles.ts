@@ -56,9 +56,10 @@ export const DEFAULT_PROFILES: ServerProfile[] = [
   {
     id: 'staging-default',
     name: 'Staging / Testing Environment',
-    primaryUrl: 'https://staging-dwrms.bikita.com',
+    primaryUrl: 'http://localhost:8000',
+    fallbackUrl: 'http://localhost:8000',
     connectionMode: 'domain',
-    isVerified: false,
+    isVerified: true,
     isDefault: false,
   },
   {
@@ -166,6 +167,20 @@ export async function validateServer(primaryUrl: string, fallbackUrl?: string): 
   };
 }
 
+function sanitizeProfiles(profiles: ServerProfile[]): ServerProfile[] {
+  return profiles.map((p) => {
+    if (p.primaryUrl && p.primaryUrl.includes('staging-dwrms.bikita.com')) {
+      return {
+        ...p,
+        primaryUrl: 'http://localhost:8000',
+        fallbackUrl: 'http://localhost:8000',
+        isVerified: true,
+      };
+    }
+    return p;
+  });
+}
+
 /**
  * Loads all saved server profiles from persistent storage.
  */
@@ -178,7 +193,7 @@ export async function getProfiles(): Promise<ServerProfile[]> {
       const { load } = await import('@tauri-apps/plugin-store');
       const store = await load('server_profiles.json');
       const stored = (await store.get<ServerProfile[]>(PROFILES_STORAGE_KEY)) || (await store.get<ServerProfile[]>('profiles'));
-      if (stored && stored.length > 0) return stored;
+      if (stored && stored.length > 0) return sanitizeProfiles(stored);
     } catch (e) {
       console.warn('Tauri store read error:', e);
     }
@@ -189,7 +204,7 @@ export async function getProfiles(): Promise<ServerProfile[]> {
   if (raw) {
     try {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) return sanitizeProfiles(parsed);
     } catch (e) {
       console.warn('localStorage profiles parse error:', e);
     }
@@ -208,14 +223,14 @@ export async function getProfiles(): Promise<ServerProfile[]> {
         isDefault: true,
       }
     ];
-    return migrated;
+    return sanitizeProfiles(migrated);
   }
 
   // 2. Web fallback (localStorage)
   const stored = localStorage.getItem(PROFILES_STORAGE_KEY);
   if (stored) {
     try {
-      return JSON.parse(stored) as ServerProfile[];
+      return sanitizeProfiles(JSON.parse(stored) as ServerProfile[]);
     } catch {
       return DEFAULT_PROFILES;
     }

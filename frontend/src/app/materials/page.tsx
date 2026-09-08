@@ -85,7 +85,7 @@ interface DepartmentOption {
   name: string;
 }
 
-import { MOCK_DEPARTMENTS, MOCK_MATERIAL_REQUIREMENTS, MOCK_MATERIALS_CATALOG } from '@/lib/mockData';
+import { MOCK_DEPARTMENTS, MOCK_MATERIAL_REQUIREMENTS, MOCK_MATERIALS_CATALOG } from '@/lib/mock/mockData';
 
 export default function MaterialsManagementPage() {
   const [activeTab, setActiveTab] = useState<'REQUIREMENTS' | 'CATALOG'>('REQUIREMENTS');

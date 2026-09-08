@@ -1,8 +1,9 @@
 'use client';
 
+import Image from 'next/image';
 import { login } from '@/lib/auth';
 import { useState, useEffect } from 'react';
-import { HardHat, ShieldCheck, Wrench, UserCheck, Users, Gauge, Shield, Lock, Mail, ArrowRight } from 'lucide-react';
+import { ShieldCheck, Wrench, UserCheck, Users, Gauge, Shield, Lock, Mail, ArrowRight } from 'lucide-react';
 import { NotificationBanner } from '@/components/ui/notification';
 import { PlantTelemetryVisual } from '@/components/auth/PlantTelemetryVisual';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -96,9 +97,15 @@ export default function LoginPage() {
 
         <div className="w-full max-w-md space-y-5 rounded-xl border border-zinc-200/80 bg-white p-6 md:p-8 shadow-sm">
           {/* BRAND HEADER */}
-          <div className="text-center space-y-2">
-            <div className="mx-auto flex size-12 items-center justify-center rounded-lg bg-zinc-900 text-white shadow-xs">
-              <HardHat className="size-6" />
+          <div className="text-center space-y-2.5">
+            <div className="mx-auto flex size-14 items-center justify-center rounded-xl bg-white border border-zinc-200/90 p-2 shadow-xs ring-2 ring-[#2E2F83]/10">
+              <Image
+                src="/bikita-emblem.png"
+                alt="Bikita Minerals"
+                width={40}
+                height={40}
+                className="object-contain"
+              />
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-zinc-900 uppercase">
@@ -111,13 +118,35 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <NotificationBanner
-              type={error.toLowerCase().includes("pending") ? "warning" : "error"}
-              title={error.toLowerCase().includes("pending") ? "Account Pending" : "Authentication Failure"}
-              message={error}
-              dismissible
-              onDismiss={() => setError(null)}
-            />
+            <div className="space-y-2">
+              <NotificationBanner
+                type={error.toLowerCase().includes("pending") ? "warning" : "error"}
+                title={error.toLowerCase().includes("pending") ? "Account Pending" : "Authentication Failure"}
+                message={error}
+                dismissible
+                onDismiss={() => setError(null)}
+              />
+              {(error.toLowerCase().includes("unreachable") || error.toLowerCase().includes("fetch")) && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const devProfile = profiles.find(p => p.id === 'dev-default' || p.primaryUrl.includes('8000')) || profiles[0];
+                    if (devProfile) {
+                      setActiveProfileId(devProfile.id);
+                      await setActiveProfile(devProfile.id);
+                      setError(null);
+                      // Auto-retry login with existing credentials if already filled
+                      if (email && password) {
+                        await handleSubmit();
+                      }
+                    }
+                  }}
+                  className="w-full text-center py-1.5 px-2 rounded bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-mono hover:bg-amber-100 transition-colors cursor-pointer font-semibold"
+                >
+                  ⚡ Connect to Local Server (localhost:8000)
+                </button>
+              )}
+            </div>
           )}
 
           {/* LOGIN FORM */}
@@ -139,7 +168,7 @@ export default function LoginPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="h-9 w-full rounded-md border border-zinc-200 bg-white pl-8 pr-2.5 text-xs text-zinc-900 font-mono transition-all outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400"
+                    className="h-9 w-full rounded-md border border-zinc-200 bg-white pl-8 pr-2.5 text-xs text-zinc-900 font-mono transition-all outline-none focus:border-[#2E2F83] focus:ring-1 focus:ring-[#2E2F83]"
                     placeholder="admin@bikita.com"
                   />
                 </div>
@@ -161,7 +190,7 @@ export default function LoginPage() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="h-9 w-full rounded-md border border-zinc-200 bg-white pl-8 pr-2.5 text-xs text-zinc-900 font-mono transition-all outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400"
+                    className="h-9 w-full rounded-md border border-zinc-200 bg-white pl-8 pr-2.5 text-xs text-zinc-900 font-mono transition-all outline-none focus:border-[#2E2F83] focus:ring-1 focus:ring-[#2E2F83]"
                     placeholder="••••••••"
                   />
                 </div>
@@ -171,7 +200,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading || !email || !password}
-              className="flex h-9 w-full items-center justify-center rounded-md bg-zinc-900 px-3 text-xs font-semibold text-white shadow-xs hover:bg-black transition-all disabled:opacity-50 cursor-pointer"
+              className="flex h-10 w-full items-center justify-center rounded-md bg-[#2E2F83] hover:bg-[#24256b] active:bg-[#1c1d56] px-3 text-xs font-semibold text-white shadow-xs transition-all disabled:bg-zinc-100 disabled:text-zinc-400 disabled:border disabled:border-zinc-200 disabled:shadow-none cursor-pointer disabled:cursor-not-allowed font-mono uppercase tracking-wider"
             >
               {loading ? "Authenticating Operator..." : "Authenticate & Open Console"}
               <ArrowRight className="size-3.5 ml-1.5" />
@@ -190,7 +219,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('admin@bikita.com', 'password123')}
-                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 text-left transition-colors cursor-pointer group"
+                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-[#2E2F83]/5 hover:border-[#2E2F83]/30 text-left transition-colors cursor-pointer group"
                 >
                   <div className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-900">
                     <ShieldCheck className="size-3.5 text-zinc-800" />
@@ -204,7 +233,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('mechmgr@bikita.com', 'password123')}
-                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 text-left transition-colors cursor-pointer group"
+                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-[#2E2F83]/5 hover:border-[#2E2F83]/30 text-left transition-colors cursor-pointer group"
                 >
                   <div className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-900">
                     <Users className="size-3.5 text-amber-600" />
@@ -218,7 +247,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('supervisor@bikita.com', 'password123')}
-                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 text-left transition-colors cursor-pointer group"
+                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-[#2E2F83]/5 hover:border-[#2E2F83]/30 text-left transition-colors cursor-pointer group"
                 >
                   <div className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-900">
                     <UserCheck className="size-3.5 text-emerald-600" />
@@ -232,7 +261,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('tech@bikita.com', 'password123')}
-                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 text-left transition-colors cursor-pointer group"
+                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-[#2E2F83]/5 hover:border-[#2E2F83]/30 text-left transition-colors cursor-pointer group"
                 >
                   <div className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-900">
                     <Wrench className="size-3.5 text-blue-600" />
@@ -246,7 +275,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('operator@bikita.com', 'password123')}
-                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 text-left transition-colors cursor-pointer group"
+                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-[#2E2F83]/5 hover:border-[#2E2F83]/30 text-left transition-colors cursor-pointer group"
                 >
                   <div className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-900">
                     <Gauge className="size-3.5 text-orange-600" />
@@ -260,7 +289,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('safety@bikita.com', 'password123')}
-                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 text-left transition-colors cursor-pointer group"
+                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-[#2E2F83]/5 hover:border-[#2E2F83]/30 text-left transition-colors cursor-pointer group"
                 >
                   <div className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-900">
                     <Shield className="size-3.5 text-rose-600" />

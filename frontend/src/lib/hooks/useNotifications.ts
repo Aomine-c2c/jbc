@@ -28,10 +28,14 @@ export function useNotifications() {
     try {
       setLoading(true);
       const data = await apiFetch('/api/v1/notifications', { method: 'GET' }) as NotificationListResponse;
-      setNotifications(data.items);
-      setUnreadCount(data.total_unread);
+      if (data && Array.isArray(data.items)) {
+        setNotifications(data.items);
+        setUnreadCount(data.total_unread ?? 0);
+      }
     } catch (err) {
-      console.error('Error fetching notifications:', err);
+      console.warn('Notifications service connecting or unavailable:', (err as Error)?.message || err);
+      setNotifications([]);
+      setUnreadCount(0);
     } finally {
       setLoading(false);
     }
