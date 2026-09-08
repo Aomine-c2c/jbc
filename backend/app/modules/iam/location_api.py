@@ -15,7 +15,7 @@ from app.modules.iam.location_schemas import (
     LocationMigrationSummary,
 )
 from app.modules.iam.location_service import LocationService
-from app.core.authz import AuthzGuard
+from app.core.authz import AuthzGuard, _get_user_permissions
 
 
 def _get_current_user():

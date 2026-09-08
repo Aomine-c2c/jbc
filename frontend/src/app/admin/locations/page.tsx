@@ -232,12 +232,18 @@ export default function LocationsAdminPage() {
     if (!confirm('Scan historical Job Cards, Machines, and Requisitions to link or auto-provision matching location hierarchy records?')) return;
     setMigrationRunning(true);
     setMigrationSummary(null);
+    setErrorMsg('');
     try {
       const res = await apiFetch<MigrationSummary>('/api/v1/locations/migrate', { method: 'POST' });
       setMigrationSummary(res);
       await loadData();
     } catch (err: unknown) {
-      alert((err as { message?: string })?.message || 'Migration failed.');
+      const msg = (err as { message?: string })?.message || 'Migration failed.';
+      if (msg.includes('403') || msg.toLowerCase().includes('privileges') || msg.toLowerCase().includes('permission')) {
+        setErrorMsg('Administrative privileges (settings:manage) are required to execute location hierarchy migration.');
+      } else {
+        setErrorMsg(msg);
+      }
     } finally {
       setMigrationRunning(false);
     }

@@ -204,14 +204,36 @@ class JobCardService:
 
         if not job:
             raise HTTPException(status_code=404, detail="Job card not found")
-        if not AuthzGuard.check_permission(
-            current_user,
-            "job_card:read",
-            user_perms,
-            resource_owner_id=job.creator_id,
-            resource_dept_id=job.department_id,
-            assigned_user_id=job.supervisor_id,
-        ):
+        
+        can_read = (
+            AuthzGuard.check_permission(
+                current_user,
+                "job_card:read",
+                user_perms,
+                resource_owner_id=job.creator_id,
+                resource_dept_id=job.department_id,
+                assigned_user_id=job.supervisor_id,
+            )
+            or (
+                job.requesting_department_id
+                and AuthzGuard.check_permission(
+                    current_user,
+                    "job_card:read",
+                    user_perms,
+                    resource_dept_id=job.requesting_department_id,
+                )
+            )
+            or (
+                job.responsible_department_id
+                and AuthzGuard.check_permission(
+                    current_user,
+                    "job_card:read",
+                    user_perms,
+                    resource_dept_id=job.responsible_department_id,
+                )
+            )
+        )
+        if not can_read:
             raise HTTPException(status_code=403, detail="Not enough privileges to view this job card")
         return job
 
