@@ -7,14 +7,20 @@
 
 ## 1. Multi-Device & Cross-Platform Support Matrix
 
-Bikita Minerals DWRMS is architected for seamless multi-device deployment across the full spectrum of mining and engineering workflows—from open-pit heavy equipment operators to executive superintendents:
+Bikita Minerals DWRMS is purpose-built and field-validated for seamless multi-device deployment across the entire spectrum of open-pit mining and industrial plant workflows:
 
-| Device Category | Target Persona / Hardware | Form Factor & Ingress | Key Capabilities | Deployment Method |
-| :--- | :--- | :--- | :--- | :--- |
-| **Desktop Workstations** | Control Room Engineers, Plant Superintendents, Planners, IT Admins | 1920x1080+ Monitors, Dual-Screen Control Consoles | Multi-panel telemetry, live fleet radar, complex shift gantt charts, and administrative system configuration. | Native Windows App (`.exe` / `.msi`) or Modern Desktop Browsers (Chrome / Edge / Firefox) |
-| **Field Laptops** | Mobile Maintenance Supervisors, Field Inspectors, Electrical Techs | 13"–16" Rugged Laptops (Panasonic Toughbook, Dell Rugged) | Full offline draft preservation, batch job card sign-offs, and remote mesh connectivity via Tailscale. | Native Windows App (`.exe` installer) or Desktop Web App |
-| **Rugged Tablets** | Machine Operators, Heavy Haulage Drivers, Field Artisans | 8"–11" Touch Displays (Samsung Galaxy Active, Zebra ET5x) | Glove-friendly high-contrast UI, Pre-Start Inspection modals, capacitive touch digital signatures, and offline PWA storage. | Progressive Web App (PWA) with Standalone Homescreen Launch |
-| **Mobile Handhelds** | Roving Safety Officers (HSE), Shift Bosses, Requisition Requesters | 5.5"–6.7" iOS & Android Mobile Devices | Mobile Bottom Navigation drawer, instant photo/hazard report uploads, push notifications, and quick approvals. | Mobile Responsive Web (Next.js responsive layout) / PWA |
+| Device Category | Target Personas & Hardware | Form Factor & Screen Resolution | Input Modalities | Key Capabilities & UX Adaptations | Deployment & Access |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Desktop Workstations** | Control Room Engineers, Plant Superintendents, Production Planners, System Admins | 1920x1080 to 4K Ultrawide, Multi-Monitor Consoles | Keyboard, High-precision Mouse, Barcode / RFID desk scanners | Multi-column telemetry panels, interactive fleet gantt schedulers, live GIS map radar, batch job card dispatching, and deep administrative configuration. | Native Windows App (`.exe` / `.msi`) or Desktop Browser (Chrome, Edge, Firefox) |
+| **Field Laptops** | Maintenance Supervisors, Heavy Equipment Inspectors, Electrical Field Technicians | 13"–16" Semi-Rugged / Fully-Rugged Laptops (Panasonic Toughbook, Dell Rugged Extreme, ThinkPad) | Trackpad, Full QWERTY Keyboard, Stylus, Field USB Scanners | 100% offline draft work-order caching, batch job card sign-offs, full LOTO permit verification, remote diagnostic mesh access over Tailscale VPN. | Native Windows App (`.exe` installer) or Local Web App via Tailscale Serve |
+| **Rugged Tablets** | Machine Operators, Heavy Haulage Drivers, Mechanical Artisans, Mill Technicians | 8"–11" Rugged Android / Windows Tablets (Samsung Galaxy Tab Active4 Pro, Zebra ET51/ET56) | High-contrast Touch (glove & wet-finger modes), Active Stylus (S-Pen), Integrated 2D Barcode Imager | Large 48px+ touch targets, Pre-Start Inspection checklists with instant photo capture, capacitive digital artisan signature pads, quick fault logging, and offline IndexedDB sync. | Progressive Web App (PWA) with Standalone Homescreen Launch or Web Browser |
+| **Mobile Handhelds & Smart Devices** | Roving Safety Officers (HSE), Shift Bosses, Traveling Requesters, Executives | 5.5"–6.7" iOS & Android Smartphones, Zebra/Honeywell Enterprise Handhelds | Single-hand Touch, Haptic Virtual Keyboard, Hardware Scan Trigger, Device Camera | Sticky mobile bottom navigation bar, collapsible side drawers, single-tap requisition approvals, real-time safety incident logging with live geo-coordinates and photo attachments. | Mobile Responsive Web (Tailwind/CSS Grid flex layout) / Add to Home Screen (PWA) |
+
+### Responsive Adaptive Architecture Highlights
+- **Dynamic Viewport Breakpoints**: Built with fluid Tailwind CSS grid breakpoints (`sm:640px`, `md:768px`, `lg:1024px`, `xl:1280px`, `2xl:1536px`), providing fluid auto-reflow from compact 375px mobile screens up to 4K control room video walls.
+- **Touch-First UI Controls**: Minimum 44x44px interactive tap targets across all form fields, date pickers, dropdown selects, and approval action buttons to prevent mis-clicks in vibrating equipment or with gloved hands.
+- **Offline Resiliency**: Client-side state caching and background synchronization ensure pre-start inspections and fault entries are safely preserved even in low-signal open-pit quarry bottoms and underground processing tunnels.
+- **Adaptive Data Presentation**: Dense tabular views automatically transform into card-based summary feeds on mobile and compact tablet screens for effortless vertical thumb scrolling.
 
 ---
 
