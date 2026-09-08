@@ -12,17 +12,12 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { TelemetrySpinner } from '@/components/ui/loading-state';
 import {
-  Car,
   CheckCircle2,
   AlertTriangle,
-  Flame,
   ShieldCheck,
-  ShieldAlert,
   Gauge,
-  Clock,
   RefreshCw,
   Plus,
-  FileText,
   AlertOctagon,
   Calendar,
   Layers,
@@ -31,9 +26,7 @@ import {
   ArrowRight,
   Wrench,
   Truck,
-  Hash,
   Activity,
-  CheckCircle,
   ExternalLink,
   Info,
 } from 'lucide-react';

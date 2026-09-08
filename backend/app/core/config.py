@@ -148,7 +148,10 @@ class Settings(BaseSettings):
     def allowed_extensions_set(self) -> set[str]:
         return {ext.strip().lower().lstrip(".") for ext in self.ALLOWED_EXTENSIONS.split(",") if ext.strip()}
 
-    model_config = SettingsConfigDict(env_file=".env", extra="allow")
+    model_config = SettingsConfigDict(
+        env_file=os.environ.get("DWRMS_ENV_FILE", ".env"),
+        extra="allow"
+    )
 
 
 @lru_cache

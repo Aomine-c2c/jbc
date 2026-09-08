@@ -1,16 +1,15 @@
 services:
   db:
-    image: mysql:8.0
+    image: postgres:16
     restart: always
     volumes:
-      - mysql_data_prod:/var/lib/mysql
+      - postgres_data_prod:/var/lib/postgresql/data
     environment:
-      - MYSQL_DATABASE=${MYSQL_DATABASE:-dwrms}
-      - MYSQL_USER=${MYSQL_USER:-user}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-password}
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-rootpassword}
+      - POSTGRES_DB=${POSTGRES_DB:-dwrms}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpassword}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-dwrms}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -57,7 +56,7 @@ services:
       - dwrms_storage_prod:/var/dwrms/storage
       - dwrms_logs_prod:/var/dwrms/logs
     environment:
-      - DATABASE_URL=mysql+aiomysql://${MYSQL_USER:-user}:${MYSQL_PASSWORD:-password}@db:3306/${MYSQL_DATABASE:-dwrms}
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-dwrms}
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
@@ -99,7 +98,7 @@ services:
       - dwrms_storage_prod:/var/dwrms/storage
       - dwrms_logs_prod:/var/dwrms/logs
     environment:
-      - DATABASE_URL=mysql+aiomysql://${MYSQL_USER:-user}:${MYSQL_PASSWORD:-password}@db:3306/${MYSQL_DATABASE:-dwrms}
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-dwrms}
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
@@ -130,7 +129,7 @@ services:
     volumes:
       - dwrms_logs_prod:/var/dwrms/logs
     environment:
-      - DATABASE_URL=mysql+aiomysql://${MYSQL_USER:-user}:${MYSQL_PASSWORD:-password}@db:3306/${MYSQL_DATABASE:-dwrms}
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-dwrms}
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
@@ -196,7 +195,7 @@ networks:
     driver: bridge
 
 volumes:
-  mysql_data_prod:
+  postgres_data_prod:
   redis_data_prod:
   dwrms_storage_prod:
   dwrms_logs_prod:

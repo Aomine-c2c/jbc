@@ -3,9 +3,11 @@ import sys
 
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
-host = "100.107.114.86"
-user = "sila"
-password = "password_placeholder"
+import os
+
+host = os.environ.get("DWRMS_TAILSCALE_HOST", "100.107.114.86")
+user = os.environ.get("DWRMS_SSH_USER", "sila")
+password = os.environ.get("DWRMS_SSH_PASSWORD", "password_placeholder")
 
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())

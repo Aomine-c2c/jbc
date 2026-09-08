@@ -1,4 +1,5 @@
 import asyncio
+import os
 import uuid
 from sqlalchemy import select
 from app.db.session import SessionLocal
@@ -244,13 +245,16 @@ async def seed():
         await session.commit()
 
         # 7. Users
+        admin_password = os.environ.get("INITIAL_ADMIN_PASSWORD", "password123")
+        default_user_password = os.environ.get("INITIAL_USER_PASSWORD", admin_password)
+
         # IT Admin
         admin_user = User(
             id=uuid.uuid4(),
             email="admin@bikita.com",
             first_name="Admin",
             last_name="User",
-            hashed_password=get_password_hash("password123"),
+            hashed_password=get_password_hash(admin_password),
             department_id=departments["IT"].id,
             position_id=positions["IT-ADMIN"].id,
             employee_number="EMP-0001",
@@ -264,7 +268,7 @@ async def seed():
             email="mechmgr@bikita.com",
             first_name="John",
             last_name="Manager",
-            hashed_password=get_password_hash("password123"),
+            hashed_password=get_password_hash(default_user_password),
             department_id=departments["Mechanical"].id,
             position_id=positions["MGR"].id,
             employee_number="EMP-1000",
@@ -278,7 +282,7 @@ async def seed():
             email="supervisor@bikita.com",
             first_name="Super",
             last_name="Visor",
-            hashed_password=get_password_hash("password123"),
+            hashed_password=get_password_hash(default_user_password),
             department_id=departments["Mechanical"].id,
             section_id=mech_section.id,
             position_id=positions["S-MECH"].id,
@@ -294,7 +298,7 @@ async def seed():
             email="tech@bikita.com",
             first_name="Tech",
             last_name="User",
-            hashed_password=get_password_hash("password123"),
+            hashed_password=get_password_hash(default_user_password),
             department_id=departments["Mechanical"].id,
             section_id=mech_section.id,
             team_id=mech_team_alpha.id,
@@ -311,7 +315,7 @@ async def seed():
             email="operator@bikita.com",
             first_name="Crane",
             last_name="Operator",
-            hashed_password=get_password_hash("password123"),
+            hashed_password=get_password_hash(default_user_password),
             department_id=departments["Mechanical"].id,
             section_id=mech_section.id,
             team_id=mech_team_alpha.id,
@@ -328,7 +332,7 @@ async def seed():
             email="coordinator@bikita.com",
             first_name="Resource",
             last_name="Coordinator",
-            hashed_password=get_password_hash("password123"),
+            hashed_password=get_password_hash(default_user_password),
             department_id=departments["Mechanical"].id,
             position_id=positions["RES-COORD"].id,
             supervisor_id=mech_mgr.id,
@@ -343,7 +347,7 @@ async def seed():
             email="safety@bikita.com",
             first_name="Safety",
             last_name="Officer",
-            hashed_password=get_password_hash("password123"),
+            hashed_password=get_password_hash(default_user_password),
             department_id=departments["Electrical"].id,
             position_id=positions["SAFETY-OFF"].id,
             supervisor_id=mech_mgr.id,
