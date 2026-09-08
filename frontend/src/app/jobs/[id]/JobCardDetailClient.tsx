@@ -1005,7 +1005,7 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
                         loading={actionLoading}
                       >
                         <ShieldCheck className="size-3.5 mr-1.5" />
-                        QA Supervisor Verify
+                        Supervisor QA Verify
                       </Button>
                       <Button
                         size="sm"
@@ -2948,50 +2948,57 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
               technicianSign: technicianSignData || {
                 name: "Tendai Mukamuri",
                 role: "Lead Mechanical Technician",
-                timestamp: new Date().toISOString(),
+                timestamp: job.created_at || new Date().toISOString(),
                 hash: "BK-SIG-TECH-8821",
               },
-              supervisorSign: supervisorSignData || {
+              supervisorSign: supervisorSignData || (job.verified_at ? {
                 name: "Christopher Moyo",
-                role: "Maintenance Supervisor",
-                timestamp: new Date().toISOString(),
+                role: "Workshop Supervisor",
+                timestamp: job.verified_at,
                 hash: "BK-SIG-SUP-9904",
-              },
-              safetySign: safetySignData || {
-                name: "Kudakwashe Sibanda",
-                role: "HSE Compliance Officer",
+              } : undefined),
+              requiresSafetyClearance: requiresSafetyClearance,
+              safetySign: !requiresSafetyClearance ? {
+                name: "N/A",
+                role: "Safety Officer (HSE)",
                 timestamp: new Date().toISOString(),
-                hash: "BK-SIG-HSE-3310",
-              },
+                hash: "BK-HSE-EXEMPT",
+                notRequired: true,
+              } : (safetySignData || (job.safety_cleared ? {
+                name: "Kudakwashe Sibanda",
+                role: "Safety Officer (HSE)",
+                timestamp: job.safety_cleared_at || new Date().toISOString(),
+                hash: job.loto_tag_number ? `BK-SIG-HSE-${job.loto_tag_number}` : "BK-SIG-HSE-3310",
+              } : undefined)),
             }}
             onClose={() => setShowCertificateModal(false)}
           />
         </DialogContent>
       </Dialog>
 
-      {/* QA VERIFY MODAL */}
+      {/* SUPERVISOR QA & WORKMANSHIP VERIFY MODAL */}
       <Dialog open={showVerifyModal} onOpenChange={setShowVerifyModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>QA & Safety Verification</DialogTitle>
+            <DialogTitle>Supervisor QA & Workmanship Verification</DialogTitle>
             <DialogDescription>
-              Confirm quality inspection, vibration testing, and re-commissioning safety clearance.
+              Confirm technical quality inspection, torque and vibration testing, and mechanical re-commissioning sign-off.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2 text-xs">
             <label className="text-[10px] font-mono uppercase text-muted-foreground block">
-              Inspection Remarks *
+              Technical Inspection Remarks *
             </label>
             <textarea
               required
               rows={2}
               value={verifyComment}
               onChange={(e) => setVerifyComment(e.target.value)}
-              placeholder="e.g. Full vibration analysis completed, zero leaks detected..."
+              placeholder="e.g. Torque specs verified, vibration analysis completed, zero fluid leaks detected..."
               className="w-full rounded border border-input bg-card p-2 text-xs text-foreground outline-none focus:border-ring"
             />
             <SignaturePanel
-              title="Supervisor Inspection Sign-off"
+              title="Workshop Supervisor Inspection Sign-off"
               signerRole="Workshop Supervisor"
               onSign={(sig) => setSupervisorSignData(sig)}
               signed={!!supervisorSignData}
@@ -3012,7 +3019,7 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
               onClick={() => executeTransition("verify", { comments: verifyComment || "Supervisory post-maintenance verification completed successfully", supervisor_signature: supervisorSignData })}
             >
               <ShieldCheck className="size-3.5 mr-1" />
-              Sign Verification
+              Sign QA Verification
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3143,66 +3150,6 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
         </DialogContent>
       </Dialog>
 
-      {/* MULTI-TIER HANDOVER CERTIFICATE MODAL */}
-      <Dialog open={showCertificateModal} onOpenChange={setShowCertificateModal}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-4 md:p-6">
-          <DialogHeader>
-            <DialogTitle>Job Handover & Multi-Tier Verification Certificate</DialogTitle>
-            <DialogDescription>
-              Official signed handover document with Lead Technician, Shift Supervisor, and Safety (HSE) sign-off slots.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-2">
-            <JobHandoverCertificate
-              data={{
-                jobId: job.id,
-                jobNumber: job.job_number || `JOB-${job.id.slice(0, 8)}`,
-                title: job.title,
-                description: job.description,
-                department: job.department_name || "Mechanical Maintenance",
-                workshopCode: job.workshop_code || "WS-MECH-01",
-                priority: job.priority,
-                status: job.status,
-                assetTag: job.asset_tag || "AST-CRU-01",
-                machineIdentifier: job.machine_identifier || "CAT-777D-01",
-                location: job.location || "Shaft 01 - Underground Level 4",
-                createdAt: job.created_at || new Date().toISOString(),
-                completedAt: job.completed_at || new Date().toISOString(),
-                durationHours: job.duration_hours || 4.5,
-                startMeterHours: job.start_meter_hours || 12450,
-                endMeterHours: job.end_meter_hours || 12454,
-                lotoTagNumber: job.loto_tag_number || "LOTO-2026-992",
-                lotoVerified: true,
-                parts: (job.parts || []).map((m: JobCardPart) => ({
-                  part_name: ((m as unknown as Record<string, unknown>).material_name as string) || m.part_name || "Component Part",
-                  part_number: m.part_number || "PRT-001",
-                  quantity: Number(m.quantity) || 1,
-                  unit_cost: Number(m.unit_cost) || 0,
-                })),
-                technicianSign: technicianSignData || {
-                  name: "Farai Moyo",
-                  role: "Lead Artisan / Technician",
-                  timestamp: new Date().toISOString(),
-                  hash: "BK-SIG-TECH-8821",
-                },
-                supervisorSign: supervisorSignData || {
-                  name: "Tendai Shumba",
-                  role: "Shift Supervisor",
-                  timestamp: new Date().toISOString(),
-                  hash: "BK-SIG-SUP-9904",
-                },
-                safetySign: safetySignData || {
-                  name: "Kudzai Dube",
-                  role: "Safety Officer (HSE)",
-                  timestamp: new Date().toISOString(),
-                  hash: "BK-SIG-HSE-3310",
-                },
-              }}
-              onClose={() => setShowCertificateModal(false)}
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
       </div>
     </Protect>
   );

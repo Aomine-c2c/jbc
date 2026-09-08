@@ -165,7 +165,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full size-2 bg-emerald-500"></span>
               </span>
-              <span className="font-bold text-xs uppercase tracking-wider text-zinc-900 truncate max-w-[140px] sm:max-w-none">
+              <span className="font-bold text-xs uppercase tracking-wider text-zinc-900 truncate max-w-35 sm:max-w-none">
                 Bikita Operations Console
               </span>
             </div>

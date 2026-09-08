@@ -18,6 +18,7 @@ export interface HandoverSignature {
   timestamp: string;
   hash: string;
   signatureImage?: string;
+  notRequired?: boolean;
 }
 
 export interface HandoverPartItem {
@@ -48,6 +49,7 @@ export interface HandoverCertificateData {
   lotoTagNumber?: string;
   lotoVerified?: boolean;
   parts?: HandoverPartItem[];
+  requiresSafetyClearance?: boolean;
   technicianSign?: HandoverSignature;
   supervisorSign?: HandoverSignature;
   safetySign?: HandoverSignature;
@@ -264,7 +266,7 @@ export function JobHandoverCertificate({ data, onClose }: JobHandoverCertificate
           <div className="border border-border rounded-lg p-3.5 bg-card/60 space-y-2 text-xs font-mono">
             <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
               <span className="font-bold text-foreground">Workshop Supervisor</span>
-              <span className="text-[9px] text-emerald-600 dark:text-emerald-400 uppercase font-bold">Approved</span>
+              <span className="text-[9px] text-emerald-600 dark:text-emerald-400 uppercase font-bold">QA Verified</span>
             </div>
             <div className="text-[11px] space-y-1">
               <div><span className="text-muted-foreground text-[10px]">NAME: </span><span className="font-bold">{data.supervisorSign?.name || 'C. Moyo'}</span></div>
@@ -286,23 +288,43 @@ export function JobHandoverCertificate({ data, onClose }: JobHandoverCertificate
           {/* Safety Officer Endorsement */}
           <div className="border border-border rounded-lg p-3.5 bg-card/60 space-y-2 text-xs font-mono sm:col-span-2 md:col-span-1">
             <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
-              <span className="font-bold text-foreground">Safety / QA Officer</span>
-              <span className="text-[9px] text-emerald-600 dark:text-emerald-400 uppercase font-bold">Passed</span>
+              <span className="font-bold text-foreground">HSE Safety Officer</span>
+              {data.safetySign?.notRequired || data.requiresSafetyClearance === false ? (
+                <span className="text-[9px] text-zinc-500 uppercase font-bold bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">Exempt</span>
+              ) : (
+                <span className="text-[9px] text-emerald-600 dark:text-emerald-400 uppercase font-bold">Passed</span>
+              )}
             </div>
-            <div className="text-[11px] space-y-1">
-              <div><span className="text-muted-foreground text-[10px]">NAME: </span><span className="font-bold">{data.safetySign?.name || 'K. Sibanda'}</span></div>
-              <div><span className="text-muted-foreground text-[10px]">ROLE: </span><span>{data.safetySign?.role || 'HSE Compliance'}</span></div>
-              <div><span className="text-muted-foreground text-[10px]">STAMP: </span><span className="text-emerald-600 dark:text-emerald-400 font-bold text-[10px] truncate block">{data.safetySign?.hash || 'BK-SIG-HSE-3310'}</span></div>
-            </div>
-            {data.safetySign?.signatureImage ? (
-              <div className="bg-white p-1 rounded border border-border/80 inline-block mt-1">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={data.safetySign.signatureImage} alt="Safety Signature" className="h-7 max-w-30 object-contain" />
+            {data.safetySign?.notRequired || data.requiresSafetyClearance === false ? (
+              <div className="py-2 space-y-1 text-center">
+                <div className="text-[11px] font-semibold text-muted-foreground">
+                  N/A — Routine Low-Risk Work
+                </div>
+                <div className="text-[10px] text-muted-foreground/80 font-mono">
+                  No HSE / LOTO Clearance Required
+                </div>
+                <div className="text-[9px] text-muted-foreground/60 italic pt-1 border-t border-border/40">
+                  Standard Workshop Protocol
+                </div>
               </div>
             ) : (
-              <div className="pt-2 text-[10px] text-muted-foreground italic border-t border-border/40">
-                Audited & Archived in System Ledger
-              </div>
+              <>
+                <div className="text-[11px] space-y-1">
+                  <div><span className="text-muted-foreground text-[10px]">NAME: </span><span className="font-bold">{data.safetySign?.name || 'K. Sibanda'}</span></div>
+                  <div><span className="text-muted-foreground text-[10px]">ROLE: </span><span>{data.safetySign?.role || 'Safety Officer (HSE)'}</span></div>
+                  <div><span className="text-muted-foreground text-[10px]">STAMP: </span><span className="text-emerald-600 dark:text-emerald-400 font-bold text-[10px] truncate block">{data.safetySign?.hash || 'BK-SIG-HSE-3310'}</span></div>
+                </div>
+                {data.safetySign?.signatureImage ? (
+                  <div className="bg-white p-1 rounded border border-border/80 inline-block mt-1">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={data.safetySign.signatureImage} alt="Safety Signature" className="h-7 max-w-30 object-contain" />
+                  </div>
+                ) : (
+                  <div className="pt-2 text-[10px] text-muted-foreground italic border-t border-border/40">
+                    Pre-Start LOTO Clearance Verified & Archived
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

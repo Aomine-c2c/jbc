@@ -278,7 +278,7 @@ export default function NewRequisition() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-foreground mb-1.5 flex items-center gap-1">
+                  <label className="text-xs font-medium text-foreground mb-1.5 flex items-center gap-1">
                     <Calendar className="size-3.5 text-muted-foreground" />
                     Required Start Time <span className="text-destructive">*</span>
                   </label>
@@ -292,7 +292,7 @@ export default function NewRequisition() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-foreground mb-1.5 flex items-center gap-1">
+                  <label className="text-xs font-medium text-foreground mb-1.5 flex items-center gap-1">
                     <Calendar className="size-3.5 text-muted-foreground" />
                     Required End Time <span className="text-destructive">*</span>
                   </label>
