@@ -171,6 +171,8 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
       'dashboard:view',
       'jobs:view',
       'job_card:read',
+      'job_card:create',
+      'work_item:create',
       'safety:clear',
       'work_hub:view',
       'fleet:view',

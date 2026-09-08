@@ -20,6 +20,7 @@ from app.cli.users import users_group
 from app.cli.network import network_command
 from app.cli.server import server_group
 from app.cli.update import update_group
+from app.cli.monitor import monitor_command
 
 
 @click.group(
@@ -63,7 +64,9 @@ ops_group.add_command(users_group)
 ops_group.add_command(network_command)
 ops_group.add_command(server_group)
 ops_group.add_command(update_group)
+ops_group.add_command(monitor_command)
 ops_group.add_command(version_command)
+
 
 
 # ── Backward-compatible Aliases ──────────────────────────────

@@ -141,6 +141,40 @@ fi
 echo -e "\n${CYAN}[5/7] Verifying Configuration (.env) & TLS Certificates...${NC}"
 ENV_FILE="${TARGET_DIR}/.env"
 
+# Auto-detect Server LAN IP
+HOST_LAN_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || ip route get 1.1.1.1 2>/dev/null | awk -F"src " 'NR==1{split($2,a," ");print a[1]}' || echo "127.0.0.1")
+if [[ -z "$HOST_LAN_IP" ]]; then
+    HOST_LAN_IP="127.0.0.1"
+fi
+
+# Auto-detect Tailscale IP and MagicDNS
+TAILSCALE_IP=$(tailscale ip -4 2>/dev/null || echo "")
+MAGIC_DNS=""
+if command -v tailscale &>/dev/null; then
+    MAGIC_DNS=$(tailscale status --json 2>/dev/null | jq -r '.Self.DNSName // empty' 2>/dev/null | sed 's/\.$//' || echo "")
+    # Configure Tailscale background serve for port 80 if active
+    tailscale serve --bg 80 >/dev/null 2>&1 || true
+fi
+
+# Build authoritative dual IP CORS list
+CORS_ORIGINS_VAL="https://localhost,http://localhost:3000,http://localhost:1420,tauri://localhost"
+if [[ -n "$HOST_LAN_IP" && "$HOST_LAN_IP" != "127.0.0.1" ]]; then
+    CORS_ORIGINS_VAL="${CORS_ORIGINS_VAL},http://${HOST_LAN_IP},https://${HOST_LAN_IP},http://${HOST_LAN_IP}:3000"
+fi
+if [[ -n "$TAILSCALE_IP" ]]; then
+    CORS_ORIGINS_VAL="${CORS_ORIGINS_VAL},http://${TAILSCALE_IP},https://${TAILSCALE_IP},http://${TAILSCALE_IP}:3000"
+fi
+if [[ -n "$MAGIC_DNS" ]]; then
+    CORS_ORIGINS_VAL="${CORS_ORIGINS_VAL},http://${MAGIC_DNS},https://${MAGIC_DNS}"
+fi
+
+echo -e "Detected Local LAN IP:      ${GREEN}${HOST_LAN_IP}${NC}"
+if [[ -n "${TAILSCALE_IP}" ]]; then
+    echo -e "Detected Tailscale IP:     ${GREEN}${TAILSCALE_IP}${NC} (MagicDNS: ${CYAN}${MAGIC_DNS:-dwrms.internal}${NC})"
+else
+    echo -e "Tailscale status:          ${YELLOW}Not installed / offline (LAN web access active)${NC}"
+fi
+
 if [[ ! -f "${ENV_FILE}" ]]; then
     echo -e "${YELLOW}Generating new production .env configuration...${NC}"
     SECRET_KEY_VAL=$(openssl rand -hex 32)
@@ -155,10 +189,13 @@ DEBUG=false
 SERVER_NAME=bikita-srv-01
 TIMEZONE=Africa/Harare
 
-# Authoritative URLs
-FRONTEND_URL=https://localhost
-NEXT_PUBLIC_API_URL=https://localhost/api/v1
-CORS_ORIGINS=https://localhost,tauri://localhost,http://localhost:3000,http://localhost:1420
+# Authoritative URLs & Dual IP Visibility
+FRONTEND_URL=https://${HOST_LAN_IP}
+NEXT_PUBLIC_API_URL=https://${HOST_LAN_IP}/api/v1
+CORS_ORIGINS=${CORS_ORIGINS_VAL}
+HOST_LAN_IP=${HOST_LAN_IP}
+TAILSCALE_IP=${TAILSCALE_IP}
+MAGIC_DNS=${MAGIC_DNS}
 
 # Database Configuration (MySQL 8.0 container)
 DB_ENGINE=mysql
@@ -189,10 +226,18 @@ LOG_FORMAT=json
 SETUP_COMPLETED=true
 EOF
     chmod 600 "${ENV_FILE}"
-    echo -e "${GREEN}[OK] Generated secure .env configuration.${NC}"
+    echo -e "${GREEN}[OK] Generated secure .env configuration with dual IP support.${NC}"
 else
-    echo -e "${GREEN}[OK] Existing .env file found.${NC}"
+    echo -e "${GREEN}[OK] Existing .env file found. Syncing dual IP CORS origins...${NC}"
+    # Ensure current LAN IP and Tailscale IP are appended to CORS_ORIGINS if missing
+    if ! grep -q "${HOST_LAN_IP}" "${ENV_FILE}" 2>/dev/null; then
+        sed -i "/^CORS_ORIGINS=/ s|\$|,http://${HOST_LAN_IP},https://${HOST_LAN_IP}|" "${ENV_FILE}" 2>/dev/null || true
+    fi
+    if [[ -n "${TAILSCALE_IP}" ]] && ! grep -q "${TAILSCALE_IP}" "${ENV_FILE}" 2>/dev/null; then
+        sed -i "/^CORS_ORIGINS=/ s|\$|,http://${TAILSCALE_IP},https://${TAILSCALE_IP}|" "${ENV_FILE}" 2>/dev/null || true
+    fi
 fi
+
 
 # TLS Certificates
 CERT_FILE="${CERT_DIR}/dwrms.crt"
@@ -272,16 +317,18 @@ echo -e "Building and starting full production stack (Backend, Frontend, Celery 
 docker compose -f "${COMPOSE_FILE}" up -d --build --remove-orphans
 
 # ── SYSTEMD SERVICE INSTALLATION ──────────────────────────────────────────────
-echo -e "\n${CYAN}[7/7] Registering Systemd Services and Automated Backup Timers...${NC}"
+echo -e "\n${CYAN}[7/7] Registering Systemd Services and Automated Timers...${NC}"
 SYSTEMD_SRC="${TARGET_DIR}/infrastructure/systemd"
 if [[ -d "${SYSTEMD_SRC}" && -d "/etc/systemd/system" ]]; then
+    chmod +x "${TARGET_DIR}/scripts/ops/autoupdate.sh" 2>/dev/null || true
     cp "${SYSTEMD_SRC}"/dwrms*.service /etc/systemd/system/ 2>/dev/null || true
     cp "${SYSTEMD_SRC}"/dwrms*.timer /etc/systemd/system/ 2>/dev/null || true
     systemctl daemon-reload
     systemctl enable dwrms.service > /dev/null 2>&1 || true
     systemctl enable --now dwrms-backup.timer > /dev/null 2>&1 || true
     systemctl enable --now dwrms-healthcheck.timer > /dev/null 2>&1 || true
-    echo -e "${GREEN}[OK] Systemd service 'dwrms' and backup timers enabled.${NC}"
+    systemctl enable --now dwrms-autoupdate.timer > /dev/null 2>&1 || true
+    echo -e "${GREEN}[OK] Systemd service 'dwrms', backup timers, and 1-minute auto-pull timer enabled.${NC}"
 fi
 
 # ── VERIFY HEALTH ─────────────────────────────────────────────────────────────
@@ -307,14 +354,34 @@ fi
 echo -e "\n${GREEN}${BOLD}========================================================================${NC}"
 echo -e "${GREEN}${BOLD}   INSTALLATION & SETUP COMPLETE! DWRMS SERVER IS OPERATIONAL           ${NC}"
 echo -e "${GREEN}${BOLD}========================================================================${NC}"
-echo -e "Web Application:     ${BLUE}${BOLD}https://<YOUR_SERVER_IP>${NC} (or https://localhost)"
-echo -e "API Gateway:         ${BLUE}${BOLD}https://<YOUR_SERVER_IP>/api/v1${NC}"
+echo -e "Local LAN Web App:   ${BLUE}${BOLD}http://${HOST_LAN_IP}${NC} (or https://${HOST_LAN_IP})"
+if [[ -n "${TAILSCALE_IP}" ]]; then
+echo -e "Tailscale Web App:   ${BLUE}${BOLD}https://${TAILSCALE_IP}${NC} (MagicDNS: ${CYAN}${MAGIC_DNS:-dwrms.internal}${NC})"
+else
+echo -e "Tailscale Web App:   ${YELLOW}Tailscale not detected. Install for remote mesh access.${NC}"
+fi
+echo -e "API Gateway:         ${BLUE}${BOLD}https://${HOST_LAN_IP}/api/v1${NC}"
 echo -e "Default Admin:       ${YELLOW}admin@bikita.com${NC} / ${YELLOW}password123${NC} (change after login)"
+echo -e "Auto-Pull Updates:   ${GREEN}Active (Running every 60s via dwrms-autoupdate.timer)${NC}"
 echo -e ""
 echo -e "Management Commands:"
+echo -e "  Live Monitor TUI:  ${CYAN}ops monitor${NC}"
 echo -e "  Check status:      ${CYAN}ops status${NC}"
 echo -e "  View logs:         ${CYAN}ops logs -n 50${NC}"
+echo -e "  Apply update:      ${CYAN}ops update apply${NC}"
 echo -e "  Create backup:     ${CYAN}ops backup create${NC}"
 echo -e "  Restart stack:     ${CYAN}ops server restart${NC}"
 echo -e "  Systemd status:    ${CYAN}systemctl status dwrms${NC}"
 echo -e "${GREEN}========================================================================${NC}"
+
+# ── AUTOMATICALLY LAUNCH MONITOR TUI IN INTERACTIVE SHELL ──────────────────────
+if [[ -t 0 ]]; then
+    echo -e "\n${CYAN}Launching live operations monitoring console (ops monitor)... (Press 'q' to exit)${NC}"
+    sleep 2
+    if command -v ops &>/dev/null; then
+        ops monitor || true
+    elif [[ -f "${TARGET_DIR}/scripts/ops/ops" ]]; then
+        python3 "${TARGET_DIR}/scripts/ops/ops" monitor || true
+    fi
+fi
+

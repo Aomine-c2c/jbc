@@ -111,7 +111,8 @@ ROLES_PERMISSIONS = {
     },
     "Safety_Officer": {
         "job_card:read": Scope.GLOBAL,
-        "job_card:approve": Scope.GLOBAL,
+        "job_card:create": Scope.GLOBAL,
+        "work_item:create": Scope.GLOBAL,
         "safety:clear": Scope.GLOBAL,
         "cross_department_access": Scope.GLOBAL,
     },

@@ -10,6 +10,7 @@ import { ApprovalStep } from "@/lib/approvals"
 export interface ApprovalPanelProps {
   steps: ApprovalStep[]
   canApprove?: boolean
+  userRole?: string | null
   onAction?: (stepId: string, action: 'approve' | 'reject' | 'return' | 'delegate' | 'escalate', comments: string) => void
   loading?: boolean
   className?: string
@@ -18,6 +19,7 @@ export interface ApprovalPanelProps {
 export function ApprovalPanel({
   steps,
   canApprove = false,
+  userRole,
   onAction,
   loading = false,
   className,
@@ -105,52 +107,77 @@ export function ApprovalPanel({
                 </div>
               )}
 
-              {isPending && canApprove && (
-                <div className="pt-2 border-t border-border/40 space-y-2">
-                  <input
-                    type="text"
-                    placeholder="Enter approval/rejection remarks..."
-                    value={commentInput[step.id] || ""}
-                    onChange={(e) => setCommentInput({ ...commentInput, [step.id]: e.target.value })}
-                    className="h-7 w-full rounded border border-input bg-background px-2 text-xs text-foreground outline-none focus:border-ring"
-                  />
-                  <div className="flex flex-wrap gap-2 justify-end">
-                    <Button
-                      size="xs"
-                      variant="destructive"
-                      loading={loading && activeStepId === step.id}
-                      onClick={() => {
-                        setActiveStepId(step.id)
-                        handleAction(step.id, 'reject')
-                      }}
-                    >
-                      Reject
-                    </Button>
-                    <Button
-                      size="xs"
-                      variant="secondary"
-                      loading={loading && activeStepId === step.id}
-                      onClick={() => {
-                        setActiveStepId(step.id)
-                        handleAction(step.id, 'return')
-                      }}
-                    >
-                      Return
-                    </Button>
-                    <Button
-                      size="xs"
-                      variant="success"
-                      loading={loading && activeStepId === step.id}
-                      onClick={() => {
-                        setActiveStepId(step.id)
-                        handleAction(step.id, 'approve')
-                      }}
-                    >
-                      Approve & Sign
-                    </Button>
+              {(() => {
+                if (!isPending) return null;
+                const roleUpper = (userRole || "").toUpperCase();
+                const authUpper = (step.authority_role || "").toUpperCase();
+                const isAdmin = roleUpper.includes("ADMIN");
+                const isSupervisorStep = authUpper === "SUPERVISOR";
+                const isSafetyOfficer = roleUpper.includes("SAFETY") || roleUpper.includes("HSE");
+                const isSupervisor = roleUpper.includes("SUPERVISOR") || roleUpper.includes("MANAGER");
+
+                const canActOnThisStep = canApprove && (
+                  isAdmin ||
+                  (isSupervisorStep ? (isSupervisor && !isSafetyOfficer) : true)
+                );
+
+                if (isSupervisorStep && isSafetyOfficer) {
+                  return (
+                    <div className="text-[11px] text-amber-500/80 font-mono italic pt-2 border-t border-border/40">
+                      Awaiting Workshop Supervisor authorization (Safety Officer cannot sign as Supervisor).
+                    </div>
+                  );
+                }
+
+                if (!canActOnThisStep) return null;
+
+                return (
+                  <div className="pt-2 border-t border-border/40 space-y-2">
+                    <input
+                      type="text"
+                      placeholder="Enter approval/rejection remarks..."
+                      value={commentInput[step.id] || ""}
+                      onChange={(e) => setCommentInput({ ...commentInput, [step.id]: e.target.value })}
+                      className="h-7 w-full rounded border border-input bg-background px-2 text-xs text-foreground outline-none focus:border-ring"
+                    />
+                    <div className="flex flex-wrap gap-2 justify-end">
+                      <Button
+                        size="xs"
+                        variant="destructive"
+                        loading={loading && activeStepId === step.id}
+                        onClick={() => {
+                          setActiveStepId(step.id)
+                          handleAction(step.id, 'reject')
+                        }}
+                      >
+                        Reject
+                      </Button>
+                      <Button
+                        size="xs"
+                        variant="secondary"
+                        loading={loading && activeStepId === step.id}
+                        onClick={() => {
+                          setActiveStepId(step.id)
+                          handleAction(step.id, 'return')
+                        }}
+                      >
+                        Return
+                      </Button>
+                      <Button
+                        size="xs"
+                        variant="success"
+                        loading={loading && activeStepId === step.id}
+                        onClick={() => {
+                          setActiveStepId(step.id)
+                          handleAction(step.id, 'approve')
+                        }}
+                      >
+                        Approve & Sign
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           )
         })}

@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { Protect } from '@/components/auth/Protect';
 import { getPendingApprovals, ApprovalInboxItem } from '@/lib/approvals';
+import { SafetyMyWorkView } from '@/components/my-work/SafetyMyWorkView';
+import { resolveUserRole } from '@/lib/rbac';
 
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { StatusBadge, PriorityBadge } from '@/components/ui/status-badge';
@@ -60,6 +62,21 @@ export default function MyWorkPage() {
   const [pendingApprovals, setPendingApprovals] = useState<ApprovalInboxItem[]>([]);
   const [requisitions, setRequisitions] = useState<RequisitionItem[]>([]);
   const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<'HSE' | 'GENERAL'>('GENERAL');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const role = localStorage.getItem('user_role');
+      const email = localStorage.getItem('user_email');
+      const resolved = resolveUserRole(role || email);
+      setCurrentUserRole(resolved);
+      if (resolved === 'Safety Officer') {
+        setActiveView('HSE');
+      }
+    }
+  }, []);
+
 
   const loadData = useCallback(async () => {
     try {
@@ -159,17 +176,61 @@ export default function MyWorkPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <Briefcase className="size-6 text-primary" />
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              My Work Hub
-            </h1>
+            {activeView === 'HSE' ? (
+              <>
+                <ShieldCheck className="size-6 text-amber-500" />
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                  HSE Safety Console
+                </h1>
+              </>
+            ) : (
+              <>
+                <Briefcase className="size-6 text-primary" />
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                  My Work Hub
+                </h1>
+              </>
+            )}
           </div>
           <p className="text-xs text-muted-foreground font-mono mt-0.5">
-            Personal Action Console • Logged in as <span className="text-foreground font-semibold">{currentUserEmail || 'Operator'}</span>
+            {activeView === 'HSE'
+              ? 'Safety authority actions, high-risk job gating, and workplace hazard register'
+              : 'Personal Action Console • Logged in as ' + (currentUserEmail || 'Operator')}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* SEGMENTED VIEW SWITCHER */}
+          <div className="flex items-center rounded-lg border border-border bg-muted/40 p-0.5 text-xs font-mono">
+            <button
+              type="button"
+              onClick={() => setActiveView('GENERAL')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-colors ${
+                activeView === 'GENERAL'
+                  ? 'bg-background text-foreground font-semibold shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Briefcase className="size-3.5" />
+              General Tasks
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveView('HSE')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-colors ${
+                activeView === 'HSE'
+                  ? 'bg-amber-600 text-white font-semibold shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <ShieldCheck className="size-3.5" />
+              HSE Safety Console
+              {currentUserRole === 'Safety Officer' && (
+                <span className="ml-1 px-1 py-0.2 bg-amber-500/20 text-[9px] rounded">Role Default</span>
+              )}
+            </button>
+          </div>
+
           <Button
             size="sm"
             variant="outline"
@@ -192,6 +253,10 @@ export default function MyWorkPage() {
         </div>
       </div>
 
+      {activeView === 'HSE' ? (
+        <SafetyMyWorkView userEmail={currentUserEmail} />
+      ) : (
+        <>
       {/* ── OVERDUE ALERT BANNER (High Visibility) ──────────────────────── */}
       {overdueJobs.length > 0 && (
         <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 flex items-start gap-3">
@@ -201,6 +266,7 @@ export default function MyWorkPage() {
               {overdueJobs.length} Work Order{overdueJobs.length > 1 ? 's' : ''} Overdue for Completion
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
+
               The following assigned jobs have exceeded their required completion deadlines. Please submit progress updates or request schedule extensions.
             </p>
             <div className="flex flex-wrap gap-2 mt-2">
@@ -434,7 +500,10 @@ export default function MyWorkPage() {
           )}
         </CardContent>
       </Card>
+      </>
+      )}
       </div>
     </Protect>
   );
 }
+

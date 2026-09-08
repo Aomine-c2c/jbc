@@ -3,10 +3,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FilterPanel, DashboardFilters } from '@/components/dashboard/FilterPanel';
 import { MetricsCards, FleetMetricsCards, ChartsSection, DashboardData } from '@/components/dashboard/Metrics';
+import { SafetyOpsDashboard } from '@/components/dashboard/SafetyOpsDashboard';
 import api from '@/lib/api';
-import { Download, RefreshCw, AlertCircle } from 'lucide-react';
+import { Download, RefreshCw, AlertCircle, ShieldAlert, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Protect } from '@/components/auth/Protect';
+import { resolveUserRole } from '@/lib/rbac';
 
 const FALLBACK_DASHBOARD_METRICS: DashboardData = {
   job_metrics: {
@@ -52,6 +54,20 @@ export default function DashboardPage() {
   const [departments, setDepartments] = useState<{id: string, name: string}[]>([]);
   const [filters, setFilters] = useState<DashboardFilters>({});
   const [isCachedSnapshot, setIsCachedSnapshot] = useState(false);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<'HSE' | 'MAINTENANCE'>('MAINTENANCE');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const role = localStorage.getItem('user_role');
+      const email = localStorage.getItem('user_email');
+      const resolved = resolveUserRole(role || email);
+      setCurrentUserRole(resolved);
+      if (resolved === 'Safety Officer') {
+        setActiveView('HSE');
+      }
+    }
+  }, []);
 
   useEffect(() => {
     // Fetch departments for filter dropdown
@@ -120,76 +136,127 @@ export default function DashboardPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
           <div>
             <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
-              Mine Operations Intelligence Dashboard
+              {activeView === 'HSE' ? (
+                <>
+                  <ShieldAlert className="size-5 text-amber-500" />
+                  <span>HSE Safety & Operations Command Center</span>
+                </>
+              ) : (
+                <span>Mine Operations Intelligence Dashboard</span>
+              )}
             </h1>
             <p className="text-xs text-muted-foreground font-mono">
-              Live shift telemetry, asset availability, breakdown metrics, and SLA performance.
+              {activeView === 'HSE'
+                ? 'High-risk gating clearance queue, live LOTO register, zero harm telemetry, and statutory inspections.'
+                : 'Live shift telemetry, asset availability, breakdown metrics, and SLA performance.'}
             </p>
           </div>
           
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleRefresh}
-              disabled={loading}
-              className="h-8 text-xs font-mono gap-1.5"
-            >
-              <RefreshCw className={`size-3.5 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-            
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleExport}
-              disabled={!data || loading}
-              className="h-8 text-xs font-mono gap-1.5"
-            >
-              <Download className="size-3.5" />
-              Export JSON
-            </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* SEGMENTED VIEW SWITCHER */}
+            <div className="flex items-center rounded-lg border border-border bg-muted/40 p-0.5 text-xs font-mono">
+              <button
+                type="button"
+                onClick={() => setActiveView('MAINTENANCE')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-colors ${
+                  activeView === 'MAINTENANCE'
+                    ? 'bg-background text-foreground font-semibold shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Wrench className="size-3.5" />
+                Ops & Maintenance
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveView('HSE')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-colors ${
+                  activeView === 'HSE'
+                    ? 'bg-amber-600 text-white font-semibold shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <ShieldAlert className="size-3.5" />
+                HSE View
+                {currentUserRole === 'Safety Officer' && (
+                  <span className="ml-1 px-1 py-0.2 bg-amber-500/20 text-[9px] rounded">Role Default</span>
+                )}
+              </button>
+            </div>
+
+            {activeView === 'MAINTENANCE' && (
+              <>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleRefresh}
+                  disabled={loading}
+                  className="h-8 text-xs font-mono gap-1.5"
+                >
+                  <RefreshCw className={`size-3.5 ${loading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleExport}
+                  disabled={!data || loading}
+                  className="h-8 text-xs font-mono gap-1.5"
+                >
+                  <Download className="size-3.5" />
+                  Export JSON
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
-        {isCachedSnapshot && (
-          <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-md text-amber-600 dark:text-amber-400 text-xs">
-            <AlertCircle className="size-4 shrink-0" />
-            <span>Showing local shift telemetry cache. Live synchronization is active.</span>
-          </div>
-        )}
-
-        <FilterPanel 
-          departments={departments} 
-          onFilterChange={handleFilterChange} 
-          loading={loading} 
-        />
-
-        {loading && !data ? (
-          <div className="h-64 flex items-center justify-center border border-dashed border-border rounded-lg">
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <RefreshCw className="size-6 animate-spin text-primary" />
-              <span className="text-xs font-mono">Aggregating telemetry streams...</span>
-            </div>
-          </div>
-        ) : data ? (
+        {activeView === 'HSE' ? (
+          <SafetyOpsDashboard />
+        ) : (
           <>
-            <div className="space-y-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-mono">Job Execution Metrics</h3>
-              <MetricsCards data={data} />
-            </div>
-            
-            <div className="space-y-3 pt-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-mono">Fleet & Materials Metrics</h3>
-              <FleetMetricsCards data={data} />
-            </div>
-            
-            <div className="pt-2">
-              <ChartsSection data={data} />
-            </div>
+            {isCachedSnapshot && (
+              <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-md text-amber-600 dark:text-amber-400 text-xs">
+                <AlertCircle className="size-4 shrink-0" />
+                <span>Showing local shift telemetry cache. Live synchronization is active.</span>
+              </div>
+            )}
+
+            <FilterPanel 
+              departments={departments} 
+              onFilterChange={handleFilterChange} 
+              loading={loading} 
+            />
+
+            {loading && !data ? (
+              <div className="h-64 flex items-center justify-center border border-dashed border-border rounded-lg">
+                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                  <RefreshCw className="size-6 animate-spin text-primary" />
+                  <span className="text-xs font-mono">Aggregating telemetry streams...</span>
+                </div>
+              </div>
+            ) : data ? (
+              <>
+                <div className="space-y-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-mono">Job Execution Metrics</h3>
+                  <MetricsCards data={data} />
+                </div>
+                
+                <div className="space-y-3 pt-2">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-mono">Fleet & Materials Metrics</h3>
+                  <FleetMetricsCards data={data} />
+                </div>
+                
+                <div className="pt-2">
+                  <ChartsSection data={data} />
+                </div>
+              </>
+            ) : null}
           </>
-        ) : null}
+        )}
       </div>
     </Protect>
   );
 }
+

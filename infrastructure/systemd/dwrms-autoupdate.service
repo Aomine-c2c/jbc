@@ -1,0 +1,14 @@
+[Unit]
+Description=Bikita Minerals DWRMS 1-Minute Automated Code Pull & Safe Update
+After=network-online.target docker.service dwrms.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/dwrms
+ExecStart=/bin/bash /opt/dwrms/scripts/ops/autoupdate.sh
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

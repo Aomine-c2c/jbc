@@ -2067,7 +2067,8 @@ export default function JobCardDetailClient({ params }: { params: Promise<{ id: 
           {/* APPROVAL STAGES PANEL */}
           <ApprovalPanel
             steps={approvalRequest?.steps || []}
-            canApprove={true}
+            canApprove={canExecuteAction(currentUserRole, 'approve')}
+            userRole={currentUserRole}
             loading={loading}
             onAction={handleApprovalAction}
           />

@@ -1,0 +1,12 @@
+[Unit]
+Description=Trigger 1-Minute Automated Code Pull & Platform Update for DWRMS
+Requires=dwrms-autoupdate.service
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=60s
+AccuracySec=5s
+Persistent=true
+
+[Install]
+WantedBy=timers.target
