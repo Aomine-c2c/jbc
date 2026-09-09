@@ -4,6 +4,22 @@ All notable changes to this platform are documented in this file in adherence to
 
 ---
 
+## [v2.10.0] — 2026-09-09
+
+### Added
+
+- **Multi-Client Gateway & Server Connection Profiles**: Enhanced server profile management modal (`ServerProfileManagerDialog`) with dynamic connection switching, live ping telemetry, and pre-flight health validation.
+- **Unified Multi-Device Distribution Pipeline**: Automated packaging workflow via `deploy/build-all-device-setups.ps1` with native Tauri release bundles (`.exe` NSIS setup and `.msi`), field PWA assets (`manifest.json`, `sw.js`, device profile), and Android Enterprise packaging specs.
+- **Fleet Machine Requisition ORM Relationships**: Explicit `requester`, `department`, and `collaborating_department` relationships on `MachineRequisition` with robust approval workflow routing.
+- **Dynamic Next.js Static Export Embedding**: Configured conditional export mode for Tauri client bundling (`npm run build:export`) with automated `generateStaticParams` across all dynamic routes (`[id]`).
+
+### Changed
+
+- **Standardized Light Mode Design Tokens**: Comprehensive refactoring of Server Profile Manager inputs, Connection Status badges, and Platform Administration diagnostic matrices from hardcoded dark backgrounds to accessible, high-contrast semantic theme tokens.
+- **Upgraded Platform Versioning**: Bumped authoritative version to `v2.10.0` across Backend Core, Ops CLI, Tauri configuration, and Client Profiles.
+
+---
+
 ## [v2.9.0] — 2026-08-28
 
 ### Added

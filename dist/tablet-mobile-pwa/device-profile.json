@@ -1,6 +1,6 @@
 {
     "install_url":  "http://dwrms.bikita.com or mine LAN server IP",
-    "version":  "2.9.0",
+    "version":  "2.10.0",
     "offline_storage":  "IndexedDB + ServiceWorker Cache",
     "sync_protocol":  "Bi-directional mutation queue via /api/v1/sync",
     "device_categories":  [

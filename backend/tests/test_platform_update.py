@@ -17,19 +17,19 @@ def test_semver_parser():
 def test_version_matrix():
     """Verifies version matrix reports all multi-tier components."""
     matrix = version_manager.get_version_matrix()
-    assert matrix.server_version == "v2.9.0"
-    assert matrix.api_version == "v1"
-    assert matrix.db_schema_version == "2026.08.28.01"
-    assert matrix.web_client_version == "v2.9.0"
-    assert matrix.desktop_client_version == "v2.9.0"
-    assert matrix.min_supported_client_version == "v2.0.0"
+    assert matrix.server_version == settings.APP_VERSION
+    assert matrix.api_version == settings.API_VERSION
+    assert matrix.db_schema_version == settings.DB_SCHEMA_VERSION
+    assert matrix.web_client_version == settings.WEB_CLIENT_VERSION
+    assert matrix.desktop_client_version == settings.DESKTOP_CLIENT_VERSION
+    assert matrix.min_supported_client_version == settings.MIN_SUPPORTED_CLIENT_VERSION
     assert len(matrix.components) >= 5
 
 
 def test_client_compatibility():
     """Verifies connecting client versions are checked against minimum threshold."""
     # Compatible versions
-    ok, msg = version_manager.is_client_compatible("v2.9.0")
+    ok, msg = version_manager.is_client_compatible("v2.10.0")
     assert ok is True
 
     ok, msg = version_manager.is_client_compatible("v2.0.0")
@@ -76,7 +76,7 @@ def test_ops_update_apply_pipeline(tmp_path):
     settings.BACKUP_DIR = str(tmp_path / "backups")
     runner = CliRunner()
 
-    result = runner.invoke(ops_group, ["update", "apply", "--yes", "--skip-git", "--target-version", "v2.9.0"])
+    result = runner.invoke(ops_group, ["update", "apply", "--yes", "--skip-git", "--target-version", settings.APP_VERSION])
     settings.BACKUP_DIR = old_backup_dir
 
     assert result.exit_code == 0, result.output

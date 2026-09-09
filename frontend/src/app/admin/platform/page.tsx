@@ -324,17 +324,17 @@ export default function PlatformAdminPage() {
 
   return (
     <Protect capability="platform:manage" isPageGuard moduleName="Platform Infrastructure">
-      <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6 text-slate-100">
+      <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6 text-foreground">
         {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
           <div>
             <div className="flex items-center gap-2">
               <Server className="size-6 text-amber-500" />
-              <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white uppercase">
+              <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground uppercase">
                 Platform & Infrastructure Administration
               </h1>
             </div>
-            <p className="text-xs text-slate-400 font-mono mt-0.5">
+            <p className="text-xs text-muted-foreground font-mono mt-0.5">
               Authoritative Ubuntu Server Core • Subsystems, Diagnostics, Backups & Real-time Logs
             </p>
           </div>
@@ -344,7 +344,7 @@ export default function PlatformAdminPage() {
               size="sm"
               variant="outline"
               onClick={loadPlatformData}
-              className="border-slate-700 hover:bg-slate-800 text-slate-300 text-xs font-mono"
+              className="text-xs font-mono"
             >
               <RefreshCw className="size-3.5 mr-1.5" />
               Refresh
@@ -353,7 +353,7 @@ export default function PlatformAdminPage() {
               size="sm"
               onClick={handleRunHealthCheck}
               disabled={isCheckingHealth}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-2xs"
             >
               <Zap className={`size-3.5 mr-1.5 ${isCheckingHealth ? 'animate-spin' : ''}`} />
               {isCheckingHealth ? 'Probing Subsystems...' : 'Run Live Health Probe'}
@@ -366,15 +366,15 @@ export default function PlatformAdminPage() {
           <div
             className={`p-3.5 rounded-xl border flex items-center justify-between font-mono text-xs ${
               healthResult.healthy
-                ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
-                : 'bg-red-950/40 border-red-500/40 text-red-300'
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500/40 text-emerald-800 dark:text-emerald-300'
+                : 'bg-red-50 dark:bg-red-950/40 border-red-500/40 text-red-800 dark:text-red-300'
             }`}
           >
             <div className="flex items-center gap-2">
               {healthResult.healthy ? (
-                <CheckCircle2 className="size-4 text-emerald-400" />
+                <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
               ) : (
-                <AlertTriangle className="size-4 text-red-400" />
+                <AlertTriangle className="size-4 text-red-600 dark:text-red-400" />
               )}
               <span>
                 <strong>System Health Probe:</strong> {healthResult.status} ({healthResult.latency_ms} ms roundtrip)
@@ -382,7 +382,7 @@ export default function PlatformAdminPage() {
             </div>
             <button
               onClick={() => setHealthResult(null)}
-              className="text-slate-400 hover:text-white text-xs underline cursor-pointer"
+              className="text-muted-foreground hover:text-foreground text-xs underline cursor-pointer"
             >
               Dismiss
             </button>
@@ -391,14 +391,14 @@ export default function PlatformAdminPage() {
 
         {/* Backup Success Banner */}
         {backupSuccessMessage && (
-          <div className="p-3.5 rounded-xl border bg-amber-950/40 border-amber-500/40 text-amber-300 flex items-center justify-between font-mono text-xs">
+          <div className="p-3.5 rounded-xl border bg-amber-50 dark:bg-amber-950/40 border-amber-500/40 text-amber-800 dark:text-amber-300 flex items-center justify-between font-mono text-xs">
             <div className="flex items-center gap-2">
-              <Archive className="size-4 text-amber-400" />
+              <Archive className="size-4 text-amber-600 dark:text-amber-400" />
               <span>{backupSuccessMessage}</span>
             </div>
             <button
               onClick={() => setBackupSuccessMessage(null)}
-              className="text-slate-400 hover:text-white text-xs underline cursor-pointer"
+              className="text-muted-foreground hover:text-foreground text-xs underline cursor-pointer"
             >
               Dismiss
             </button>
@@ -408,106 +408,106 @@ export default function PlatformAdminPage() {
         {/* ── SEVEN-MATRIX SYSTEM STATUS DASHBOARD ──────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
           {/* 1. APPLICATION */}
-          <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-1">
-            <div className="text-[10px] font-mono text-slate-400 uppercase flex items-center justify-between">
+          <div className="p-3 bg-card border border-border rounded-xl space-y-1 shadow-2xs">
+            <div className="text-[10px] font-mono text-muted-foreground uppercase flex items-center justify-between">
               <span>APPLICATION</span>
-              <Server className="size-3 text-emerald-400" />
+              <Server className="size-3 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <div className="text-sm font-bold text-emerald-400">
+            <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
               {statusData?.subsystems?.application?.status || 'HEALTHY'}
             </div>
-            <div className="text-[10px] text-slate-500 font-mono truncate">
+            <div className="text-[10px] text-muted-foreground font-mono truncate">
               {statusData?.version || 'v2.9.0'}
             </div>
           </div>
 
           {/* 2. DATABASE */}
-          <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-1">
-            <div className="text-[10px] font-mono text-slate-400 uppercase flex items-center justify-between">
+          <div className="p-3 bg-card border border-border rounded-xl space-y-1 shadow-2xs">
+            <div className="text-[10px] font-mono text-muted-foreground uppercase flex items-center justify-between">
               <span>DATABASE</span>
-              <Database className="size-3 text-emerald-400" />
+              <Database className="size-3 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <div className="text-sm font-bold text-emerald-400">
+            <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
               {statusData?.subsystems?.database?.status || 'HEALTHY'}
             </div>
-            <div className="text-[10px] text-slate-500 font-mono truncate">
+            <div className="text-[10px] text-muted-foreground font-mono truncate">
               {statusData?.subsystems?.database?.engine} • {statusData?.subsystems?.database?.latency_ms || 1.2} ms
             </div>
           </div>
 
           {/* 3. STORAGE */}
-          <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-1">
-            <div className="text-[10px] font-mono text-slate-400 uppercase flex items-center justify-between">
+          <div className="p-3 bg-card border border-border rounded-xl space-y-1 shadow-2xs">
+            <div className="text-[10px] font-mono text-muted-foreground uppercase flex items-center justify-between">
               <span>STORAGE</span>
-              <HardDrive className="size-3 text-emerald-400" />
+              <HardDrive className="size-3 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <div className="text-sm font-bold text-emerald-400">
+            <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
               {statusData?.subsystems?.storage?.status || 'HEALTHY'}
             </div>
-            <div className="text-[10px] text-slate-500 font-mono truncate">
+            <div className="text-[10px] text-muted-foreground font-mono truncate">
               {statusData?.subsystems?.storage?.free_percentage}% free
             </div>
           </div>
 
           {/* 4. WORKER */}
-          <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-1">
-            <div className="text-[10px] font-mono text-slate-400 uppercase flex items-center justify-between">
+          <div className="p-3 bg-card border border-border rounded-xl space-y-1 shadow-2xs">
+            <div className="text-[10px] font-mono text-muted-foreground uppercase flex items-center justify-between">
               <span>WORKER</span>
-              <Cpu className="size-3 text-emerald-400" />
+              <Cpu className="size-3 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <div className="text-sm font-bold text-emerald-400">
+            <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
               {statusData?.subsystems?.worker?.status || 'RUNNING'}
             </div>
-            <div className="text-[10px] text-slate-500 font-mono truncate">
+            <div className="text-[10px] text-muted-foreground font-mono truncate">
               Queue: Active
             </div>
           </div>
 
           {/* 5. SCHEDULED TASKS */}
-          <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-1">
-            <div className="text-[10px] font-mono text-slate-400 uppercase flex items-center justify-between">
+          <div className="p-3 bg-card border border-border rounded-xl space-y-1 shadow-2xs">
+            <div className="text-[10px] font-mono text-muted-foreground uppercase flex items-center justify-between">
               <span>TASKS</span>
-              <Clock className="size-3 text-emerald-400" />
+              <Clock className="size-3 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <div className="text-sm font-bold text-emerald-400">
+            <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
               {statusData?.subsystems?.scheduled_tasks?.status || 'ACTIVE'}
             </div>
-            <div className="text-[10px] text-slate-500 font-mono truncate">
+            <div className="text-[10px] text-muted-foreground font-mono truncate">
               Cron active
             </div>
           </div>
 
           {/* 6. BACKUP */}
-          <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-1">
-            <div className="text-[10px] font-mono text-slate-400 uppercase flex items-center justify-between">
+          <div className="p-3 bg-card border border-border rounded-xl space-y-1 shadow-2xs">
+            <div className="text-[10px] font-mono text-muted-foreground uppercase flex items-center justify-between">
               <span>BACKUP</span>
-              <Archive className="size-3 text-emerald-400" />
+              <Archive className="size-3 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <div className="text-sm font-bold text-emerald-400">
+            <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
               {statusData?.subsystems?.backup?.status || 'SUCCESSFUL'}
             </div>
-            <div className="text-[10px] text-slate-500 font-mono truncate">
+            <div className="text-[10px] text-muted-foreground font-mono truncate">
               {statusData?.subsystems?.backup?.archive_count || 0} snapshots
             </div>
           </div>
 
           {/* 7. NETWORK */}
-          <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-1 col-span-2 sm:col-span-1">
-            <div className="text-[10px] font-mono text-slate-400 uppercase flex items-center justify-between">
+          <div className="p-3 bg-card border border-border rounded-xl space-y-1 col-span-2 sm:col-span-1 shadow-2xs">
+            <div className="text-[10px] font-mono text-muted-foreground uppercase flex items-center justify-between">
               <span>NETWORK</span>
-              <Radio className="size-3 text-emerald-400" />
+              <Radio className="size-3 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <div className="text-sm font-bold text-emerald-400">
+            <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
               {statusData?.subsystems?.network?.status || 'ONLINE'}
             </div>
-            <div className="text-[10px] text-slate-500 font-mono truncate">
+            <div className="text-[10px] text-muted-foreground font-mono truncate">
               {statusData?.server_name || 'Node Active'}
             </div>
           </div>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-slate-800 overflow-x-auto space-x-2">
+        <div className="flex border-b border-border overflow-x-auto space-x-2">
           {[
             { id: 'status', label: 'Subsystems & Network', icon: Layers },
             { id: 'backups', label: 'Backup History & Snapshots', icon: Archive },
@@ -522,10 +522,10 @@ export default function PlatformAdminPage() {
                 key={t.id}
                 type="button"
                 onClick={() => setActiveTab(t.id as 'status' | 'backups' | 'diagnostics' | 'logs' | 'updates')}
-                className={`py-3 px-4 text-xs font-bold font-mono border-b-2 whitespace-nowrap transition-all flex items-center gap-2 ${
+                className={`py-3 px-4 text-xs font-bold font-mono border-b-2 whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
                   isActive
-                    ? 'border-amber-500 text-amber-400'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                    ? 'border-amber-500 text-amber-600 dark:text-amber-400'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
                 }`}
               >
                 <Icon className="size-3.5" />
@@ -538,65 +538,65 @@ export default function PlatformAdminPage() {
         {/* ── TAB 1: SUBSYSTEMS & NETWORK ──────────────────────────────── */}
         {activeTab === 'status' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="bg-slate-900 border-slate-800 text-slate-100">
+            <Card className="bg-card border-border text-card-foreground shadow-2xs">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-bold text-white flex items-center gap-2">
+                <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
                   <Server className="size-4 text-amber-500" />
                   Authoritative Platform Specifications
                 </CardTitle>
-                <CardDescription className="text-xs text-slate-400">
+                <CardDescription className="text-xs text-muted-foreground">
                   Authoritative runtime variables configured on the Ubuntu host.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 text-xs">
-                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800 space-y-2 font-mono">
-                  <div className="flex justify-between"><span className="text-slate-500">Platform Core:</span> <span className="text-white">{statusData?.platform}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Node Identifier:</span> <span className="text-amber-400">{statusData?.server_name}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Environment:</span> <span className="text-emerald-400 uppercase">{statusData?.environment}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Timezone:</span> <span className="text-white">{statusData?.timezone}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Active Version:</span> <span className="text-white">{statusData?.version}</span></div>
+                <div className="p-3 bg-muted/40 rounded-lg border border-border space-y-2 font-mono">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Platform Core:</span> <span className="text-foreground font-semibold">{statusData?.platform}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Node Identifier:</span> <span className="text-amber-600 dark:text-amber-400 font-semibold">{statusData?.server_name}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Environment:</span> <span className="text-emerald-600 dark:text-emerald-400 uppercase font-semibold">{statusData?.environment}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Timezone:</span> <span className="text-foreground font-semibold">{statusData?.timezone}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Active Version:</span> <span className="text-foreground font-semibold">{statusData?.version}</span></div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Optional Secure Remote Connectivity Transport */}
-            <Card className="bg-slate-900 border-slate-800 text-slate-100">
+            <Card className="bg-card border-border text-card-foreground shadow-2xs">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-bold text-white flex items-center gap-2">
-                  <Radio className="size-4 text-emerald-400" />
+                <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <Radio className="size-4 text-emerald-600 dark:text-emerald-400" />
                   Optional Secure Remote Connectivity (Transport Layer)
                 </CardTitle>
-                <CardDescription className="text-xs text-slate-400">
+                <CardDescription className="text-xs text-muted-foreground">
                   Provider-agnostic encrypted transport overlay (e.g. Tailscale / WireGuard mesh).
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 text-xs">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 bg-slate-950 rounded-lg border border-slate-800 font-mono space-y-1">
-                    <div className="text-slate-500 text-[10px]">INTEGRATION MODE</div>
-                    <div className="font-bold text-white uppercase">{statusData?.subsystems?.remote_network?.engine || 'LOCAL_NETWORK'}</div>
+                  <div className="p-3 bg-muted/40 rounded-lg border border-border font-mono space-y-1">
+                    <div className="text-muted-foreground text-[10px]">INTEGRATION MODE</div>
+                    <div className="font-bold text-foreground uppercase">{statusData?.subsystems?.remote_network?.engine || 'LOCAL_NETWORK'}</div>
                   </div>
 
-                  <div className="p-3 bg-slate-950 rounded-lg border border-slate-800 font-mono space-y-1">
-                    <div className="text-slate-500 text-[10px]">SECURITY LEVEL</div>
-                    <div className="font-bold text-amber-400">AUTHORITATIVE CORE</div>
+                  <div className="p-3 bg-muted/40 rounded-lg border border-border font-mono space-y-1">
+                    <div className="text-muted-foreground text-[10px]">SECURITY LEVEL</div>
+                    <div className="font-bold text-amber-600 dark:text-amber-400">AUTHORITATIVE CORE</div>
                   </div>
 
-                  <div className="p-3 bg-slate-950 rounded-lg border border-slate-800 font-mono space-y-1">
-                    <div className="text-slate-500 text-[10px]">TRANSPORT STATUS</div>
-                    <div className={`font-bold ${statusData?.subsystems?.remote_network?.status === 'CONNECTED' ? 'text-emerald-400' : 'text-slate-400'}`}>
+                  <div className="p-3 bg-muted/40 rounded-lg border border-border font-mono space-y-1">
+                    <div className="text-muted-foreground text-[10px]">TRANSPORT STATUS</div>
+                    <div className={`font-bold ${statusData?.subsystems?.remote_network?.status === 'CONNECTED' ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
                       {statusData?.subsystems?.remote_network?.status || 'STANDBY'}
                     </div>
                   </div>
 
-                  <div className="p-3 bg-slate-950 rounded-lg border border-slate-800 font-mono space-y-1">
-                    <div className="text-slate-500 text-[10px]">VIRTUAL MESH IP</div>
-                    <div className="text-slate-300 font-mono truncate">{statusData?.subsystems?.remote_network?.virtual_ip || 'None (LAN/Domain Direct)'}</div>
+                  <div className="p-3 bg-muted/40 rounded-lg border border-border font-mono space-y-1">
+                    <div className="text-muted-foreground text-[10px]">VIRTUAL MESH IP</div>
+                    <div className="text-foreground font-mono truncate">{statusData?.subsystems?.remote_network?.virtual_ip || 'None (LAN/Domain Direct)'}</div>
                   </div>
                 </div>
 
-                <div className="p-3 bg-slate-950/80 rounded-lg border border-slate-800/80 text-[11px] text-slate-400 font-mono space-y-1">
-                  <div className="text-amber-400 font-bold flex items-center gap-1.5">
+                <div className="p-3 bg-muted/20 rounded-lg border border-border text-[11px] text-muted-foreground font-mono space-y-1">
+                  <div className="text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1.5">
                     <Lock className="size-3.5" /> Core Security Hierarchy:
                   </div>
                   <div>Transport Layer (LAN / Tailscale / Mesh) → App Auth (JWT) → RBAC (Capabilities) → Object Authorization (AuthzGuard) → Workflow Authority.</div>
@@ -611,20 +611,20 @@ export default function PlatformAdminPage() {
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
                   <span>Disaster Recovery Snapshots & Retention</span>
-                  <Badge variant="outline" className="border-amber-500/40 text-amber-400 font-mono text-[10px]">
+                  <Badge variant="outline" className="border-amber-500/40 text-amber-600 dark:text-amber-400 font-mono text-[10px]">
                     RETENTION: {backupsData?.retention_days || 30} DAYS
                   </Badge>
                 </h3>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-muted-foreground">
                   Authoritative repository: {backupsData?.backup_directory || '/var/dwrms/backups'}. All snapshots cryptographically verified via SHA-256.
                 </p>
               </div>
               <Button
                 size="sm"
                 onClick={() => setShowBackupModal(true)}
-                className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs"
+                className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-2xs cursor-pointer"
               >
                 <Archive className="size-3.5 mr-1.5" />
                 Create New Snapshot
@@ -634,79 +634,79 @@ export default function PlatformAdminPage() {
             {verifyResult && (
               <div className={`p-3 rounded-lg border text-xs font-mono flex items-center justify-between ${
                 verifyResult.valid
-                  ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
-                  : 'bg-red-950/40 border-red-500/40 text-red-300'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500/40 text-emerald-800 dark:text-emerald-300'
+                  : 'bg-red-50 dark:bg-red-950/40 border-red-500/40 text-red-800 dark:text-red-300'
               }`}>
                 <div className="flex items-center gap-2">
                   {verifyResult.valid ? (
-                    <CheckCircle2 className="size-4 text-emerald-400" />
+                    <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
                   ) : (
-                    <AlertTriangle className="size-4 text-red-400" />
+                    <AlertTriangle className="size-4 text-red-600 dark:text-red-400" />
                   )}
                   <span><strong>{verifyResult.filename}:</strong> {verifyResult.message}</span>
                 </div>
                 <button
                   onClick={() => setVerifyResult(null)}
-                  className="text-slate-400 hover:text-white text-xs underline cursor-pointer"
+                  className="text-muted-foreground hover:text-foreground text-xs underline cursor-pointer"
                 >
                   Dismiss
                 </button>
               </div>
             )}
 
-            <Card className="bg-slate-900 border-slate-800">
+            <Card className="bg-card border-border shadow-2xs overflow-hidden">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-slate-800">
-                    <TableHead className="text-slate-400 font-mono text-xs">Archive / ID</TableHead>
-                    <TableHead className="text-slate-400 font-mono text-xs">Type</TableHead>
-                    <TableHead className="text-slate-400 font-mono text-xs">Engine / Version</TableHead>
-                    <TableHead className="text-slate-400 font-mono text-xs">Size</TableHead>
-                    <TableHead className="text-slate-400 font-mono text-xs">Created At</TableHead>
-                    <TableHead className="text-slate-400 font-mono text-xs">Integrity</TableHead>
-                    <TableHead className="text-slate-400 font-mono text-xs text-right">Actions</TableHead>
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableHead className="text-muted-foreground font-mono text-xs">Archive / ID</TableHead>
+                    <TableHead className="text-muted-foreground font-mono text-xs">Type</TableHead>
+                    <TableHead className="text-muted-foreground font-mono text-xs">Engine / Version</TableHead>
+                    <TableHead className="text-muted-foreground font-mono text-xs">Size</TableHead>
+                    <TableHead className="text-muted-foreground font-mono text-xs">Created At</TableHead>
+                    <TableHead className="text-muted-foreground font-mono text-xs">Integrity</TableHead>
+                    <TableHead className="text-muted-foreground font-mono text-xs text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {backupsData?.archives?.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-xs text-slate-500">
+                      <TableCell colSpan={7} className="text-center py-8 text-xs text-muted-foreground">
                         No backup archives created yet. Click &apos;Create New Snapshot&apos; to generate the first archive.
                       </TableCell>
                     </TableRow>
                   ) : (
                     backupsData?.archives?.map((b: BackupArchiveItem) => (
-                      <TableRow key={b.filename} className="border-slate-800 hover:bg-slate-800/40">
-                        <TableCell className="font-mono text-xs font-bold text-white">
+                      <TableRow key={b.filename} className="border-border hover:bg-muted/40">
+                        <TableCell className="font-mono text-xs font-bold text-foreground">
                           <div className="flex items-center gap-2">
                             <Archive className="size-3.5 text-amber-500 shrink-0" />
                             <div>
                               <div>{b.filename}</div>
-                              <div className="text-[10px] text-slate-500 font-normal">{b.backup_id}</div>
+                              <div className="text-[10px] text-muted-foreground font-normal">{b.backup_id}</div>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className={`text-[10px] ${
                             b.backup_type === 'PRE_RESTORE_SAFETY'
-                              ? 'border-blue-500/40 text-blue-400 bg-blue-500/10'
-                              : 'border-slate-700 text-slate-300'
+                              ? 'border-blue-500/40 text-blue-600 dark:text-blue-400 bg-blue-500/10'
+                              : 'border-border text-foreground bg-muted/40'
                           }`}>
                             {b.backup_type || 'MANUAL'}
                           </Badge>
                         </TableCell>
-                        <TableCell className="font-mono text-xs text-slate-300">
+                        <TableCell className="font-mono text-xs text-foreground">
                           <div>{b.database_engine || 'MYSQL'}</div>
-                          <div className="text-[10px] text-slate-500">{b.platform_version || 'v2.8.0'}</div>
+                          <div className="text-[10px] text-muted-foreground">{b.platform_version || 'v2.8.0'}</div>
                         </TableCell>
-                        <TableCell className="font-mono text-xs text-slate-300">
+                        <TableCell className="font-mono text-xs text-foreground">
                           {b.size_mb} MB
                         </TableCell>
-                        <TableCell className="font-mono text-xs text-slate-400">
+                        <TableCell className="font-mono text-xs text-muted-foreground">
                           {new Date(b.created_at).toLocaleString()}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 text-[10px]">
+                          <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 text-[10px]">
                             <CheckCircle2 className="size-3 mr-1" /> {b.integrity_status || 'VERIFIED'}
                           </Badge>
                         </TableCell>
@@ -717,7 +717,7 @@ export default function PlatformAdminPage() {
                               size="sm"
                               disabled={verifyingArchive === b.filename}
                               onClick={() => handleVerifyBackup(b.filename)}
-                              className="h-6 px-2 text-[11px] font-mono border-slate-700 hover:bg-slate-800 text-slate-300"
+                              className="h-6 px-2 text-[11px] font-mono cursor-pointer"
                             >
                               <ShieldCheck className="size-3 mr-1" />
                               {verifyingArchive === b.filename ? 'Verifying...' : 'Verify'}
@@ -729,7 +729,7 @@ export default function PlatformAdminPage() {
                                 setRestoreModalTarget(b);
                                 setRestoreConfirmText('');
                               }}
-                              className="h-6 px-2 text-[11px] font-mono border-red-500/40 text-red-400 hover:bg-red-950/40"
+                              className="h-6 px-2 text-[11px] font-mono border-red-500/40 text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
                             >
                               <RotateCcw className="size-3 mr-1" />
                               Restore
@@ -749,52 +749,52 @@ export default function PlatformAdminPage() {
         {activeTab === 'diagnostics' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* CPU & Memory */}
-            <Card className="bg-slate-900 border-slate-800 text-slate-100">
+            <Card className="bg-card border-border text-card-foreground shadow-2xs">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-bold text-white flex items-center gap-2">
+                <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
                   <Cpu className="size-4 text-primary" /> CPU & Memory Resources
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-xs">
-                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800 space-y-2 font-mono">
-                  <div className="flex justify-between"><span className="text-slate-500">CPU Utilization:</span> <span className="text-white">{diagnosticsData?.cpu_usage_pct ?? 0}%</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Memory Total:</span> <span className="text-white">{diagnosticsData?.memory?.total_mb} MB</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Memory Used:</span> <span className="text-amber-400">{diagnosticsData?.memory?.used_pct}%</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Available:</span> <span className="text-emerald-400">{diagnosticsData?.memory?.available_mb} MB</span></div>
+                <div className="p-3 bg-muted/40 rounded-lg border border-border space-y-2 font-mono">
+                  <div className="flex justify-between"><span className="text-muted-foreground">CPU Utilization:</span> <span className="text-foreground font-semibold">{diagnosticsData?.cpu_usage_pct ?? 0}%</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Memory Total:</span> <span className="text-foreground font-semibold">{diagnosticsData?.memory?.total_mb} MB</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Memory Used:</span> <span className="text-amber-600 dark:text-amber-400 font-semibold">{diagnosticsData?.memory?.used_pct}%</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Available:</span> <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{diagnosticsData?.memory?.available_mb} MB</span></div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Storage Drive Metrics */}
-            <Card className="bg-slate-900 border-slate-800 text-slate-100">
+            <Card className="bg-card border-border text-card-foreground shadow-2xs">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-bold text-white flex items-center gap-2">
-                  <HardDrive className="size-4 text-emerald-400" /> Disk & Attachment Volume
+                <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <HardDrive className="size-4 text-emerald-600 dark:text-emerald-400" /> Disk & Attachment Volume
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-xs">
-                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800 space-y-2 font-mono">
-                  <div className="flex justify-between"><span className="text-slate-500">Total Capacity:</span> <span className="text-white">{diagnosticsData?.disk?.total_gb} GB</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Free Space:</span> <span className="text-emerald-400">{diagnosticsData?.disk?.free_gb} GB</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Disk Used:</span> <span className="text-white">{diagnosticsData?.disk?.used_pct}%</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Write Status:</span> <span className="text-emerald-400 font-bold">PERMITTED</span></div>
+                <div className="p-3 bg-muted/40 rounded-lg border border-border space-y-2 font-mono">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Total Capacity:</span> <span className="text-foreground font-semibold">{diagnosticsData?.disk?.total_gb} GB</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Free Space:</span> <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{diagnosticsData?.disk?.free_gb} GB</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Disk Used:</span> <span className="text-foreground font-semibold">{diagnosticsData?.disk?.used_pct}%</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Write Status:</span> <span className="text-emerald-600 dark:text-emerald-400 font-bold">PERMITTED</span></div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Database Connection Pool */}
-            <Card className="bg-slate-900 border-slate-800 text-slate-100">
+            <Card className="bg-card border-border text-card-foreground shadow-2xs">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-bold text-white flex items-center gap-2">
-                  <Database className="size-4 text-blue-400" /> Database Connection Pool
+                <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <Database className="size-4 text-blue-600 dark:text-blue-400" /> Database Connection Pool
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-xs">
-                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800 space-y-2 font-mono">
-                  <div className="flex justify-between"><span className="text-slate-500">Engine:</span> <span className="text-white">{diagnosticsData?.database_pool?.engine?.toUpperCase()}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Pool Size:</span> <span className="text-white">{diagnosticsData?.database_pool?.size}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Checked In:</span> <span className="text-emerald-400">{diagnosticsData?.database_pool?.checked_in}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Checked Out:</span> <span className="text-amber-400">{diagnosticsData?.database_pool?.checked_out}</span></div>
+                <div className="p-3 bg-muted/40 rounded-lg border border-border space-y-2 font-mono">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Engine:</span> <span className="text-foreground font-semibold">{diagnosticsData?.database_pool?.engine?.toUpperCase()}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Pool Size:</span> <span className="text-foreground font-semibold">{diagnosticsData?.database_pool?.size}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Checked In:</span> <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{diagnosticsData?.database_pool?.checked_in}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Checked Out:</span> <span className="text-amber-600 dark:text-amber-400 font-semibold">{diagnosticsData?.database_pool?.checked_out}</span></div>
                 </div>
               </CardContent>
             </Card>
@@ -804,10 +804,10 @@ export default function PlatformAdminPage() {
         {/* ── TAB 4: LIVE APPLICATION LOGS ─────────────────────────────── */}
         {activeTab === 'logs' && (
           <div className="space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900 p-3 rounded-xl border border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card p-3 rounded-xl border border-border shadow-2xs">
               {/* Level Filter Pills */}
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-mono text-slate-400 mr-2 flex items-center gap-1">
+                <span className="text-xs font-mono text-muted-foreground mr-2 flex items-center gap-1">
                   <Filter className="size-3.5" /> Level:
                 </span>
                 {['ALL', 'INFO', 'WARNING', 'ERROR'].map((lvl) => (
@@ -815,10 +815,10 @@ export default function PlatformAdminPage() {
                     key={lvl}
                     type="button"
                     onClick={() => setLogLevelFilter(lvl)}
-                    className={`px-2.5 py-1 rounded text-xs font-mono transition ${
+                    className={`px-2.5 py-1 rounded text-xs font-mono transition cursor-pointer ${
                       logLevelFilter === lvl
                         ? 'bg-amber-500 text-slate-950 font-bold'
-                        : 'bg-slate-950 text-slate-400 hover:text-white'
+                        : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80'
                     }`}
                   >
                     {lvl}
@@ -833,15 +833,15 @@ export default function PlatformAdminPage() {
                   placeholder="Filter logs by keyword..."
                   value={logSearchQuery}
                   onChange={(e) => setLogSearchQuery(e.target.value)}
-                  className="h-8 bg-slate-950 border-slate-700 font-mono text-xs text-slate-100"
+                  className="h-8 font-mono text-xs"
                 />
               </div>
             </div>
 
             {/* Log Stream Terminal View */}
-            <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs overflow-x-auto max-h-125 overflow-y-auto space-y-1 shadow-inner">
+            <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 font-mono text-xs overflow-x-auto max-h-125 overflow-y-auto space-y-1 shadow-inner text-zinc-300">
               {filteredLogs.length === 0 ? (
-                <div className="text-slate-500 text-center py-8">No log records match the current filter.</div>
+                <div className="text-zinc-500 text-center py-8">No log records match the current filter.</div>
               ) : (
                 filteredLogs.map((log, idx) => {
                   const isErr = log.level === 'ERROR';
@@ -851,10 +851,10 @@ export default function PlatformAdminPage() {
                       key={idx}
                       className={`leading-relaxed whitespace-pre-wrap ${
                         isErr
-                          ? 'text-red-400 bg-red-950/20 px-1 rounded'
+                          ? 'text-red-400 bg-red-950/40 px-1 rounded'
                           : isWarn
                           ? 'text-amber-400'
-                          : 'text-slate-300'
+                          : 'text-zinc-300'
                       }`}
                     >
                       {log.raw}
@@ -863,7 +863,7 @@ export default function PlatformAdminPage() {
                 })
               )}
             </div>
-            <p className="text-[10px] text-slate-500 font-mono">
+            <p className="text-[10px] text-muted-foreground font-mono">
               Note: Database credentials, secret keys, and JWT secrets are automatically redacted from console output.
             </p>
           </div>
@@ -872,17 +872,17 @@ export default function PlatformAdminPage() {
         {/* ── TAB 5: UPDATES & VERSION ─────────────────────────────────── */}
         {activeTab === 'updates' && (
           <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900 p-4 rounded-xl border border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card p-4 rounded-xl border border-border shadow-2xs">
               <div>
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Activity className="size-4 text-emerald-400" />
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <Activity className="size-4 text-emerald-600 dark:text-emerald-400" />
                   <span>Platform Version & Controlled Update Policy</span>
-                  <Badge variant="outline" className="border-amber-500/40 text-amber-400 font-mono text-[10px]">
+                  <Badge variant="outline" className="border-amber-500/40 text-amber-600 dark:text-amber-400 font-mono text-[10px]">
                     CHANNEL: {updateData?.channel || 'enterprise_lts'}
                   </Badge>
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Update Policy: <strong className="text-slate-200">CONTROLLED MANUAL</strong> • Updates require explicit admin validation and safety snapshots.
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Update Policy: <strong className="text-foreground">CONTROLLED MANUAL</strong> • Updates require explicit admin validation and safety snapshots.
                 </p>
               </div>
 
@@ -892,7 +892,7 @@ export default function PlatformAdminPage() {
                   variant="outline"
                   disabled={isCheckingUpdate}
                   onClick={handleCheckUpdates}
-                  className="border-slate-700 hover:bg-slate-800 text-slate-300 text-xs font-mono"
+                  className="text-xs font-mono cursor-pointer"
                 >
                   <RefreshCw className={`size-3.5 mr-1.5 ${isCheckingUpdate ? 'animate-spin' : ''}`} />
                   {isCheckingUpdate ? 'Checking Channel...' : 'Check for Updates'}
@@ -901,7 +901,7 @@ export default function PlatformAdminPage() {
                   size="sm"
                   disabled={isApplyingUpdate}
                   onClick={() => handleApplyUpdate(updateData?.installed_version)}
-                  className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs"
+                  className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-2xs cursor-pointer"
                 >
                   <Play className="size-3.5 mr-1.5" />
                   {isApplyingUpdate ? 'Running 8-Step Pipeline...' : 'Execute Update Pipeline'}
@@ -910,14 +910,14 @@ export default function PlatformAdminPage() {
             </div>
 
             {updateCheckResult && (
-              <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono text-slate-300 flex items-center justify-between">
+              <div className="p-3 bg-card border border-border rounded-lg text-xs font-mono text-foreground flex items-center justify-between shadow-2xs">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="size-4 text-emerald-400" />
+                  <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
                   <span>{updateCheckResult.message}</span>
                 </div>
                 <button
                   onClick={() => setUpdateCheckResult(null)}
-                  className="text-slate-400 hover:text-white text-xs underline cursor-pointer"
+                  className="text-muted-foreground hover:text-foreground text-xs underline cursor-pointer"
                 >
                   Dismiss
                 </button>
@@ -925,16 +925,16 @@ export default function PlatformAdminPage() {
             )}
 
             {updateApplyResult && (
-              <div className="p-4 bg-emerald-950/40 border border-emerald-500/40 rounded-xl space-y-3 font-mono text-xs">
-                <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/40 rounded-xl space-y-3 font-mono text-xs">
+                <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-sm">
                   <CheckCircle2 className="size-5" />
                   <span>{updateApplyResult.message}</span>
                 </div>
-                <div className="space-y-1 text-slate-300 text-[11px]">
-                  <div className="font-bold text-amber-400">8-Step Pipeline Verification Log:</div>
+                <div className="space-y-1 text-foreground text-[11px]">
+                  <div className="font-bold text-amber-600 dark:text-amber-400">8-Step Pipeline Verification Log:</div>
                   {updateApplyResult.pipeline_steps_completed?.map((step: string, idx: number) => (
                     <div key={idx} className="flex items-center gap-2">
-                      <span className="text-emerald-400">✓</span>
+                      <span className="text-emerald-600 dark:text-emerald-400">✓</span>
                       <span>{step}</span>
                     </div>
                   ))}
@@ -944,85 +944,85 @@ export default function PlatformAdminPage() {
 
             {/* Authoritative Version Matrix */}
             <div className="space-y-3">
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono flex items-center gap-2">
+              <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider font-mono flex items-center gap-2">
                 <Layers className="size-3.5 text-primary" /> Authoritative Multi-Tier Version Matrix
               </h4>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                <Card className="bg-slate-900 border-slate-800">
+                <Card className="bg-card border-border shadow-2xs">
                   <CardHeader className="pb-2">
-                    <CardDescription className="text-[10px] text-slate-500 font-mono">SERVER PLATFORM CORE</CardDescription>
-                    <CardTitle className="text-base font-mono text-white flex items-center justify-between">
+                    <CardDescription className="text-[10px] text-muted-foreground font-mono">SERVER PLATFORM CORE</CardDescription>
+                    <CardTitle className="text-base font-mono text-foreground flex items-center justify-between">
                       <span>{updateData?.installed_version || 'v2.9.0'}</span>
                       <Badge className="bg-emerald-600 text-[10px]">ACTIVE</Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="text-[11px] text-slate-400 font-mono">
+                  <CardContent className="text-[11px] text-muted-foreground font-mono">
                     Ubuntu Server Authoritative Operational Core
                   </CardContent>
                 </Card>
 
-                <Card className="bg-slate-900 border-slate-800">
+                <Card className="bg-card border-border shadow-2xs">
                   <CardHeader className="pb-2">
-                    <CardDescription className="text-[10px] text-slate-500 font-mono">BACKEND REST API</CardDescription>
-                    <CardTitle className="text-base font-mono text-white flex items-center justify-between">
+                    <CardDescription className="text-[10px] text-muted-foreground font-mono">BACKEND REST API</CardDescription>
+                    <CardTitle className="text-base font-mono text-foreground flex items-center justify-between">
                       <span>{updateData?.api_version || 'v1'} ({updateData?.installed_version || 'v2.9.0'})</span>
                       <Badge className="bg-emerald-600 text-[10px]">AUTH V1</Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="text-[11px] text-slate-400 font-mono">
+                  <CardContent className="text-[11px] text-muted-foreground font-mono">
                     Authoritative Django/FastAPI API Endpoints
                   </CardContent>
                 </Card>
 
-                <Card className="bg-slate-900 border-slate-800">
+                <Card className="bg-card border-border shadow-2xs">
                   <CardHeader className="pb-2">
-                    <CardDescription className="text-[10px] text-slate-500 font-mono">DATABASE SCHEMA</CardDescription>
-                    <CardTitle className="text-base font-mono text-white flex items-center justify-between">
+                    <CardDescription className="text-[10px] text-muted-foreground font-mono">DATABASE SCHEMA</CardDescription>
+                    <CardTitle className="text-base font-mono text-foreground flex items-center justify-between">
                       <span>{updateData?.schema_version || '2026.08.28.01'}</span>
                       <Badge className="bg-blue-600 text-[10px]">APPLIED</Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="text-[11px] text-slate-400 font-mono">
+                  <CardContent className="text-[11px] text-muted-foreground font-mono">
                     Relational Schema
                   </CardContent>
                 </Card>
 
-                <Card className="bg-slate-900 border-slate-800">
+                <Card className="bg-card border-border shadow-2xs">
                   <CardHeader className="pb-2">
-                    <CardDescription className="text-[10px] text-slate-500 font-mono">WEB CLIENT (NEXT.JS)</CardDescription>
-                    <CardTitle className="text-base font-mono text-white flex items-center justify-between">
+                    <CardDescription className="text-[10px] text-muted-foreground font-mono">WEB CLIENT (NEXT.JS)</CardDescription>
+                    <CardTitle className="text-base font-mono text-foreground flex items-center justify-between">
                       <span>{updateData?.web_client_version || 'v2.9.0'}</span>
                       <Badge className="bg-emerald-600 text-[10px]">PWA READY</Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="text-[11px] text-slate-400 font-mono">
+                  <CardContent className="text-[11px] text-muted-foreground font-mono">
                     First-Class Browser & Responsive Mobile PWA
                   </CardContent>
                 </Card>
 
-                <Card className="bg-slate-900 border-slate-800">
+                <Card className="bg-card border-border shadow-2xs">
                   <CardHeader className="pb-2">
-                    <CardDescription className="text-[10px] text-slate-500 font-mono">DESKTOP CLIENT (TAURI)</CardDescription>
-                    <CardTitle className="text-base font-mono text-white flex items-center justify-between">
+                    <CardDescription className="text-[10px] text-muted-foreground font-mono">DESKTOP CLIENT (TAURI)</CardDescription>
+                    <CardTitle className="text-base font-mono text-foreground flex items-center justify-between">
                       <span>{updateData?.desktop_client_version || 'v2.9.0'}</span>
                       <Badge className="bg-purple-600 text-[10px]">DESKTOP</Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="text-[11px] text-slate-400 font-mono">
+                  <CardContent className="text-[11px] text-muted-foreground font-mono">
                     Cross-Platform Tauri Native Application
                   </CardContent>
                 </Card>
 
-                <Card className="bg-slate-900 border-slate-800">
+                <Card className="bg-card border-border shadow-2xs">
                   <CardHeader className="pb-2">
-                    <CardDescription className="text-[10px] text-slate-500 font-mono">MIN COMPATIBLE CLIENT</CardDescription>
-                    <CardTitle className="text-base font-mono text-amber-400 flex items-center justify-between">
+                    <CardDescription className="text-[10px] text-muted-foreground font-mono">MIN COMPATIBLE CLIENT</CardDescription>
+                    <CardTitle className="text-base font-mono text-amber-600 dark:text-amber-400 flex items-center justify-between">
                       <span>{updateData?.min_supported_client_version || 'v2.0.0'}</span>
-                      <Badge variant="outline" className="border-amber-500/40 text-amber-400 text-[10px]">MIN THRESHOLD</Badge>
+                      <Badge variant="outline" className="border-amber-500/40 text-amber-600 dark:text-amber-400 text-[10px]">MIN THRESHOLD</Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="text-[11px] text-slate-400 font-mono">
+                  <CardContent className="text-[11px] text-muted-foreground font-mono">
                     Connecting clients below this version will be rejected
                   </CardContent>
                 </Card>
@@ -1030,48 +1030,48 @@ export default function PlatformAdminPage() {
             </div>
 
             {/* 8-Step Controlled Update Lifecycle Standard */}
-            <Card className="bg-slate-900 border-slate-800 text-slate-100">
+            <Card className="bg-card border-border text-card-foreground shadow-2xs">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-bold text-white flex items-center gap-2">
-                  <ShieldCheck className="size-4 text-emerald-400" />
+                <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400" />
                   <span>8-Step Controlled Platform Update Lifecycle</span>
                 </CardTitle>
-                <CardDescription className="text-xs text-slate-400">
+                <CardDescription className="text-xs text-muted-foreground">
                   Every software release follows this non-destructive sequential pipeline. Automatic rollback triggers if health verification fails.
                 </CardDescription>
               </CardHeader>
               <CardContent className="text-xs font-mono space-y-2">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800 flex items-center gap-2">
-                    <span className="text-amber-400 font-bold">01.</span>
+                  <div className="p-2.5 bg-muted/40 rounded-lg border border-border flex items-center gap-2 text-foreground">
+                    <span className="text-amber-600 dark:text-amber-400 font-bold">01.</span>
                     <span>Validate current system health & storage writes</span>
                   </div>
-                  <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800 flex items-center gap-2">
-                    <span className="text-amber-400 font-bold">02.</span>
+                  <div className="p-2.5 bg-muted/40 rounded-lg border border-border flex items-center gap-2 text-foreground">
+                    <span className="text-amber-600 dark:text-amber-400 font-bold">02.</span>
                     <span>Check target version compatibility & breaking changes</span>
                   </div>
-                  <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800 flex items-center gap-2">
-                    <span className="text-amber-400 font-bold">03.</span>
+                  <div className="p-2.5 bg-muted/40 rounded-lg border border-border flex items-center gap-2 text-foreground">
+                    <span className="text-amber-600 dark:text-amber-400 font-bold">03.</span>
                     <span>Create pre-upgrade safety snapshot with SHA-256</span>
                   </div>
-                  <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800 flex items-center gap-2">
-                    <span className="text-amber-400 font-bold">04.</span>
+                  <div className="p-2.5 bg-muted/40 rounded-lg border border-border flex items-center gap-2 text-foreground">
+                    <span className="text-amber-600 dark:text-amber-400 font-bold">04.</span>
                     <span>Stage and apply application code updates</span>
                   </div>
-                  <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800 flex items-center gap-2">
-                    <span className="text-amber-400 font-bold">05.</span>
+                  <div className="p-2.5 bg-muted/40 rounded-lg border border-border flex items-center gap-2 text-foreground">
+                    <span className="text-amber-600 dark:text-amber-400 font-bold">05.</span>
                     <span>Apply database schema migrations transactionally</span>
                   </div>
-                  <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800 flex items-center gap-2">
-                    <span className="text-amber-400 font-bold">06.</span>
+                  <div className="p-2.5 bg-muted/40 rounded-lg border border-border flex items-center gap-2 text-foreground">
+                    <span className="text-amber-600 dark:text-amber-400 font-bold">06.</span>
                     <span>Gracefully restart backend & background workers</span>
                   </div>
-                  <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800 flex items-center gap-2">
-                    <span className="text-amber-400 font-bold">07.</span>
+                  <div className="p-2.5 bg-muted/40 rounded-lg border border-border flex items-center gap-2 text-foreground">
+                    <span className="text-amber-600 dark:text-amber-400 font-bold">07.</span>
                     <span>Execute post-update health & latency checks</span>
                   </div>
-                  <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800 flex items-center gap-2">
-                    <span className="text-amber-400 font-bold">08.</span>
+                  <div className="p-2.5 bg-muted/40 rounded-lg border border-border flex items-center gap-2 text-foreground">
+                    <span className="text-amber-600 dark:text-amber-400 font-bold">08.</span>
                     <span>Smoke test critical operational workflows (Auth/Jobs)</span>
                   </div>
                 </div>
@@ -1082,41 +1082,41 @@ export default function PlatformAdminPage() {
 
         {/* Backup Creation Modal */}
         <Dialog open={showBackupModal} onOpenChange={setShowBackupModal}>
-          <DialogContent className="sm:max-w-md bg-slate-900 border-slate-800 text-slate-100" showCloseButton={false}>
+          <DialogContent className="sm:max-w-md bg-card border-border text-card-foreground shadow-2xl" showCloseButton={false}>
             <DialogHeader>
-              <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
+              <DialogTitle className="text-base font-bold text-foreground flex items-center gap-2">
                 <Archive className="size-5 text-amber-500" />
                 Initiate Platform Snapshot
               </DialogTitle>
-              <DialogDescription className="text-xs text-slate-400">
+              <DialogDescription className="text-xs text-muted-foreground">
                 Creates a verified disaster recovery archive containing database records and file storage manifests.
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-3 text-xs">
               <div className="space-y-1.5">
-                <label className="text-slate-300 font-semibold">Snapshot Reference Note</label>
+                <label className="text-foreground font-semibold">Snapshot Reference Note</label>
                 <Input
                   value={backupNote}
                   onChange={(e) => setBackupNote(e.target.value)}
                   placeholder="e.g. Pre-migration maintenance snapshot"
-                  className="bg-slate-950 border-slate-700 text-xs"
+                  className="text-xs"
                 />
               </div>
 
-              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-300 text-xs flex items-center gap-2">
-                <Lock className="size-4 shrink-0 text-amber-400" />
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-800 dark:text-amber-300 text-xs flex items-center gap-2">
+                <Lock className="size-4 shrink-0 text-amber-500" />
                 <span>The backup snapshot will be saved with a cryptographically verified SHA-256 hash in the authoritative backup repository.</span>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowBackupModal(false)}
                 disabled={isCreatingBackup}
-                className="text-slate-400 hover:text-white text-xs"
+                className="text-muted-foreground hover:text-foreground text-xs cursor-pointer"
               >
                 Cancel
               </Button>
@@ -1124,7 +1124,7 @@ export default function PlatformAdminPage() {
                 size="sm"
                 onClick={handleCreateBackup}
                 disabled={isCreatingBackup}
-                className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs"
+                className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-2xs cursor-pointer"
               >
                 {isCreatingBackup ? 'Generating Archive...' : 'Confirm & Create Snapshot'}
               </Button>
@@ -1134,20 +1134,20 @@ export default function PlatformAdminPage() {
 
         {/* Disaster Recovery Restore Modal */}
         <Dialog open={!!restoreModalTarget} onOpenChange={(open) => { if (!open) setRestoreModalTarget(null); }}>
-          <DialogContent className="sm:max-w-md bg-slate-900 border-red-500/40 text-slate-100" showCloseButton={false}>
+          <DialogContent className="sm:max-w-md bg-card border-red-500/40 text-card-foreground shadow-2xl" showCloseButton={false}>
             <DialogHeader>
-              <DialogTitle className="text-base font-bold text-red-400 flex items-center gap-2">
+              <DialogTitle className="text-base font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
                 <AlertTriangle className="size-5 text-red-500" />
                 Confirm Disaster Recovery Restore
               </DialogTitle>
-              <DialogDescription className="text-xs text-slate-400">
-                You are about to restore the system from snapshot: <strong className="text-white font-mono">{restoreModalTarget?.filename}</strong>.
+              <DialogDescription className="text-xs text-muted-foreground">
+                You are about to restore the system from snapshot: <strong className="text-foreground font-mono">{restoreModalTarget?.filename}</strong>.
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-3 text-xs">
-              <div className="p-3 bg-red-950/60 border border-red-500/50 rounded-lg text-red-300 text-xs space-y-2">
-                <div className="font-bold flex items-center gap-1.5 text-red-400">
+              <div className="p-3 bg-red-50 dark:bg-red-950/60 border border-red-500/50 rounded-lg text-red-800 dark:text-red-300 text-xs space-y-2">
+                <div className="font-bold flex items-center gap-1.5 text-red-600 dark:text-red-400">
                   <Lock className="size-4 shrink-0" /> CRITICAL DATA WARNING:
                 </div>
                 <div>
@@ -1156,25 +1156,25 @@ export default function PlatformAdminPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-slate-300 font-semibold font-mono text-[11px]">
-                  Type <span className="text-red-400 font-bold">CONFIRM RESTORE</span> to proceed:
+                <label className="text-foreground font-semibold font-mono text-[11px]">
+                  Type <span className="text-red-600 dark:text-red-400 font-bold">CONFIRM RESTORE</span> to proceed:
                 </label>
                 <Input
                   value={restoreConfirmText}
                   onChange={(e) => setRestoreConfirmText(e.target.value)}
                   placeholder="CONFIRM RESTORE"
-                  className="bg-slate-950 border-red-500/40 text-red-300 font-mono text-xs"
+                  className="border-red-500/40 text-red-600 dark:text-red-400 font-mono text-xs"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setRestoreModalTarget(null)}
                 disabled={isRestoring}
-                className="text-slate-400 hover:text-white text-xs"
+                className="text-muted-foreground hover:text-foreground text-xs cursor-pointer"
               >
                 Cancel
               </Button>
@@ -1182,7 +1182,7 @@ export default function PlatformAdminPage() {
                 size="sm"
                 onClick={handleRestoreBackup}
                 disabled={isRestoring || restoreConfirmText !== 'CONFIRM RESTORE'}
-                className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs disabled:opacity-50"
+                className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs disabled:opacity-50 shadow-2xs cursor-pointer"
               >
                 {isRestoring ? 'Applying Restoration...' : 'Execute Restoration'}
               </Button>

@@ -48,7 +48,7 @@ export function ConnectionStatusBadge() {
       <button
         type="button"
         onClick={() => setDialogOpen(true)}
-        className="flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium transition-all hover:ring-2 hover:ring-slate-700 bg-slate-900 border border-slate-800"
+        className="flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium transition-all hover:ring-2 hover:ring-primary/20 bg-muted/60 hover:bg-muted border border-border text-foreground shadow-2xs cursor-pointer"
         title="Click to manage server connection profiles and network diagnostics"
       >
         {/* Status Dot */}
@@ -69,41 +69,41 @@ export function ConnectionStatusBadge() {
           </span>
         )}
         {status === 'OFFLINE' && (
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-slate-500"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-muted-foreground"></span>
         )}
         {status === 'SERVER_UNAVAILABLE' && (
           <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
         )}
 
         {/* Profile Name & Label */}
-        <span className="text-slate-300 font-semibold max-w-[130px] truncate">
+        <span className="text-foreground font-semibold max-w-32.5 truncate">
           {activeProfile?.name || 'Central Server'}
         </span>
 
         {/* Status Badge */}
         {status === 'ONLINE' && (
-          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-emerald-500/40 text-emerald-400 bg-emerald-500/10">
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 font-mono">
             ONLINE {latencyMs ? `(${latencyMs}ms)` : ''}
           </Badge>
         )}
         {status === 'CONNECTING' && (
-          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-blue-500/40 text-blue-400 bg-blue-500/10">
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-blue-500/40 text-blue-600 dark:text-blue-400 bg-blue-500/10 font-mono">
             CONNECTING
           </Badge>
         )}
         {status === 'RECONNECTING' && (
-          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/40 text-amber-400 bg-amber-500/10 flex items-center gap-1">
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10 flex items-center gap-1 font-mono">
             <RefreshCw className="size-2.5 animate-spin" />
             RECONNECTING {reconnectAttempts > 0 ? `(${reconnectAttempts})` : ''}
           </Badge>
         )}
         {status === 'OFFLINE' && (
-          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-slate-700 text-slate-400">
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-border text-muted-foreground bg-muted/40 font-mono">
             OFFLINE
           </Badge>
         )}
         {status === 'SERVER_UNAVAILABLE' && (
-          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-red-500/40 text-red-400 bg-red-500/10">
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-red-500/40 text-red-600 dark:text-red-400 bg-red-500/10 font-mono">
             UNAVAILABLE
           </Badge>
         )}

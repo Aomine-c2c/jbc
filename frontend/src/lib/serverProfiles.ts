@@ -45,12 +45,12 @@ export const DEFAULT_PROFILES: ServerProfile[] = [
   {
     id: 'prod-default',
     name: 'Bikita Minerals Production',
-    primaryUrl: (process.env.NEXT_PUBLIC_API_URL && !process.env.NEXT_PUBLIC_API_URL.includes(':3000')
+    primaryUrl: (process.env.NEXT_PUBLIC_API_URL && !process.env.NEXT_PUBLIC_API_URL.includes(':3000') && !process.env.NEXT_PUBLIC_API_URL.includes('bikita.com')
       ? process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '').replace(/\/api\/v1$/, '')
       : DEFAULT_BACKEND_URL),
-    fallbackUrl: 'http://192.168.1.100:8000',
+    fallbackUrl: 'http://localhost:8000',
     connectionMode: 'domain',
-    isVerified: false,
+    isVerified: true,
     isDefault: true,
   },
   {
@@ -67,7 +67,7 @@ export const DEFAULT_PROFILES: ServerProfile[] = [
     name: 'Local Development Server',
     primaryUrl: 'http://localhost:8000',
     connectionMode: 'ip',
-    isVerified: false,
+    isVerified: true,
     isDefault: false,
   },
 ];
@@ -169,7 +169,12 @@ export async function validateServer(primaryUrl: string, fallbackUrl?: string): 
 
 function sanitizeProfiles(profiles: ServerProfile[]): ServerProfile[] {
   return profiles.map((p) => {
-    if (p.primaryUrl && p.primaryUrl.includes('staging-dwrms.bikita.com')) {
+    if (
+      p.primaryUrl &&
+      (p.primaryUrl.includes('bikita.com') ||
+       p.primaryUrl.includes('staging-dwrms.bikita.com') ||
+       p.primaryUrl.includes('operations.bikita.com'))
+    ) {
       return {
         ...p,
         primaryUrl: 'http://localhost:8000',
@@ -333,7 +338,7 @@ export async function getActiveApiUrl(): Promise<string> {
 
     if (isTauri) {
       const active = await getActiveProfile();
-      if (active?.primaryUrl && !active.primaryUrl.includes(':3000')) {
+      if (active?.primaryUrl && !active.primaryUrl.includes(':3000') && !active.primaryUrl.includes('bikita.com')) {
         return normalizeServerUrl(active.primaryUrl);
       }
       return DEFAULT_BACKEND_URL;
@@ -348,7 +353,7 @@ export async function getActiveApiUrl(): Promise<string> {
     if (isLocalhost) {
       // Local web dev on :3000/:3001 connects directly to FastAPI backend on :8000
       const active = await getActiveProfile();
-      if (active && active.primaryUrl && active.id !== 'prod-default' && !active.primaryUrl.includes(':3000')) {
+      if (active && active.primaryUrl && active.id !== 'prod-default' && !active.primaryUrl.includes(':3000') && !active.primaryUrl.includes('bikita.com')) {
         return normalizeServerUrl(active.primaryUrl);
       }
       return DEFAULT_BACKEND_URL;

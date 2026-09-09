@@ -1,11 +1,12 @@
 {
   "name": "frontend",
-  "version": "0.1.0",
+  "version": "2.10.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "dev:backend": "cd ../backend && if exist .venv\\Scripts\\python.exe (.venv\\Scripts\\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload) else (python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload)",
     "build": "next build",
+    "build:export": "node -e \"process.env.NEXT_EXPORT='true'; const { spawnSync } = require('child_process'); const res = spawnSync('next', ['build'], { stdio: 'inherit', env: { ...process.env, NEXT_EXPORT: 'true' }, shell: true }); process.exit(res.status || 0);\"",
     "start": "next start",
     "lint": "eslint",
     "tauri": "tauri",

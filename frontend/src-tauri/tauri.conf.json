@@ -1,12 +1,12 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "DWRMS",
-  "version": "2.9.0",
+  "version": "2.10.0",
   "identifier": "com.bikita.dwrms",
   "build": {
     "frontendDist": "../out",
     "devUrl": "http://localhost:3000",
-    "beforeBuildCommand": "npm run build"
+    "beforeBuildCommand": "npm run build:export"
   },
   "app": {
     "windows": [

@@ -609,11 +609,13 @@ class ApprovalEngine:
                     req_obj = mr.scalar_one_or_none()
                     if req_obj:
                         title = f"Machine Requisition {req_obj.requisition_number or ''}"
-                        description = req_obj.reason or ""
+                        description = getattr(req_obj, "purpose", "") or getattr(req_obj, "reason", "") or ""
                         if req_obj.requester:
-                            requester_name = f"{req_obj.requester.first_name} {req_obj.requester.last_name}".strip()
+                            first_name = getattr(req_obj.requester, "first_name", "") or ""
+                            last_name = getattr(req_obj.requester, "last_name", "") or ""
+                            requester_name = f"{first_name} {last_name}".strip() or "Unknown"
                         if req_obj.department:
-                            department_name = req_obj.department.name
+                            department_name = getattr(req_obj.department, "name", "") or "General"
 
                 pending_inbox.append({
                     "approval_request": req,

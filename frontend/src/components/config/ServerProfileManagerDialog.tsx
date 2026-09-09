@@ -165,11 +165,11 @@ export function ServerProfileManagerDialog({ isOpen, onClose, onConfigured }: Se
 
   return (
     <Dialog open={dialogOpen} onOpenChange={(s) => !s && handleClose()}>
-      <DialogContent className="sm:max-w-2xl bg-slate-900 border-slate-800 text-slate-100 p-0 overflow-hidden" showCloseButton={false}>
+      <DialogContent className="sm:max-w-2xl bg-card border-border text-card-foreground p-0 overflow-hidden shadow-2xl" showCloseButton={false}>
         {/* Header */}
-        <DialogHeader className="p-6 border-b border-slate-800 bg-slate-950/60">
+        <DialogHeader className="p-6 border-b border-border bg-muted/40">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg font-bold flex items-center gap-2 text-white">
+            <DialogTitle className="text-lg font-bold flex items-center gap-2 text-foreground">
               <Server className="w-5 h-5 text-amber-500" />
               Server Connection Profiles & Multi-Client Gateway
             </DialogTitle>
@@ -177,26 +177,26 @@ export function ServerProfileManagerDialog({ isOpen, onClose, onConfigured }: Se
               <button
                 type="button"
                 onClick={handleClose}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white transition"
+                className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
-          <DialogDescription className="text-slate-400 text-xs mt-1">
+          <DialogDescription className="text-muted-foreground text-xs mt-1">
             Configure, validate, and switch between authoritative organization servers, on-site LAN failover endpoints, or remote VPNs.
           </DialogDescription>
         </DialogHeader>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-slate-800 bg-slate-950/40 px-6">
+        <div className="flex border-b border-border bg-muted/20 px-6">
           <button
             type="button"
             onClick={() => { setActiveTab('profiles'); setActionMessage(null); }}
-            className={`py-3 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-2 ${
+            className={`py-3 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === 'profiles'
-                ? 'border-amber-500 text-amber-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-amber-500 text-amber-600 dark:text-amber-400'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
             <Activity className="w-3.5 h-3.5" /> Saved Server Profiles ({profiles.length})
@@ -204,10 +204,10 @@ export function ServerProfileManagerDialog({ isOpen, onClose, onConfigured }: Se
           <button
             type="button"
             onClick={() => { setActiveTab('add'); setActionMessage(null); }}
-            className={`py-3 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-2 ${
+            className={`py-3 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === 'add'
-                ? 'border-amber-500 text-amber-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-amber-500 text-amber-600 dark:text-amber-400'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
             <Plus className="w-3.5 h-3.5" /> Connect to Organization Server / Add Profile
@@ -220,8 +220,8 @@ export function ServerProfileManagerDialog({ isOpen, onClose, onConfigured }: Se
             <div
               className={`p-3 rounded-lg flex items-center gap-2 text-xs border ${
                 actionMessage.type === 'error'
-                  ? 'bg-red-500/10 border-red-500/30 text-red-400'
-                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                  ? 'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400'
+                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
               }`}
             >
               {actionMessage.type === 'error' ? <AlertTriangle className="w-4 h-4 shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
@@ -239,27 +239,27 @@ export function ServerProfileManagerDialog({ isOpen, onClose, onConfigured }: Se
                     key={profile.id}
                     className={`p-4 rounded-xl border transition-all ${
                       isActive
-                        ? 'bg-amber-500/10 border-amber-500/50 shadow-md shadow-amber-500/5'
-                        : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
+                        ? 'bg-amber-500/10 border-amber-500/50 shadow-xs'
+                        : 'bg-card border-border hover:bg-muted/40 hover:border-border/80'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div
                           className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs ${
-                            isActive ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'
+                            isActive ? 'bg-amber-500 text-slate-950' : 'bg-muted text-muted-foreground border border-border/50'
                           }`}
                         >
                           <Server className="w-4 h-4" />
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm text-white">{profile.name}</span>
+                            <span className="font-bold text-sm text-foreground">{profile.name}</span>
                             {isActive && <Badge className="bg-amber-500 text-slate-950 text-[10px] font-bold">ACTIVE</Badge>}
                           </div>
-                          <div className="text-xs font-mono text-slate-400">{profile.primaryUrl}</div>
+                          <div className="text-xs font-mono text-muted-foreground">{profile.primaryUrl}</div>
                           {profile.fallbackUrl && (
-                            <div className="text-[10px] font-mono text-slate-500">LAN Failover: {profile.fallbackUrl}</div>
+                            <div className="text-[10px] font-mono text-muted-foreground/80">LAN Failover: {profile.fallbackUrl}</div>
                           )}
                         </div>
                       </div>
@@ -268,14 +268,14 @@ export function ServerProfileManagerDialog({ isOpen, onClose, onConfigured }: Se
                         {!isActive ? (
                           <Button
                             size="sm"
-                            variant="secondary"
+                            variant="outline"
                             onClick={() => handleSelectProfile(profile.id)}
-                            className="bg-slate-800 hover:bg-slate-700 text-xs"
+                            className="text-xs cursor-pointer"
                           >
                             Connect
                           </Button>
                         ) : (
-                          <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 text-xs">
+                          <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 text-xs">
                             <CheckCircle2 className="w-3 h-3 mr-1" /> Connected
                           </Badge>
                         )}
@@ -285,7 +285,7 @@ export function ServerProfileManagerDialog({ isOpen, onClose, onConfigured }: Se
                             size="sm"
                             variant="ghost"
                             onClick={() => handleDeleteProfile(profile.id)}
-                            className="text-slate-500 hover:text-red-400 hover:bg-red-500/10 p-1 h-8 w-8"
+                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 p-1 h-8 w-8 cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </Button>
@@ -307,11 +307,11 @@ export function ServerProfileManagerDialog({ isOpen, onClose, onConfigured }: Se
                   onClick={() => setConnectionMode('domain')}
                   className={`p-3 rounded-lg border cursor-pointer text-center transition ${
                     connectionMode === 'domain'
-                      ? 'border-amber-500 bg-amber-500/10 text-white'
-                      : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
+                      ? 'border-amber-500 bg-amber-500/10 text-foreground font-semibold ring-1 ring-amber-500/30'
+                      : 'border-border bg-card text-muted-foreground hover:border-border/80 hover:bg-muted/40'
                   }`}
                 >
-                  <Globe className="w-4 h-4 mx-auto mb-1 text-blue-400" />
+                  <Globe className="w-4 h-4 mx-auto mb-1 text-blue-500" />
                   <div className="text-xs font-bold">Domain Name</div>
                 </div>
 
@@ -319,11 +319,11 @@ export function ServerProfileManagerDialog({ isOpen, onClose, onConfigured }: Se
                   onClick={() => setConnectionMode('ip')}
                   className={`p-3 rounded-lg border cursor-pointer text-center transition ${
                     connectionMode === 'ip'
-                      ? 'border-amber-500 bg-amber-500/10 text-white'
-                      : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
+                      ? 'border-amber-500 bg-amber-500/10 text-foreground font-semibold ring-1 ring-amber-500/30'
+                      : 'border-border bg-card text-muted-foreground hover:border-border/80 hover:bg-muted/40'
                   }`}
                 >
-                  <HardDrive className="w-4 h-4 mx-auto mb-1 text-emerald-400" />
+                  <HardDrive className="w-4 h-4 mx-auto mb-1 text-emerald-500" />
                   <div className="text-xs font-bold">Direct IP / LAN</div>
                 </div>
 
@@ -331,53 +331,53 @@ export function ServerProfileManagerDialog({ isOpen, onClose, onConfigured }: Se
                   onClick={() => setConnectionMode('tailscale')}
                   className={`p-3 rounded-lg border cursor-pointer text-center transition ${
                     connectionMode === 'tailscale'
-                      ? 'border-amber-500 bg-amber-500/10 text-white'
-                      : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
+                      ? 'border-amber-500 bg-amber-500/10 text-foreground font-semibold ring-1 ring-amber-500/30'
+                      : 'border-border bg-card text-muted-foreground hover:border-border/80 hover:bg-muted/40'
                   }`}
                 >
-                  <Radio className="w-4 h-4 mx-auto mb-1 text-purple-400" />
+                  <Radio className="w-4 h-4 mx-auto mb-1 text-purple-500" />
                   <div className="text-xs font-bold">Secure Remote Mesh</div>
                 </div>
               </div>
 
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Profile Name</Label>
+                  <Label className="text-xs font-medium text-foreground">Profile Name</Label>
                   <Input
                     placeholder="e.g. Bikita Mining Site Production"
                     value={newProfileName}
                     onChange={(e) => setNewProfileName(e.target.value)}
-                    className="bg-slate-950 border-slate-700 text-sm"
+                    className="text-xs"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Primary Server URL or Host</Label>
+                  <Label className="text-xs font-medium text-foreground">Primary Server URL or Host</Label>
                   <Input
                     placeholder="e.g. https://dwrms.bikita.com or 192.168.1.100:8000"
                     value={newPrimaryUrl}
                     onChange={(e) => setNewPrimaryUrl(e.target.value)}
-                    className="bg-slate-950 border-slate-700 font-mono text-xs"
+                    className="font-mono text-xs"
                   />
-                  <p className="text-[10px] text-slate-500">Authoritative endpoint for all platform APIs and data sync.</p>
+                  <p className="text-[10px] text-muted-foreground">Authoritative endpoint for all platform APIs and data sync.</p>
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Optional Fallback Server URL (Local LAN Failover)</Label>
+                  <Label className="text-xs font-medium text-foreground">Optional Fallback Server URL (Local LAN Failover)</Label>
                   <Input
                     placeholder="e.g. https://192.168.1.100"
                     value={newFallbackUrl}
                     onChange={(e) => setNewFallbackUrl(e.target.value)}
-                    className="bg-slate-950 border-slate-700 font-mono text-xs"
+                    className="font-mono text-xs"
                   />
-                  <p className="text-[10px] text-slate-500">Used automatically if the primary domain is temporarily unreachable on-site.</p>
+                  <p className="text-[10px] text-muted-foreground">Used automatically if the primary domain is temporarily unreachable on-site.</p>
                 </div>
               </div>
 
               {/* Pre-flight validation box */}
               {validationResult?.valid && (
-                <div className="p-4 bg-emerald-950/30 border border-emerald-800/40 rounded-xl space-y-2 text-xs">
-                  <div className="flex items-center justify-between text-emerald-400 font-bold">
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 rounded-xl space-y-2 text-xs">
+                  <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-400 font-bold">
                     <span className="flex items-center gap-1.5">
                       <ShieldCheck className="w-4 h-4" /> Server Verified Successfully
                     </span>
@@ -385,11 +385,11 @@ export function ServerProfileManagerDialog({ isOpen, onClose, onConfigured }: Se
                       {validationResult.latencyMs} ms
                     </Badge>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-slate-300 pt-1">
-                    <div>Organization: <span className="text-white font-semibold">{validationResult.profileDetails?.organizationName}</span></div>
-                    <div>Platform Version: <span className="text-white font-semibold">{validationResult.profileDetails?.serverVersion}</span></div>
-                    <div>Environment: <span className="text-white font-semibold">{validationResult.profileDetails?.environment}</span></div>
-                    <div>Connection: <span className={validationResult.profileDetails?.isHttps ? 'text-emerald-400' : 'text-amber-400'}>{validationResult.profileDetails?.isHttps ? 'HTTPS Secure' : 'HTTP Unencrypted'}</span></div>
+                  <div className="grid grid-cols-2 gap-2 text-muted-foreground pt-1">
+                    <div>Organization: <span className="text-foreground font-semibold">{validationResult.profileDetails?.organizationName}</span></div>
+                    <div>Platform Version: <span className="text-foreground font-semibold">{validationResult.profileDetails?.serverVersion}</span></div>
+                    <div>Environment: <span className="text-foreground font-semibold">{validationResult.profileDetails?.environment}</span></div>
+                    <div>Connection: <span className={validationResult.profileDetails?.isHttps ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-amber-600 dark:text-amber-400 font-medium'}>{validationResult.profileDetails?.isHttps ? 'HTTPS Secure' : 'HTTP Unencrypted'}</span></div>
                   </div>
                 </div>
               )}
@@ -398,12 +398,12 @@ export function ServerProfileManagerDialog({ isOpen, onClose, onConfigured }: Se
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950/60 flex items-center justify-between">
+        <div className="p-4 border-t border-border bg-muted/40 flex items-center justify-between">
           <Button
             type="button"
             variant="ghost"
             onClick={handleClose}
-            className="text-slate-400 hover:text-white text-xs"
+            className="text-muted-foreground hover:text-foreground text-xs cursor-pointer"
           >
             Cancel
           </Button>
@@ -412,12 +412,12 @@ export function ServerProfileManagerDialog({ isOpen, onClose, onConfigured }: Se
             <div className="flex items-center gap-2">
               <Button
                 type="button"
-                variant="secondary"
+                variant="outline"
                 onClick={handleValidate}
                 disabled={isValidating || !newPrimaryUrl}
-                className="bg-slate-800 hover:bg-slate-700 text-xs"
+                className="text-xs cursor-pointer"
               >
-                {isValidating ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 mr-1.5 text-amber-400" />}
+                {isValidating ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 mr-1.5 text-amber-500" />}
                 Validate Server
               </Button>
 
@@ -425,7 +425,7 @@ export function ServerProfileManagerDialog({ isOpen, onClose, onConfigured }: Se
                 type="button"
                 onClick={handleSaveProfile}
                 disabled={!newPrimaryUrl || isValidating}
-                className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs"
+                className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-xs cursor-pointer"
               >
                 Save & Connect Profile
               </Button>
@@ -434,7 +434,7 @@ export function ServerProfileManagerDialog({ isOpen, onClose, onConfigured }: Se
             <Button
               type="button"
               onClick={() => setActiveTab('add')}
-              className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs"
+              className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-xs cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5 mr-1" /> Add New Profile
             </Button>

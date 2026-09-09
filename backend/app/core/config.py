@@ -6,11 +6,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     APP_NAME: str = "Bikita Minerals DWRMS"
-    APP_VERSION: str = "v2.9.0"
+    APP_VERSION: str = "v2.10.0"
     API_VERSION: str = "v1"
     DB_SCHEMA_VERSION: str = "2026.08.28.01"
-    WEB_CLIENT_VERSION: str = "v2.9.0"
-    DESKTOP_CLIENT_VERSION: str = "v2.9.0"
+    WEB_CLIENT_VERSION: str = "v2.10.0"
+    DESKTOP_CLIENT_VERSION: str = "v2.10.0"
     MIN_SUPPORTED_CLIENT_VERSION: str = "v2.0.0"
     UPDATE_CHANNEL: str = "enterprise_lts"
     ENVIRONMENT: str = "development"  # development, testing, staging, production

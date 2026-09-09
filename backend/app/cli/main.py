@@ -28,7 +28,7 @@ from app.cli.monitor import monitor_command
     context_settings={"help_option_names": ["-h", "--help"]},
     help="Bikita Minerals DWRMS — Authoritative Platform Administration CLI.",
 )
-@click.version_option(version="v2.9.0", prog_name="DWRMS Ops CLI")
+@click.version_option(version="v2.10.0", prog_name="DWRMS Ops CLI")
 def ops_group():
     """Bikita Minerals Industrial Operations Platform Administration Suite."""
     pass

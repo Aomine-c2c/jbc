@@ -46,8 +46,8 @@ Run the unified packaging script from the repository root:
 ```text
 dist/
 ├── desktop/
-│   ├── DWRMS_2.9.0_x64-setup.exe      (Self-contained NSIS Installer - 2.64 MB)
-│   └── DWRMS_2.9.0_x64_en-US.msi      (Active Directory GPO Installer - 3.62 MB)
+│   ├── DWRMS_2.10.0_x64-setup.exe     (Self-contained NSIS Installer - 3.06 MB)
+│   └── DWRMS_2.10.0_x64_en-US.msi     (Active Directory GPO Installer - 4.09 MB)
 ├── tablet-mobile-pwa/
 │   ├── manifest.json                  (PWA Web Manifest with 192x192 & 512x512 icons)
 │   ├── sw.js                          (Service Worker offline shell & cache engine)
@@ -65,13 +65,35 @@ dist/
 ### Automated Silent Installation (Active Directory GPO / SCCM)
 
 ```powershell
-msiexec /i dist\desktop\DWRMS_2.9.0_x64_en-US.msi /quiet /qn
+msiexec /i dist\desktop\DWRMS_2.10.0_x64_en-US.msi /quiet /qn
 ```
 
 ### Manual Interactive Installation
 
-1. Double-click `dist\desktop\DWRMS_2.9.0_x64-setup.exe`.
+1. Double-click `dist\desktop\DWRMS_2.10.0_x64-setup.exe`.
 2. Follow on-screen prompts; desktop shortcut and start menu entries are created automatically.
+
+### Package Cryptographic Verification (SHA-256)
+
+Before enterprise deployment, verify package integrity using PowerShell:
+
+```powershell
+Get-FileHash -Path dist\desktop\* -Algorithm SHA256 | Format-Table -AutoSize
+```
+
+Expected Hashes for v2.10.0:
+- **DWRMS_2.10.0_x64-setup.exe**: `31208ee6b18e903efd5363dffac507848e2520e9840938bf4e7fbce1cff60aaa`
+- **DWRMS_2.10.0_x64_en-US.msi**: `d3b4f843620dccde507c374d0fc85319eb135e9f24ae7144702ec49d0f14a44a`
+
+### Server Connection Profile Configuration
+
+Upon launching the application for the first time:
+1. Click the **Connection Status Badge** in the top navigation header.
+2. Select or create a **Connection Profile** matching your physical operating environment:
+   - **Central Server (Default)**: `http://localhost:8000` or corporate mining WAN `https://dwrms.bikita.com/api/v1`
+   - **Plant / Processing LAN**: Dedicated local IP (e.g., `http://192.168.10.50:8000`) for high-throughput zero-latency plant monitoring
+   - **Tailscale Field Mesh**: Secure field technician mesh IP (e.g., `http://100.x.y.z:8000`)
+3. Click **"Test Connection"** to verify round-trip latency (ms) and health status before saving.
 
 ---
 

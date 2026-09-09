@@ -1,7 +1,7 @@
 # Bikita Minerals DWRMS - Digital Work Request & Resource Management System
 
 **Authoritative Industrial Operations, Heavy Fleet Management & Cross-Departmental Governance Core**  
-*Enterprise Platform Architecture for Bikita Minerals Lithium Operations (Version 2.9.0)*
+*Enterprise Platform Architecture for Bikita Minerals Lithium Operations (Version 2.10.0)*
 
 ---
 
@@ -31,9 +31,9 @@ All device setups are built, verified, and packaged in the unified distribution 
 
 | Target Device | Package / Distribution Artifact | Size | SHA-256 Checksum | Operational Target |
 | :--- | :--- | :---: | :--- | :--- |
-| **Workstations & Laptops** | [`dist/desktop/DWRMS_2.9.0_x64-setup.exe`](dist/desktop/DWRMS_2.9.0_x64-setup.exe) | **2.64 MB** | `a49529a10d8ff8bda74f05d2c1ea7f93062677454cd58af4d4c585e410916dd8` | Self-contained Windows installer for workshop PCs & rugged field laptops |
-| **Active Directory Rollout** | [`dist/desktop/DWRMS_2.9.0_x64_en-US.msi`](dist/desktop/DWRMS_2.9.0_x64_en-US.msi) | **3.62 MB** | `78954c114608250af5d62f76d37e2ed40d74f6b2b0d0a762e1461fb0d4703a6a` | Silent GPO / SCCM domain-wide installation across mine office PCs |
-| **Rugged Tablets & Mobile** | [`dist/tablet-mobile-pwa/`](dist/tablet-mobile-pwa/) | **~102 KB** | *Verified Service Worker + Manifest + Icons* | Offline PWA app shell for Samsung Galaxy Tab Active, Zebra & iOS/Android devices |
+| **Workstations & Laptops** | [`dist/desktop/DWRMS_2.10.0_x64-setup.exe`](dist/desktop/DWRMS_2.10.0_x64-setup.exe) | **3.06 MB** | `31208ee6b18e903efd5363dffac507848e2520e9840938bf4e7fbce1cff60aaa` | Self-contained Windows installer for workshop PCs & rugged field laptops |
+| **Active Directory Rollout** | [`dist/desktop/DWRMS_2.10.0_x64_en-US.msi`](dist/desktop/DWRMS_2.10.0_x64_en-US.msi) | **4.09 MB** | `d3b4f843620dccde507c374d0fc85319eb135e9f24ae7144702ec49d0f14a44a` | Silent GPO / SCCM domain-wide installation across mine office PCs |
+| **Rugged Tablets & Mobile** | [`dist/tablet-mobile-pwa/`](dist/tablet-mobile-pwa/) | **~102 KB** | `7f5e4ec96893c938006e2571b64df197348efbfc064dd3b681cb3b4eb22891e5` | Offline PWA app shell for Samsung Galaxy Tab Active, Zebra & iOS/Android devices |
 | **Android Enterprise (MDM)** | [`dist/android/BUILD_INSTRUCTIONS.txt`](dist/android/BUILD_INSTRUCTIONS.txt) | **~1 KB** | *Tauri Android APK generation pipeline* | Standalone APK build configuration for corporate mobile device managers |
 
 ### Build Setups for All Devices in One Command

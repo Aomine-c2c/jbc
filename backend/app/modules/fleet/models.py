@@ -311,6 +311,9 @@ class MachineRequisition(Base, TimestampMixin):
     comments: Mapped[str | None] = mapped_column(String(4000), nullable=True)
 
     # Relationships
+    department = relationship("Department", foreign_keys=[department_id], lazy="selectin")
+    collaborating_department = relationship("Department", foreign_keys=[collaborating_department_id], lazy="selectin")
+    requester = relationship("User", foreign_keys=[requester_id], lazy="selectin")
     machine_type = relationship("MachineType", lazy="selectin")
     allocated_machine = relationship("Machine", foreign_keys=[machine_id], back_populates="requisitions", lazy="selectin")
     reservations = relationship("MachineReservation", back_populates="requisition", lazy="selectin", cascade="all, delete-orphan")

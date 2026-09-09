@@ -27,6 +27,21 @@ $ProjectRoot = Split-Path -Parent $ScriptDir
 $FrontendDir = Join-Path $ProjectRoot "frontend"
 $DistDir = Join-Path $ProjectRoot "dist"
 
+# Resolve application version dynamically from tauri.conf.json
+$TauriConfPath = Join-Path $FrontendDir "src-tauri\tauri.conf.json"
+$AppVersion = "2.10.0"
+if (Test-Path $TauriConfPath) {
+    try {
+        $tauriJson = Get-Content $TauriConfPath -Raw | ConvertFrom-Json
+        if ($tauriJson.version) {
+            $AppVersion = $tauriJson.version
+        }
+    } catch {
+        Write-Warning "Could not parse tauri.conf.json; using default version $AppVersion"
+    }
+}
+Write-Host " Application Release Version: v$AppVersion" -ForegroundColor Cyan
+
 if (-not (Test-Path $DistDir)) {
     New-Item -ItemType Directory -Path $DistDir -Force | Out-Null
 }
@@ -34,15 +49,15 @@ if (-not (Test-Path $DistDir)) {
 Set-Location $FrontendDir
 
 # ------------------------------------------------------------------------------
-# STEP 1: Front-End Production Build (Used by Desktop, PWA & Mobile Web)
+# STEP 1: Front-End Production Static Export (Used by Tauri, PWA & Mobile Web)
 # ------------------------------------------------------------------------------
 if (-not $SkipFrontendBuild) {
-    Write-Host "`n[1/4] Compiling Next.js multi-device responsive frontend..." -ForegroundColor Yellow
-    npm run build
+    Write-Host "`n[1/4] Compiling Next.js multi-device responsive frontend export..." -ForegroundColor Yellow
+    npm run build:export
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Frontend compilation failed with exit code $LASTEXITCODE"
     }
-    Write-Host "Frontend build completed successfully." -ForegroundColor Green
+    Write-Host "Frontend static export completed successfully into frontend/out." -ForegroundColor Green
 } else {
     Write-Host "`n[1/4] Skipping Next.js build as requested." -ForegroundColor DarkGray
 }
@@ -53,23 +68,25 @@ if (-not $SkipFrontendBuild) {
 if ($DevicePlatform -eq "all" -or $DevicePlatform -eq "desktop") {
     Write-Host "`n[2/4] Packaging Desktop Workstations & Field Laptops (Windows x64)..." -ForegroundColor Yellow
     
-    $NsisBundle = Join-Path $FrontendDir "src-tauri\target\release\bundle\nsis\DWRMS_2.9.0_x64-setup.exe"
-    $MsiBundle = Join-Path $FrontendDir "src-tauri\target\release\bundle\msi\DWRMS_2.9.0_x64_en-US.msi"
+    $NsisBundle = Join-Path $FrontendDir "src-tauri\target\release\bundle\nsis\DWRMS_${AppVersion}_x64-setup.exe"
+    $MsiBundle = Join-Path $FrontendDir "src-tauri\target\release\bundle\msi\DWRMS_${AppVersion}_x64_en-US.msi"
 
     $DesktopDistDir = Join-Path $DistDir "desktop"
     if (-not (Test-Path $DesktopDistDir)) { New-Item -ItemType Directory -Path $DesktopDistDir -Force | Out-Null }
 
-    if ((Test-Path $NsisBundle) -and (Test-Path $MsiBundle)) {
+    Write-Host "Compiling native Tauri bundles via npx tauri build..." -ForegroundColor Cyan
+    npx tauri build
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Tauri build failed with exit code $LASTEXITCODE"
+    }
+
+    if (Test-Path $NsisBundle) {
         Copy-Item $NsisBundle -Destination $DesktopDistDir -Force
+        Write-Host " Desktop NSIS installer copied to dist/desktop/: DWRMS_${AppVersion}_x64-setup.exe" -ForegroundColor Green
+    }
+    if (Test-Path $MsiBundle) {
         Copy-Item $MsiBundle -Destination $DesktopDistDir -Force
-        Write-Host " Desktop installers copied to dist/desktop/:" -ForegroundColor Green
-        Write-Host "   - DWRMS_2.9.0_x64-setup.exe" -ForegroundColor Green
-        Write-Host "   - DWRMS_2.9.0_x64_en-US.msi" -ForegroundColor Green
-    } else {
-        Write-Host "Compiling native Tauri bundles via npx tauri build..." -ForegroundColor Cyan
-        npx tauri build
-        if (Test-Path $NsisBundle) { Copy-Item $NsisBundle -Destination $DesktopDistDir -Force }
-        if (Test-Path $MsiBundle) { Copy-Item $MsiBundle -Destination $DesktopDistDir -Force }
+        Write-Host " Desktop MSI installer copied to dist/desktop/: DWRMS_${AppVersion}_x64_en-US.msi" -ForegroundColor Green
     }
 }
 
@@ -106,7 +123,7 @@ if ($DevicePlatform -eq "all" -or $DevicePlatform -eq "pwa") {
         # Write device-specific PWA installation and pairing manifest
         $DeviceInfo = @{
             system = "Bikita Minerals DWRMS"
-            version = "2.9.0"
+            version = $AppVersion
             device_categories = @("Rugged Tablets (Samsung Tab Active, Zebra)", "Mobile Smartphones (iOS / Android)")
             offline_storage = "IndexedDB + ServiceWorker Cache"
             sync_protocol = "Bi-directional mutation queue via /api/v1/sync"
@@ -153,4 +170,11 @@ if ($DevicePlatform -eq "all" -or $DevicePlatform -eq "android") {
 Write-Host "`n=================================================================" -ForegroundColor Cyan
 Write-Host "   ALL MULTI-DEVICE PACKAGING TARGETS READY IN: /dist/           " -ForegroundColor Cyan
 Write-Host "=================================================================" -ForegroundColor Cyan
-Get-ChildItem -Path $DistDir -Recurse | Where-Object { -not $_.PSIsContainer } | Select-Object FullName, Length | Format-Table -AutoSize
+Get-ChildItem -Path $DistDir -Recurse | Where-Object { -not $_.PSIsContainer } | ForEach-Object {
+    $hash = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash.ToLower()
+    [PSCustomObject]@{
+        Name = $_.Name
+        LengthKB = [math]::Round($_.Length / 1KB, 2)
+        SHA256 = $hash
+    }
+} | Format-Table -AutoSize
