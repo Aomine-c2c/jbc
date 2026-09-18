@@ -128,8 +128,10 @@ sudo ./install.sh
 
 ### Prerequisites
 
-- **Node.js**: v20+
+- **Node.js**: v20+ (with npm)
 - **Python**: v3.12+ (or `.venv` in `/backend`)
+- **Docker** + Docker Compose plugin (for containerized dev)
+- **Rust** (optional, for Tauri desktop builds)
 
 ### Launch All Services Concurrently
 
@@ -150,3 +152,137 @@ npm run build
 ```powershell
 npm run lint
 ```
+
+### Docker-Based Local Development
+
+```bash
+# Start PostgreSQL, Redis, backend, worker, and frontend (with live DB init & seeding)
+docker compose -f infrastructure/docker-compose.yml up --build
+
+# Services: Frontend at http://localhost:3000, API at http://localhost:8000
+```
+
+### Backend Development
+
+```bash
+cd backend
+
+# Create and activate virtual environment
+python3 -m venv .venv
+source .venv/bin/activate    # Linux/WSL
+# .venv\Scripts\activate     # Windows
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Initialize database & seed demo data
+python init_db_all.py
+python seed.py
+python seed_rbac.py
+python seed_faker.py
+
+# Start backend with auto-reload
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+# Run tests
+pytest tests/ -v
+```
+
+### Frontend Development
+
+```bash
+cd frontend
+
+# Install dependencies
+npm ci
+
+# Start dev server
+npm run dev
+
+# Run unit/component tests
+npm run test
+
+# Run E2E tests (Playwright)
+npx playwright test
+```
+
+### API Documentation
+
+- **Swagger UI**: `http://localhost:8000/api/docs` (auto-disabled in production)
+- **ReDoc**: `http://localhost:8000/api/redoc` (auto-disabled in production)
+
+For the complete developer guide, see [`docs/DEVELOPER_GUIDE.md`](docs/DEVELOPER_GUIDE.md).
+
+---
+
+## 7. Platform Administration CLI (`ops`)
+
+The `ops` command is the unified administrative interface for installed servers. See [`docs/INTERFACE_MODES.md`](docs/INTERFACE_MODES.md) for the full reference.
+
+### Key Commands
+
+```bash
+ops status              # Real-time platform status & container health
+ops health              # Deep subsystem readiness probe
+ops logs -s app -f      # Stream structured logs in real-time
+ops backup create       # Create disaster recovery snapshot
+ops restore <snapshot>  # Restore from backup
+ops update apply        # 8-step controlled platform upgrade
+ops update rollback     # Emergency rollback to pre-upgrade snapshot
+ops monitor             # Interactive TUI dashboard (live telemetry)
+ops version             # Display platform version matrix
+```
+
+### Interactive Operations TUI
+
+```bash
+ops monitor
+```
+
+Launches a full-screen terminal dashboard showing container status, host hardware telemetry (CPU/RAM/disk), dual IP endpoints (LAN + Tailscale), auto-update status, and recent log telemetry. Keyboard controls: `q` (quit), `r` (refresh), `u` (check updates), `l` (view logs).
+
+---
+
+## 8. Version Upgrades & Migrations
+
+The platform uses a controlled 8-step upgrade pipeline with automatic safety snapshots:
+
+```bash
+# Check current version matrix
+ops update matrix
+
+# Check for available updates
+ops update check
+
+# Apply platform update (with pre-upgrade backup, migrations, and health verification)
+ops update apply
+
+# Emergency rollback (1-command)
+ops update rollback
+```
+
+The upgrade pipeline:
+1. Validates current system health
+2. Checks version compatibility (minimum client: `v2.0.0`)
+3. Creates pre-upgrade safety snapshot (`dwrms_backup_pre_upgrade_*.tar.gz`)
+4. Applies staged code deployment
+5. Runs transactional Alembic schema migrations
+6. Restarts services with zero downtime
+7. Runs post-update health checks
+8. Verifies critical workflows (auth, job cards, requisitions)
+
+For the complete upgrade and migration guide, see [`docs/UPGRADE_AND_MIGRATION_GUIDE.md`](docs/UPGRADE_AND_MIGRATION_GUIDE.md).
+
+---
+
+## 9. Cross-Platform Setup
+
+| Platform | Guide |
+|:---|:---|
+| **Ubuntu Server** (Production) | [`docs/CROSS_PLATFORM_SETUP.md`](docs/CROSS_PLATFORM_SETUP.md) — Automated `install.sh` with Docker, firewall, TLS, systemd |
+| **Windows Workstations** (Clients) | [`deploy/CLIENT_SETUP_GUIDE.md`](deploy/CLIENT_SETUP_GUIDE.md) — MSI/GPO rollout, Tauri desktop .exe |
+| **Linux Development** | [`docs/CROSS_PLATFORM_SETUP.md`](docs/CROSS_PLATFORM_SETUP.md) — Docker compose, manual setup |
+| **Windows Development** | [`docs/CROSS_PLATFORM_SETUP.md`](docs/CROSS_PLATFORM_SETUP.md) — WSL2 or native, PowerShell packaging scripts |
+| **Rugged Tablets / Mobile** | [`deploy/CLIENT_SETUP_GUIDE.md`](deploy/CLIENT_SETUP_GUIDE.md) — PWA installation, offline sync, Android Enterprise APK |
+
+For the comprehensive installation and dependency management guide, see [`docs/INSTALLATION_AND_DEPENDENCIES.md`](docs/INSTALLATION_AND_DEPENDENCIES.md).

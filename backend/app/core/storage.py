@@ -137,9 +137,13 @@ class StorageManager:
         }
 
         if not self.base_path.exists():
-            health["status"] = "degraded"
-            health["error"] = "Storage directory does not exist"
-            return health
+            try:
+                self.base_path.mkdir(parents=True, exist_ok=True)
+                health["exists"] = True
+            except Exception as e:
+                health["status"] = "degraded"
+                health["error"] = f"Storage directory does not exist and cannot be created: {e}"
+                return health
 
         # Probe write access
         try:
