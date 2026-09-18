@@ -21,9 +21,9 @@ export function Protect({ capability, isPageGuard = false, moduleName, children 
 
   useEffect(() => {
     const syncRole = () => {
-      if (typeof window !== 'undefined') {
-        const email = localStorage.getItem('user_email');
-        const savedRole = localStorage.getItem('user_role');
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const email = window.localStorage.getItem('user_email');
+        const savedRole = window.localStorage.getItem('user_role');
         setUserRole(savedRole || email);
       }
     };

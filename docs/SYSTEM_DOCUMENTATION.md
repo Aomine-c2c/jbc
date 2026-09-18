@@ -155,7 +155,26 @@ stateDiagram-v2
 ## 7. Autonomous Server Self-Healing Infrastructure
 
 - **Host Operating System**: Ubuntu 22.04 / 24.04 LTS Server.
-- **Service Management**: Systemd unit (`dwrms-backend.service`) with `Restart=always` and `RestartSec=5s`.
-- **Health Watchdog Daemon**: Cron probe every 5 minutes (`/opt/dwrms/watchdog_healthcheck.sh`) probing `/api/v1/health`. Automatically restarts workers if unresponsive for > 5 seconds.
-- **Automated Backup Engine**: Daily at 02:00 AM via cron (`/opt/dwrms/backup_daily.sh`). Creates atomic SQLite VACUUM snapshots and gzip archives with 30-day automatic disk rotation.
-- **Network & Firewall**: Nginx reverse proxy with gzip compression and WebSocket forwarding; UFW firewall configured for ports 22, 80, 443, 8000.
+- **Service Management**: Systemd unit (`dwrms.service`) with `Restart=always` and `RestartSec=5s`.
+- **Health Watchdog Daemon**: Continuous 5-minute health watchdog (`dwrms-watchdog.timer`) probing `/api/v1/health`. Automatically restarts workers if unresponsive.
+- **Automated Backup Engine**: Daily at 02:00 CAT via systemd timer (`dwrms-backup.timer`). Creates atomic database dumps and asset gzip archives with SHA-256 integrity checks and 30-day automatic disk rotation.
+- **Continuous Update Engine**: 60-second systemd timer (`dwrms-autoupdate.timer`) invoking `ops update apply` for zero-touch maintenance.
+- **Network & Firewall**: Nginx reverse proxy with TLS 1.2/1.3 and gzip compression; UFW firewall strictly isolating ports.
+
+---
+
+## 8. Authoritative Operational & Technical Manuals Index
+
+| Manual | Path | Description & Target Audience |
+| :--- | :--- | :--- |
+| **Comprehensive Developer Guide** | [`docs/DEVELOPER_GUIDE.md`](DEVELOPER_GUIDE.md) | Technical specs, domain modules, state machine engine, RBAC, frontend architecture, and contribution standards. |
+| **Cross-Platform Setup & Dependency Guide** | [`docs/CROSS_PLATFORM_SETUP.md`](CROSS_PLATFORM_SETUP.md) | Complete installation and dependency manual for Linux (Ubuntu/Debian) and Windows (NSIS, MSI, PowerShell). |
+| **Installation & Dependency Management** | [`docs/INSTALLATION_AND_DEPENDENCIES.md`](INSTALLATION_AND_DEPENDENCIES.md) | Detailed 7-stage automated `install.sh` pipeline, runtime packages, storage layout, environment variables, and TLS. |
+| **Version Upgrade & Migration Guide** | [`docs/UPGRADE_AND_MIGRATION_GUIDE.md`](UPGRADE_AND_MIGRATION_GUIDE.md) | The 8-stage `ops update apply` pipeline, Alembic schema migrations, and 1-command emergency rollback runbooks. |
+| **Interface Modes & Operations Manual** | [`docs/INTERFACE_MODES.md`](INTERFACE_MODES.md) | Comprehensive operational manual for Desktop GUI, Rugged Tablet PWA (offline sync), Web Portal, and `ops` CLI suite. |
+| **Platform Administration CLI (`ops`) Reference** | [`docs/OPS_CLI_REFERENCE.md`](OPS_CLI_REFERENCE.md) | Global flags, subcommands, and operational syntax for `/usr/local/bin/ops`. |
+| **Disaster Recovery & Backup Runbook** | [`docs/DISASTER_RECOVERY.md`](DISASTER_RECOVERY.md) | Backup procedures, SHA-256 verification, automated rotation, and bare-metal restoration. |
+| **Ubuntu Server Deployment Guide** | [`docs/UBUNTU_SERVER_DEPLOYMENT.md`](UBUNTU_SERVER_DEPLOYMENT.md) | Host OS preparation, container orchestration, and network hardening for Ubuntu LTS. |
+| **API & Operations Manual** | [`docs/API_OPERATIONS_MANUAL.md`](API_OPERATIONS_MANUAL.md) | REST API endpoints, schemas, parameters, and authentication scopes. |
+| **Client Applications Guide** | [`deploy/CLIENT_SETUP_GUIDE.md`](../deploy/CLIENT_SETUP_GUIDE.md) | Multi-device installation manual for Windows Desktop Apps (.msi / Tauri) and Rugged Tablet PWAs. |
+| **6-Role Demo Walkthrough** | [`docs/ROLE_DEMO_WALKTHROUGH.md`](ROLE_DEMO_WALKTHROUGH.md) | Step-by-step interactive scenario centered on CAT 777D Haul Truck breakdown and repair. |

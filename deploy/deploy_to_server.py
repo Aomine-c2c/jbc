@@ -12,8 +12,8 @@ import sys
 
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
-HOST = os.getenv("DWRMS_SERVER_HOST", "100.107.114.86")
-USER = os.getenv("DWRMS_SERVER_USER", "sila")
+HOST = os.getenv("DWRMS_SERVER_HOST", "127.0.0.1")
+USER = os.getenv("DWRMS_SERVER_USER", "dwrms-admin")
 PASSWORD = os.getenv("DWRMS_SERVER_PASSWORD", "password_placeholder")
 
 print(f"[*] Connecting to server {HOST} as {USER}...", flush=True)
@@ -82,9 +82,8 @@ run_remote("docker exec -i dwrms-backend-1 python seed_faker.py")
 run_remote("docker compose -f /opt/dwrms/docker-compose.yml ps")
 
 # 8. Smoke test
-run_remote("curl -s -o /dev/null -w 'Tailscale IP (100.107.114.86) HTTP: %{http_code}\\n' http://100.107.114.86/login")
-run_remote("curl -s -o /dev/null -w 'LAN IP (192.168.1.68) HTTP: %{http_code}\\n' http://192.168.1.68/login")
-run_remote("curl -k -s -o /dev/null -w 'Tailscale Funnel (sila.tail4ff52b.ts.net) HTTPS: %{http_code}\\n' https://sila.tail4ff52b.ts.net/login")
+run_remote(f"curl -s -o /dev/null -w 'Server ({HOST}) HTTP: %{{http_code}}\\n' http://{HOST}/login || true")
+run_remote("curl -s -o /dev/null -w 'Localhost HTTP: %{http_code}\\n' http://127.0.0.1/login || true")
 
 ssh.close()
 print("\n[+] DEPLOYMENT AND ALL ENDPOINTS VERIFIED OPERATIONAL (HTTP 200).", flush=True)

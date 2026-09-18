@@ -5,8 +5,8 @@ sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 import os
 
-host = os.environ.get("DWRMS_TAILSCALE_HOST", "100.107.114.86")
-user = os.environ.get("DWRMS_SSH_USER", "sila")
+host = os.environ.get("DWRMS_TAILSCALE_HOST", "127.0.0.1")
+user = os.environ.get("DWRMS_SSH_USER", "dwrms-admin")
 password = os.environ.get("DWRMS_SSH_PASSWORD", "password_placeholder")
 
 ssh = paramiko.SSHClient()

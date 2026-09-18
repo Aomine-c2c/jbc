@@ -63,6 +63,12 @@ All device setups are built, verified, and packaged in the unified distribution 
 
 | Document | File Path | Focus & Target Audience |
 | :--- | :--- | :--- |
+| **Comprehensive Developer Guide** | [`docs/DEVELOPER_GUIDE.md`](docs/DEVELOPER_GUIDE.md) | Authoritative technical specs, backend/frontend architecture, RBAC, domain modules, state machine, testing, and contribution standards. |
+| **Cross-Platform Setup & Dependency Guide** | [`docs/CROSS_PLATFORM_SETUP.md`](docs/CROSS_PLATFORM_SETUP.md) | Dedicated automated/manual setup guides for Linux (Ubuntu/Debian) & Windows (MSI/NSIS/PowerShell), dependency management, and local dev. |
+| **Installation & Dependency Management** | [`docs/INSTALLATION_AND_DEPENDENCIES.md`](docs/INSTALLATION_AND_DEPENDENCIES.md) | Detailed 7-stage automated `install.sh` pipeline, runtime packages, storage layout, environment variables, and TLS. |
+| **Version Upgrade & Migration Guide** | [`docs/UPGRADE_AND_MIGRATION_GUIDE.md`](docs/UPGRADE_AND_MIGRATION_GUIDE.md) | The 8-stage `ops update apply` pipeline, version compatibility matrix, Alembic schema migrations, and 1-click disaster recovery rollback. |
+| **Interface Modes & Operations Manual** | [`docs/INTERFACE_MODES.md`](docs/INTERFACE_MODES.md) | Comprehensive operational manual for Desktop Workstation GUI, Rugged Tablet PWA (offline sync), Web Portal, and `ops` CLI suite. |
+| **Platform Administration CLI (`ops`) Reference** | [`docs/OPS_CLI_REFERENCE.md`](docs/OPS_CLI_REFERENCE.md) | Command syntax, options, and operational examples for the unified `ops` command-line suite. |
 | **Operational Readiness Audit** | [`docs/OPERATIONAL_READINESS_AUDIT.md`](docs/OPERATIONAL_READINESS_AUDIT.md) | File-by-file audit of all 419 source files (100% READY) and multi-role browser click results. |
 | **Master System Documentation** | [`docs/SYSTEM_DOCUMENTATION.md`](docs/SYSTEM_DOCUMENTATION.md) | Enterprise architecture, 10 mining departments, state machine lifecycle, and 8-role RBAC matrix. |
 | **6-Role Demo Walkthrough** | [`docs/ROLE_DEMO_WALKTHROUGH.md`](docs/ROLE_DEMO_WALKTHROUGH.md) | Step-by-step interactive scenario centered on CAT 777D Haul Truck breakdown and repair. |

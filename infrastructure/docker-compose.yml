@@ -39,7 +39,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=development-secret-key-change-in-prod
       - DEBUG=True
-      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://192.168.1.68,http://100.107.114.86,https://sila.tail4ff52b.ts.net,tauri://localhost
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,https://dwrms.bikita.com,tauri://localhost
     command: >
       sh -c "python init_db_all.py &&
              python seed_faker.py || true &&

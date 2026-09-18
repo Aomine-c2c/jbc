@@ -5,8 +5,8 @@ sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 import os
 
-host = os.environ.get("DWRMS_TAILSCALE_HOST", "100.107.114.86")
-user = os.environ.get("DWRMS_SSH_USER", "sila")
+host = os.environ.get("DWRMS_TAILSCALE_HOST", "127.0.0.1")
+user = os.environ.get("DWRMS_SSH_USER", "dwrms-admin")
 password = os.environ.get("DWRMS_SSH_PASSWORD", "password_placeholder")
 
 ssh = paramiko.SSHClient()
@@ -32,6 +32,7 @@ run_cmd("tailscale funnel --bg 80")
 run_cmd("tailscale serve status")
 
 # 2. Re-test POST /api/v1/setup/step/1 via Tailscale domain
-run_cmd("curl -k -v -X POST https://sila.tail4ff52b.ts.net/api/v1/setup/step/1 -H 'Content-Type: application/json' -d '{\"step_data\": {\"organization_name\": \"Bikita Minerals\", \"installation_name\": \"Masvingo lithium\", \"server_name\": \"bikita-srv-01\", \"environment\": \"production\", \"timezone\": \"Africa/Harare\"}}'")
+domain = os.environ.get("DWRMS_DOMAIN", "dwrms.bikita.com")
+run_cmd(f"curl -k -v -X POST https://{domain}/api/v1/setup/step/1 -H 'Content-Type: application/json' -d '{{\"step_data\": {{\"organization_name\": \"Bikita Minerals\", \"installation_name\": \"Masvingo lithium\", \"server_name\": \"bikita-srv-01\", \"environment\": \"production\", \"timezone\": \"Africa/Harare\"}}}}'")
 
 ssh.close()

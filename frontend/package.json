@@ -9,6 +9,7 @@
     "build:export": "node -e \"process.env.NEXT_EXPORT='true'; const { spawnSync } = require('child_process'); const res = spawnSync('next', ['build'], { stdio: 'inherit', env: { ...process.env, NEXT_EXPORT: 'true' }, shell: true }); process.exit(res.status || 0);\"",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest run",
     "tauri": "tauri",
     "tauri:dev": "concurrently \"npm run dev:backend\" \"npm run dev\" \"tauri dev\"",
     "tauri:build": "tauri build"
@@ -33,13 +34,18 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@tauri-apps/cli": "^2.11.4",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^4.7.0",
     "concurrently": "^10.0.5",
     "eslint": "^9",
     "eslint-config-next": "16.3.2",
+    "jsdom": "^30.1.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^2.1.9"
   }
 }

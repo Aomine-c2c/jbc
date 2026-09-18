@@ -105,11 +105,14 @@ def get_compose_file() -> Path:
 
 
 def get_docker_cmd() -> list[str]:
-    """Returns ['docker'] or ['sudo', 'docker'] if non-root user lacks socket permissions."""
+    """Returns ['docker'] or ['sudo', 'docker'] only if passwordless sudo is available."""
     if os.name != "nt" and hasattr(os, "geteuid") and os.geteuid() != 0:
         res = subprocess.run(["docker", "ps"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if res.returncode != 0:
-            return ["sudo", "docker"]
+            # Only use sudo if passwordless sudo is configured
+            sudo_check = subprocess.run(["sudo", "-n", "docker", "ps"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if sudo_check.returncode == 0:
+                return ["sudo", "docker"]
     return ["docker"]
 
 

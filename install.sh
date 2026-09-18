@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # BIKITA MINERALS DWRMS — AUTOMATED ONE-COMMAND INSTALLATION & SETUP SCRIPT
-# Version: 2.5 (Authoritative Server Platform Deployment)
+# Version: 2.10.0 (Authoritative Server Platform Deployment)
 # Supported OS: Ubuntu 22.04 LTS / Ubuntu 24.04 LTS / Debian 12
 # ==============================================================================
 # Usage:
@@ -23,7 +23,7 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}${BOLD}========================================================================${NC}"
 echo -e "${BLUE}${BOLD}   BIKITA MINERALS DWRMS — AUTOMATED SERVER INSTALLATION & SETUP        ${NC}"
-echo -e "${BLUE}${BOLD}   Platform Version: 2.5 Authoritative Operations Core                  ${NC}"
+echo -e "${BLUE}${BOLD}   Platform Version: 2.10.0 Authoritative Operations Core                ${NC}"
 echo -e "${BLUE}${BOLD}========================================================================${NC}"
 
 # ── REQUIRE ROOT / SUDO ───────────────────────────────────────────────────────
