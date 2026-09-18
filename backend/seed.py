@@ -119,6 +119,7 @@ async def seed():
         permissions = [
             "job_card:read", "job_card:create", "job_card:update", "job_card:delete", "job_card:approve", "job_card:verify",
             "job_card:allocate", "job_card:close", "job_card:cancel", "job_card:export",
+            "job_card:submit", "job_card:assign", "job_card:return",
             "job_request:read", "job_request:create", "job_request:update", "job_request:delete", "job_request:approve",
             "machine_requisition:read", "machine_requisition:create", "machine_requisition:update", "machine_requisition:approve",
             "machine:view", "machine:allocate", "machine:manage",
