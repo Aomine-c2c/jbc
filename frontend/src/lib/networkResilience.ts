@@ -189,7 +189,7 @@ class NetworkResilienceManager {
     if (msg.includes('AbortError') || msg.includes('timeout') || errorObj?.name === 'TimeoutError') {
       return `Server response timed out after 4 seconds. The central server may be busy or unreachable.`;
     }
-    if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('ECONNREFUSED')) {
+    if (msg.includes('Failed to fetch') || msg.includes('Load failed') || msg.includes('NetworkError') || msg.includes('ECONNREFUSED')) {
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         return `You are currently offline. Please verify your network or Wi-Fi connection.`;
       }

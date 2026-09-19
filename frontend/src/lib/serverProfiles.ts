@@ -333,7 +333,9 @@ export async function getActiveApiUrl(): Promise<string> {
     const origin = window.location.origin;
     const isTauri = Boolean(
       (window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ ||
-      (window as unknown as { __TAURI__?: unknown }).__TAURI__
+      (window as unknown as { __TAURI__?: unknown }).__TAURI__ ||
+      window.location.origin.startsWith('tauri://') ||
+      window.location.origin.includes('tauri.localhost')
     );
 
     if (isTauri) {
@@ -351,12 +353,22 @@ export async function getActiveApiUrl(): Promise<string> {
     ].includes(window.location.hostname);
 
     if (isLocalhost) {
-      // Local web dev on :3000/:3001 connects directly to FastAPI backend on :8000
+      // Check if an explicit non-default profile is selected (user manually configured a remote server)
       const active = await getActiveProfile();
-      if (active && active.primaryUrl && active.id !== 'prod-default' && !active.primaryUrl.includes(':3000') && !active.primaryUrl.includes('bikita.com')) {
+      if (
+        active &&
+        active.id !== 'prod-default' &&
+        active.id !== 'staging-default' &&
+        active.primaryUrl &&
+        !active.primaryUrl.includes('bikita.com')
+      ) {
         return normalizeServerUrl(active.primaryUrl);
       }
-      return DEFAULT_BACKEND_URL;
+      // Default: use the Next.js origin itself.
+      // The Next.js server-side rewrite (/api/* → backend:8000) handles proxying,
+      // so the browser does not need a separate cross-origin request to :8000.
+      // This also works for `next start` (standalone build) where the rewrite is active.
+      return origin;
     }
 
     // Remote browser deployment (Tailscale node, LAN IP, or public domain)
@@ -365,9 +377,9 @@ export async function getActiveApiUrl(): Promise<string> {
     return origin;
   }
 
-  // 2. SSR Runtime
+  // 2. SSR Runtime (Next.js server-side)
   const envUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '').replace(/\/api\/v1$/, '');
-  if (envUrl && !envUrl.includes(':3000')) {
+  if (envUrl) {
     return normalizeServerUrl(envUrl);
   }
 

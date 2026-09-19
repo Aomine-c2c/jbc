@@ -2,23 +2,70 @@
 
 import Image from 'next/image';
 import { login } from '@/lib/auth';
-import { useState, useEffect } from 'react';
-import { ShieldCheck, Wrench, UserCheck, Users, Gauge, Shield, Lock, Mail, ArrowRight } from 'lucide-react';
-import { NotificationBanner } from '@/components/ui/notification';
-import { PlantTelemetryVisual } from '@/components/auth/PlantTelemetryVisual';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { useState, useEffect, useCallback } from 'react';
+import { Lock, Mail, ChevronDown, AlertCircle, WifiOff, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { getProfiles, getActiveProfile, setActiveProfile, ServerProfile } from '@/lib/serverProfiles';
+import { getApiUrl } from '@/lib/api';
+
+const DEMO_ROLES = [
+  { label: 'Admin',          email: 'admin@bikita.com',      pass: 'password123' },
+  { label: 'Dept Manager',   email: 'mechmgr@bikita.com',    pass: 'password123' },
+  { label: 'Supervisor',     email: 'supervisor@bikita.com', pass: 'password123' },
+  { label: 'Technician',     email: 'tech@bikita.com',       pass: 'password123' },
+  { label: 'Operator',       email: 'operator@bikita.com',   pass: 'password123' },
+  { label: 'Safety Officer', email: 'safety@bikita.com',     pass: 'password123' },
+];
+
+type ServerStatus = 'checking' | 'online' | 'offline';
+
+function isNetworkErrorMsg(msg: string): boolean {
+  return (
+    msg === 'Failed to fetch' ||
+    msg === 'Load failed' ||
+    msg.includes('NetworkError') ||
+    msg.includes('ECONNREFUSED') ||
+    msg.includes('unreachable') ||
+    msg.includes('Failed to fetch') ||
+    msg.includes('Load failed')
+  );
+}
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [profiles, setProfiles] = useState<ServerProfile[]>([]);
+  const [email, setEmail]               = useState('');
+  const [password, setPassword]         = useState('');
+  const [error, setError]               = useState<string | null>(null);
+  const [loading, setLoading]           = useState(false);
+  const [profiles, setProfiles]         = useState<ServerProfile[]>([]);
   const [activeProfileId, setActiveProfileId] = useState<string>('');
+  const [demoOpen, setDemoOpen]         = useState(false);
+  const [serverStatus, setServerStatus] = useState<ServerStatus>('checking');
+  const [retrying, setRetrying]         = useState(false);
+
+  // Proactive server health check
+  const checkServer = useCallback(async (quiet = false) => {
+    if (!quiet) setRetrying(true);
+    try {
+      const baseUrl = await getApiUrl();
+      const cleanBase = baseUrl ? baseUrl.replace(/\/+$/, '') : '';
+      const endpoint = cleanBase ? `${cleanBase}/api/v1/health` : '/api/v1/health';
+
+      const res = await fetch(endpoint, {
+        signal: AbortSignal.timeout(5000),
+        cache: 'no-store',
+      });
+      setServerStatus(res.ok ? 'online' : 'offline');
+      if (res.ok) setError(null);
+    } catch {
+      setServerStatus('offline');
+    } finally {
+      setRetrying(false);
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
+
+    // Load profiles
     getProfiles().then((list) => {
       if (cancelled) return;
       setProfiles(list);
@@ -27,279 +74,230 @@ export default function LoginPage() {
         setActiveProfileId(active?.id || list[0]?.id || '');
       });
     });
+
+    // Initial health probe
+    checkServer(true);
+
     return () => { cancelled = true; };
-  }, []);
+  }, [checkServer]);
 
   const handleProfileChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newId = e.target.value;
     setActiveProfileId(newId);
     await setActiveProfile(newId);
     setError(null);
+    // Re-probe after profile switch
+    setTimeout(() => checkServer(true), 300);
   };
 
-  const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
-    if (e) e.preventDefault();
-    if (!email || !password) return;
+  const doLogin = async (loginEmail: string, loginPass: string) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await login(email, password);
+      const result = await login(loginEmail, loginPass);
       if (result?.error) {
-        setError(result.error);
+        // Normalise raw browser network errors before displaying
+        const raw = result.error;
+        if (isNetworkErrorMsg(raw)) {
+          setServerStatus('offline');
+          setError('Cannot reach the operations server. Please ensure the backend is running and try again.');
+        } else {
+          setError(raw);
+        }
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleQuickLogin = async (roleEmail: string, rolePass: string) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (email && password) doLogin(email, password);
+  };
+
+  const handleDemoSelect = (roleEmail: string, rolePass: string) => {
+    setDemoOpen(false);
     setEmail(roleEmail);
     setPassword(rolePass);
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await login(roleEmail, rolePass);
-      if (result?.error) {
-        setError(result.error);
-      }
-    } finally {
-      setLoading(false);
-    }
+    doLogin(roleEmail, rolePass);
   };
 
-  return (
-    <div className="flex flex-col lg:flex-row min-h-screen w-full bg-zinc-50 text-zinc-900 antialiased selection:bg-zinc-200">
-      {/* LEFT 50% PANEL: PLANT TELEMETRY SHOWCASE */}
-      <div className="w-full lg:w-1/2 min-h-100 lg:min-h-screen flex flex-col">
-        <PlantTelemetryVisual />
-      </div>
+  const isOffline = serverStatus === 'offline';
 
-      {/* RIGHT 50% PANEL: INDUSTRIAL AUTHENTICATION PORTAL */}
-      <div className="relative w-full lg:w-1/2 min-h-150 lg:min-h-screen flex items-center justify-center p-6 md:p-10 lg:p-12 bg-zinc-50/60">
-        {/* TOP RIGHT CONTROLS */}
-        <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
-          <div className="flex items-center gap-1.5 bg-white border border-zinc-200 rounded-md px-2 py-1 shadow-2xs">
-            <span className="size-2 rounded-full bg-emerald-500 inline-block" />
-            <select
-              value={activeProfileId}
-              onChange={handleProfileChange}
-              className="h-6 bg-transparent text-[11px] font-mono text-zinc-800 outline-none cursor-pointer"
+  return (
+    <div className="min-h-screen w-full bg-zinc-50 flex items-center justify-center p-4">
+
+      {/* Server offline banner — shown above card */}
+      {isOffline && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm">
+          <div className="mx-4 flex items-start gap-2.5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 shadow-lg shadow-amber-100 text-xs text-amber-800">
+            <WifiOff className="size-3.5 shrink-0 mt-0.5 text-amber-600" />
+            <div className="flex-1">
+              <span className="font-semibold">Operations server unreachable.</span>{' '}
+              Ensure the backend service is running on port 8000.
+            </div>
+            <button
+              type="button"
+              onClick={() => checkServer()}
+              disabled={retrying}
+              className="shrink-0 flex items-center gap-1 text-amber-700 hover:text-amber-900 font-semibold transition-colors disabled:opacity-50 cursor-pointer"
+              title="Retry connection"
             >
-              {profiles.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} {p.isDefault ? '(Default)' : ''}
-                </option>
-              ))}
-            </select>
+              <RefreshCw className={`size-3.5 ${retrying ? 'animate-spin' : ''}`} />
+              Retry
+            </button>
           </div>
-          <ThemeToggle />
+        </div>
+      )}
+
+      {/* Card */}
+      <div className="w-full max-w-sm bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
+
+        {/* Brand strip */}
+        <div className="flex flex-col items-center gap-3 px-8 pt-8 pb-6 border-b border-zinc-100">
+          <div className="size-12 rounded-xl border border-zinc-200 bg-white shadow-xs flex items-center justify-center p-1.5">
+            <Image src="/bikita-emblem.png" alt="Bikita Minerals" width={36} height={36} className="object-contain" />
+          </div>
+          <div className="text-center">
+            <h1 className="text-sm font-bold uppercase tracking-widest text-zinc-900">
+              Bikita Minerals · DWRMS
+            </h1>
+            <p className="text-[11px] text-zinc-400 font-mono mt-0.5">Operations &amp; Resource Management Portal</p>
+          </div>
+
+          {/* Server status pill */}
+          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold transition-colors ${
+            serverStatus === 'online'
+              ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+              : serverStatus === 'offline'
+              ? 'bg-rose-50 border border-rose-200 text-rose-700'
+              : 'bg-zinc-50 border border-zinc-200 text-zinc-500'
+          }`}>
+            {serverStatus === 'online' && <CheckCircle2 className="size-3" />}
+            {serverStatus === 'offline' && <WifiOff className="size-3" />}
+            {serverStatus === 'checking' && <RefreshCw className="size-3 animate-spin" />}
+            {serverStatus === 'online'   ? 'Server Online'
+            : serverStatus === 'offline' ? 'Server Offline'
+            : 'Checking…'}
+          </div>
         </div>
 
-        <div className="w-full max-w-md space-y-5 rounded-xl border border-zinc-200/80 bg-white p-6 md:p-8 shadow-sm">
-          {/* BRAND HEADER */}
-          <div className="text-center space-y-2.5">
-            <div className="mx-auto flex size-14 items-center justify-center rounded-xl bg-white border border-zinc-200/90 p-2 shadow-xs ring-2 ring-[#2E2F83]/10">
-              <Image
-                src="/bikita-emblem.png"
-                alt="Bikita Minerals"
-                width={40}
-                height={40}
-                className="object-contain"
-              />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-zinc-900 uppercase">
-                Bikita Minerals DWRMS
-              </h1>
-              <p className="text-xs font-mono text-zinc-500 mt-0.5">
-                Digital Work & Resource Management • Operations Portal
-              </p>
-            </div>
-          </div>
+        {/* Form body */}
+        <div className="px-8 py-6 space-y-4">
 
+          {/* Error */}
           {error && (
-            <div className="space-y-2">
-              <NotificationBanner
-                type={error.toLowerCase().includes("pending") ? "warning" : "error"}
-                title={error.toLowerCase().includes("pending") ? "Account Pending" : "Authentication Failure"}
-                message={error}
-                dismissible
-                onDismiss={() => setError(null)}
-              />
-              {(error.toLowerCase().includes("unreachable") || error.toLowerCase().includes("fetch")) && (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const devProfile = profiles.find(p => p.id === 'dev-default' || p.primaryUrl.includes('8000')) || profiles[0];
-                    if (devProfile) {
-                      setActiveProfileId(devProfile.id);
-                      await setActiveProfile(devProfile.id);
-                      setError(null);
-                      // Auto-retry login with existing credentials if already filled
-                      if (email && password) {
-                        await handleSubmit();
-                      }
-                    }
-                  }}
-                  className="w-full text-center py-1.5 px-2 rounded bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-mono hover:bg-amber-100 transition-colors cursor-pointer font-semibold"
-                >
-                  ⚡ Connect to Local Server (localhost:8000)
-                </button>
-              )}
+            <div className="flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2.5 text-xs text-red-700">
+              <AlertCircle className="size-3.5 mt-0.5 shrink-0" />
+              <span>{error}</span>
+              <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-red-600 shrink-0 cursor-pointer">✕</button>
             </div>
           )}
 
-          {/* LOGIN FORM */}
-          <form onSubmit={(e) => handleSubmit(e)} className="space-y-4">
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="text-[10px] font-mono uppercase text-zinc-500 font-medium block mb-1">
-                  Operator Email Address *
-                </label>
-                <div className="relative flex items-center">
-                  <span className="pointer-events-none absolute pl-2.5 text-zinc-400">
-                    <Mail className="size-3.5" />
-                  </span>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="h-9 w-full rounded-md border border-zinc-200 bg-white pl-8 pr-2.5 text-xs text-zinc-900 font-mono transition-all outline-none focus:border-[#2E2F83] focus:ring-1 focus:ring-[#2E2F83]"
-                    placeholder="admin@bikita.com"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-mono uppercase text-zinc-500 font-medium block mb-1">
-                  Access Password / Passcode *
-                </label>
-                <div className="relative flex items-center">
-                  <span className="pointer-events-none absolute pl-2.5 text-zinc-400">
-                    <Lock className="size-3.5" />
-                  </span>
-                  <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    autoComplete="current-password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="h-9 w-full rounded-md border border-zinc-200 bg-white pl-8 pr-2.5 text-xs text-zinc-900 font-mono transition-all outline-none focus:border-[#2E2F83] focus:ring-1 focus:ring-[#2E2F83]"
-                    placeholder="••••••••"
-                  />
-                </div>
-              </div>
+          <form onSubmit={handleSubmit} className="space-y-3">
+            {/* Email */}
+            <div className="relative">
+              <Mail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-zinc-400" />
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email address"
+                disabled={loading}
+                className="h-10 w-full rounded-lg border border-zinc-200 bg-zinc-50 pl-9 pr-3 text-sm text-zinc-900 outline-none transition focus:border-[#2E2F83] focus:bg-white focus:ring-2 focus:ring-[#2E2F83]/10 placeholder:text-zinc-400 disabled:opacity-60"
+              />
             </div>
 
+            {/* Password */}
+            <div className="relative">
+              <Lock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-zinc-400" />
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                disabled={loading}
+                className="h-10 w-full rounded-lg border border-zinc-200 bg-zinc-50 pl-9 pr-3 text-sm text-zinc-900 outline-none transition focus:border-[#2E2F83] focus:bg-white focus:ring-2 focus:ring-[#2E2F83]/10 placeholder:text-zinc-400 disabled:opacity-60"
+              />
+            </div>
+
+            {/* Submit */}
             <button
               type="submit"
               disabled={loading || !email || !password}
-              className="flex h-10 w-full items-center justify-center rounded-md bg-[#2E2F83] hover:bg-[#24256b] active:bg-[#1c1d56] px-3 text-xs font-semibold text-white shadow-xs transition-all disabled:bg-zinc-100 disabled:text-zinc-400 disabled:border disabled:border-zinc-200 disabled:shadow-none cursor-pointer disabled:cursor-not-allowed font-mono uppercase tracking-wider"
+              className="h-10 w-full rounded-lg bg-[#2E2F83] text-white text-sm font-semibold tracking-wide hover:bg-[#24256b] active:bg-[#1c1d56] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
             >
-              {loading ? "Authenticating Operator..." : "Authenticate & Open Console"}
-              <ArrowRight className="size-3.5 ml-1.5" />
+              {loading ? (
+                <>
+                  <RefreshCw className="size-3.5 animate-spin" />
+                  Signing in…
+                </>
+              ) : (
+                'Sign in'
+              )}
             </button>
           </form>
 
-          {/* QUICK CREDENTIALS SELECTOR */}
+          {/* Demo logins — collapsible */}
           {process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGINS !== 'false' && (
-            <div className="pt-4 border-t border-zinc-200 space-y-2.5">
-              <div className="flex items-center justify-between text-[10px] font-mono uppercase text-zinc-500 font-semibold">
-                <span>Select Operational Role:</span>
-                <span>Pass: password123</span>
-              </div>
+            <div className="border-t border-zinc-100 pt-3">
+              <button
+                type="button"
+                onClick={() => setDemoOpen((v) => !v)}
+                className="flex w-full items-center justify-between text-[11px] font-mono text-zinc-400 hover:text-zinc-600 transition-colors cursor-pointer select-none"
+              >
+                <span>Demo accounts</span>
+                <ChevronDown
+                  className={`size-3.5 transition-transform duration-200 ${demoOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('admin@bikita.com', 'password123')}
-                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-[#2E2F83]/5 hover:border-[#2E2F83]/30 text-left transition-colors cursor-pointer group"
-                >
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-900">
-                    <ShieldCheck className="size-3.5 text-zinc-800" />
-                    <span>Admin</span>
-                  </div>
-                  <div className="text-[9px] font-mono text-zinc-500 truncate mt-0.5">
-                    admin@bikita.com
-                  </div>
-                </button>
+              {demoOpen && (
+                <div className="mt-2 grid grid-cols-2 gap-1.5">
+                  {DEMO_ROLES.map((role) => (
+                    <button
+                      key={role.email}
+                      type="button"
+                      onClick={() => handleDemoSelect(role.email, role.pass)}
+                      disabled={loading}
+                      className="rounded-md border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-left text-[11px] font-medium text-zinc-700 hover:bg-[#2E2F83]/5 hover:border-[#2E2F83]/30 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {role.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('mechmgr@bikita.com', 'password123')}
-                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-[#2E2F83]/5 hover:border-[#2E2F83]/30 text-left transition-colors cursor-pointer group"
-                >
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-900">
-                    <Users className="size-3.5 text-amber-600" />
-                    <span>Dept Manager</span>
-                  </div>
-                  <div className="text-[9px] font-mono text-zinc-500 truncate mt-0.5">
-                    mechmgr@bikita.com
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('supervisor@bikita.com', 'password123')}
-                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-[#2E2F83]/5 hover:border-[#2E2F83]/30 text-left transition-colors cursor-pointer group"
-                >
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-900">
-                    <UserCheck className="size-3.5 text-emerald-600" />
-                    <span>Supervisor</span>
-                  </div>
-                  <div className="text-[9px] font-mono text-zinc-500 truncate mt-0.5">
-                    supervisor@bikita.com
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('tech@bikita.com', 'password123')}
-                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-[#2E2F83]/5 hover:border-[#2E2F83]/30 text-left transition-colors cursor-pointer group"
-                >
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-900">
-                    <Wrench className="size-3.5 text-blue-600" />
-                    <span>Technician</span>
-                  </div>
-                  <div className="text-[9px] font-mono text-zinc-500 truncate mt-0.5">
-                    tech@bikita.com
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('operator@bikita.com', 'password123')}
-                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-[#2E2F83]/5 hover:border-[#2E2F83]/30 text-left transition-colors cursor-pointer group"
-                >
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-900">
-                    <Gauge className="size-3.5 text-orange-600" />
-                    <span>Operator</span>
-                  </div>
-                  <div className="text-[9px] font-mono text-zinc-500 truncate mt-0.5">
-                    operator@bikita.com
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('safety@bikita.com', 'password123')}
-                  className="p-2.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-[#2E2F83]/5 hover:border-[#2E2F83]/30 text-left transition-colors cursor-pointer group"
-                >
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-900">
-                    <Shield className="size-3.5 text-rose-600" />
-                    <span>Safety Officer</span>
-                  </div>
-                  <div className="text-[9px] font-mono text-zinc-500 truncate mt-0.5">
-                    safety@bikita.com
-                  </div>
-                </button>
-              </div>
+        {/* Footer */}
+        <div className="flex items-center justify-between px-8 py-3 border-t border-zinc-100 bg-zinc-50/60">
+          <span className="text-[10px] font-mono text-zinc-400">
+            © Bikita Minerals (Pvt) Ltd
+          </span>
+          {profiles.length > 1 && (
+            <div className="flex items-center gap-1.5">
+              <span className={`size-1.5 rounded-full ${serverStatus === 'online' ? 'bg-emerald-500' : serverStatus === 'offline' ? 'bg-rose-500 animate-pulse' : 'bg-zinc-400'}`} />
+              <select
+                value={activeProfileId}
+                onChange={handleProfileChange}
+                className="text-[10px] font-mono text-zinc-500 bg-transparent outline-none cursor-pointer"
+              >
+                {profiles.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}{p.isDefault ? ' (Default)' : ''}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
         </div>

@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:backend": "cd ../backend && if exist .venv\\Scripts\\python.exe (.venv\\Scripts\\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload) else (python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload)",
+    "dev:backend": "cd ../backend && ../.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload 2>/dev/null || .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload",
+    "dev:full": "concurrently --names \"backend,frontend\" --prefix-colors \"cyan,magenta\" \"cd ../backend && .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload\" \"next dev\"",
     "build": "next build",
     "build:export": "node -e \"process.env.NEXT_EXPORT='true'; const { spawnSync } = require('child_process'); const res = spawnSync('next', ['build'], { stdio: 'inherit', env: { ...process.env, NEXT_EXPORT: 'true' }, shell: true }); process.exit(res.status || 0);\"",
     "start": "next start",

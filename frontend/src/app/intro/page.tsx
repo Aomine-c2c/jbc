@@ -2,6 +2,7 @@
 
 import IntroView from '@/components/auth/IntroView';
 
-export default function RootPage() {
+export default function IntroPage() {
   return <IntroView />;
 }
+

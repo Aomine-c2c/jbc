@@ -70,7 +70,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [showServerConfig, setShowServerConfig] = useState(false);
   const [showMobileDrawer, setShowMobileDrawer] = useState(false);
   const { isOnline } = useConnection();
-  const isAuthPage = pathname === "/login" || pathname?.startsWith("/login");
+  const isAuthPage = pathname === "/" || pathname === "/login" || pathname?.startsWith("/login") || pathname === "/intro" || pathname?.startsWith("/intro");
   const isSetupPage = pathname === "/setup" || pathname?.startsWith("/setup");
 
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);

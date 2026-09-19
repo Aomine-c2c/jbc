@@ -69,10 +69,18 @@ export async function login(email: string, password: string) {
     }
   } catch (e: unknown) {
     const err = e as { message?: string };
+    const msg = err.message || '';
+    const isNetworkError =
+      msg === 'Failed to fetch' ||
+      msg === 'Load failed' ||
+      msg.includes('NetworkError') ||
+      msg.includes('ECONNREFUSED') ||
+      msg.includes('Failed to fetch') ||
+      msg.includes('Load failed');
     return {
-      error: err.message === 'Failed to fetch'
-        ? 'Authentication server unreachable. Please select "Local Development Server" from the environment selector in the top right, or verify server connection.'
-        : (err.message || 'Unable to connect to authentication server.'),
+      error: isNetworkError
+        ? 'Authentication server unreachable. Ensure the backend is running or switch to the correct environment profile.'
+        : (msg || 'Unable to connect to authentication server.'),
     };
   }
 }
