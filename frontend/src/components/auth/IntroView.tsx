@@ -172,7 +172,7 @@ export default function IntroView() {
 
       {/* ── TOP ANNOUNCEMENT / LOGGED IN BANNER ─────────────────── */}
       {loggedInUser && (
-        <div className="bg-indigo-50 border-b border-indigo-200 px-4 py-2 text-xs font-mono flex items-center justify-between text-indigo-700">
+        <div className="bg-[#1f2048] border-b border-[#3b3d88] px-4 py-2 text-xs font-mono flex items-center justify-between text-indigo-200">
           <div className="flex items-center gap-2">
             <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>Active Session: <strong className="text-indigo-900">{loggedInUser.email}</strong> ({loggedInUser.role})</span>
@@ -344,11 +344,10 @@ export default function IntroView() {
               <div
                 key={s.step}
                 onClick={() => setActiveStep(idx)}
-                className={`relative rounded-xl border p-5 transition-all duration-200 cursor-pointer flex flex-col justify-between ${
-                  isSelected
+                className={`relative rounded-xl border p-5 transition-all duration-200 cursor-pointer flex flex-col justify-between ${isSelected
                     ? 'border-indigo-400 bg-indigo-50 shadow-md shadow-indigo-100 ring-1 ring-indigo-300'
                     : 'border-border bg-card hover:border-indigo-300 hover:bg-indigo-50/50 shadow-sm hover:shadow-md'
-                }`}
+                  }`}
               >
                 <div>
                   <div className="flex items-center justify-between mb-3">

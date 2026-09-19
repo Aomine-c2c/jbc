@@ -126,6 +126,44 @@ sudo ./install.sh
 
 ## 6. Development & Local Run
 
+### One-Command Developer Mode Launcher (`run.sh` / `run.bat` / `run.ps1`)
+
+The repository includes authoritative cross-platform developer launchers that automatically verify system prerequisites (Python 3.10+, Node.js 18+, npm), configure `.env`, create `.venv`, install pip/npm dependencies, initialize the database schema, resolve port conflicts (8000 / 3000), and run services with live hot-reloading:
+
+#### Linux & macOS
+
+```bash
+# Interactive selection menu:
+./run.sh
+# or via shortcut:
+./run
+
+# Or launch directly with commands:
+./run.sh all         # Launch full stack (FastAPI Backend + Next.js Frontend concurrently)
+./run.sh backend     # Launch FastAPI backend with live reload (http://127.0.0.1:8000)
+./run.sh frontend    # Launch Next.js web application (http://localhost:3000)
+./run.sh tauri       # Launch Backend & Tauri Desktop development app
+./run.sh deps        # Verify and install dependencies & initialize database
+```
+
+#### Windows (Command Prompt & PowerShell)
+
+```cmd
+:: Windows Command Prompt:
+run.bat
+run.bat all
+run.bat backend
+run.bat frontend
+run.bat tauri
+run.bat deps
+```
+
+```powershell
+# Windows PowerShell:
+.\run.ps1
+.\run.ps1 all
+```
+
 ### Prerequisites
 
 - **Node.js**: v20+ (with npm)
@@ -133,7 +171,7 @@ sudo ./install.sh
 - **Docker** + Docker Compose plugin (for containerized dev)
 - **Rust** (optional, for Tauri desktop builds)
 
-### Launch All Services Concurrently
+### Manual Service Execution
 
 ```powershell
 cd frontend
