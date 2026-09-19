@@ -1,4 +1,4 @@
-# Server-First Platform Architecture Specification (V1.8)
+# Server-First Platform Architecture Specification (v2.10.0)
 
 ## 1. System Vision & Evolution Overview
 
@@ -44,7 +44,7 @@ Under Version 1.8, the **central Ubuntu Server is the single authoritative opera
                                          ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                            DATA LAYER                                    │
-│   • Relational Persistence (MySQL / PostgreSQL) — Strictly Isolated      │
+│   • Relational Persistence (PostgreSQL 16) — Strictly Isolated      │
 │   • Redis 7 In-Memory Cache & Message Broker                             │
 │   • Alembic Database Versioning & Schema Migration Pipeline              │
 └────────────────────────────────────────┬─────────────────────────────────┘
@@ -121,7 +121,7 @@ The authoritative engine where all business rules and permissions reside:
 
 Enterprise relational and caching persistence:
 
-* **Relational Database**: MySQL 8.0 or PostgreSQL 16 managed via asynchronous SQLAlchemy ORM.
+* **Relational Database**: PostgreSQL 16 managed via asynchronous SQLAlchemy ORM.
 * **Network Isolation**: The database has no exposed public ports and is accessible exclusively by the backend application container across the private Docker network.
 * **Redis 7 Broker**: In-memory message queue for Celery workers and distributed lock coordination.
 * **Alembic Database Versioning**: Programmatic schema migrations ensuring zero-downtime database upgrades.

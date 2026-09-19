@@ -1,7 +1,7 @@
 # Secure Remote Connectivity Guide (Optional Transport Layer)
 
 > **Bikita Minerals Industrial Operations Platform (DWRMS)**  
-> **Version 2.6 — Server-First Platform Architecture**  
+> **Version 2.10.0 — Server-First Platform Architecture**  
 > **Authoritative Node**: Ubuntu Server 22.04 LTS / 24.04 LTS (`masvingo-srv-01`)
 
 ---
@@ -148,7 +148,7 @@ sudo systemctl enable --now wg-quick@wg0
 
 ### 6.1 Inspecting via Web Platform Administration GUI
 
-Authorized administrators can inspect transport status at [`/admin/platform`](file:///c:/Users/armut/404/job%20card/frontend/src/app/admin/platform/page.tsx):
+Authorized administrators can inspect transport status at `/admin/platform`:
 
 * **Deployment Mode Badge**: `LOCAL_ONLY` | `HYBRID_REMOTE` | `PRIVATE_DISTRIBUTED`
 * **Transport Status**: `CONNECTED` (Green) | `STANDBY` (Slate) | `DISABLED`

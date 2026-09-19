@@ -58,8 +58,7 @@ The `install.sh` script performs the following automatically:
 4. **Directory Structure** — Creates `/var/dwrms/storage/{job_cards,reports,fleet,signatures,temp}`, `/var/dwrms/backups`, `/var/dwrms/logs` with secure permissions. Sets up the host Python venv and global `ops` CLI symlink.
 5. **Environment & TLS** — Generates a production `.env` with a cryptographically secure `SECRET_KEY`, database credentials, and CORS origins (auto-detecting LAN and Tailscale IPs). Creates self-signed TLS certificates.
 6. **Database Initialization** — Starts PostgreSQL and Redis containers, runs `init_db_all.py`, `seed.py`, `seed_rbac.py`, and `seed_faker.py` for baseline data.
-7. **Full Stack Launch** — Builds and starts all containers (backend, frontend, worker, beat, nginx) via `docker compose up -d --build`.
-8. **Systemd Registration** — Installs systemd units: `dwrms.service` (auto-restart on boot), `dwrms-backup.timer` (daily 02:00), `dwrms-healthcheck.timer` (every 5 min), `dwrms-autoupdate.timer` (60s auto-pull).
+7. **Full Stack Launch & Systemd Registration** — Builds and starts all containers (backend, frontend, worker, beat, nginx) via `docker compose up -d --build`. Installs systemd units: `dwrms.service` (auto-restart on boot), `dwrms-backup.timer` (daily 02:00), `dwrms-healthcheck.timer` (every 5 min), `dwrms-autoupdate.timer` (60s auto-pull).
 
 #### Step 4: Verify Installation
 
@@ -338,7 +337,7 @@ The `deploy/backup_db.ps1`, `deploy/restore_db.ps1`, and `deploy/startup_check.p
 |:---|:---|:---|:---|
 | Host OS | Ubuntu 22.04/24.04 | Windows + WSL2 | Windows 10/11 x64 |
 | Container Runtime | Docker CE | Docker Desktop | Docker Desktop (optional) |
-| Database | PostgreSQL 16 | PostgreSQL 16 | SQLite / MySQL |
+| Database | PostgreSQL 16 | PostgreSQL 16 | SQLite (local dev) |
 | Reverse Proxy | Nginx (port 80/443) | Nginx in container | N/A (dev) |
 | Service Management | systemd | WSL2 systemd | Windows Service (NSSM) |
 | Firewall | UFW | WSL2 network | Windows Firewall |

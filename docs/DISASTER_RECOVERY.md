@@ -1,6 +1,6 @@
 # Bikita Minerals DWRMS — Backup, Recovery and Disaster Readiness Guide
 
-## Version 2.8 Standard Operating Procedures (SOP)
+## Version v2.10.0 Standard Operating Procedures (SOP)
 
 This document establishes the authoritative backup, recovery, and disaster readiness procedures for the self-hosted **Digital Work Request and Maintenance Management System (DWRMS)** deployed on central Ubuntu Servers.
 
@@ -32,7 +32,7 @@ Standardized Backup Archive Layout (dwrms_backup_YYYYMMDD_HHMMSS.tar.gz)
 {
   "backup_id": "bkp_20260828_153000_a1b2c3d4",
   "timestamp": "2026-08-28T15:30:00.000Z",
-  "platform_version": "v2.8.0",
+  "platform_version": "v2.10.0",
   "database_engine": "POSTGRESQL",
   "database_version": "POSTGRESQL standard",
   "backup_type": "FULL_SNAPSHOT",
@@ -117,7 +117,7 @@ ops backup prune --retention-days 30
 3. **Inspect Application Logs**:
 
    ```bash
-   ops logs --lines 100 --follow
+    ops logs -n 100 -f
    ```
 
 ---

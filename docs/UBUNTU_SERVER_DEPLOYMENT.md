@@ -1,4 +1,4 @@
-# Ubuntu Server Production Deployment & Operations Guide (V1.9)
+# Ubuntu Server Production Deployment & Operations Guide (v2.10.0)
 
 This manual provides authoritative procedures for deploying, configuring, monitoring, and operating the **Bikita Minerals Digital Work & Resource Management System (DWRMS)** on dedicated Ubuntu Server instances.
 
@@ -24,7 +24,7 @@ Ubuntu Server (Host OS)
 ├── FastAPI Application Core (:8000) ── Authoritative Business Logic, Scoped RBAC, Storage
 ├── Celery Background Worker ────────── SMS dispatch, asynchronous actions
 ├── Celery Beat Scheduler ───────────── SLA escalation sweep (5m), storage purge (24h)
-├── Relational Database (5432/3306) ─── PostgreSQL 16 / MySQL (Isolated internal network)
+├── Relational Database (5432) — PostgreSQL 16 (Isolated internal network)
 ├── Redis 7 (6379) ──────────────────── Celery broker, caching, distributed locks
 ├── Storage Subsystem (/var/dwrms/storage) ── Attachment storage & validation
 ├── Logging Subsystem (/var/dwrms/logs) ───── Structured JSON logs with X-Request-ID
@@ -115,10 +115,10 @@ ops server restart backend
 ops server reload
 
 # 11. Zero-downtime platform upgrade:
-ops update
+ops update apply
 ```
 
-For the comprehensive command manual, see [docs/OPS_CLI_REFERENCE.md](file:///c:/Users/armut/404/job%20card/docs/OPS_CLI_REFERENCE.md).
+For the comprehensive command manual, see [docs/OPS_CLI_REFERENCE.md](../OPS_CLI_REFERENCE.md).
 
 ---
 
@@ -152,7 +152,7 @@ curl -k https://localhost/readiness
 {
   "status": "ready",
   "environment": "production",
-  "version": "v1.9.0",
+  "version": "v2.10.0",
   "timestamp": "2026-08-28T14:00:00.000000Z",
   "services": {
     "database": {
@@ -257,7 +257,7 @@ mkdir -p /tmp/restore
 tar -xzf /var/dwrms/backups/dwrms_backup_YYYYMMDD_HHMMSS.tar.gz -C /tmp/restore
 
 # 3. Restore PostgreSQL database:
-docker compose -f /opt/dwrms/docker-compose.prod.yml exec -T db psql -U dwrms_prod -d dwrms < /tmp/restore/database.sql
+docker compose -f /opt/dwrms/docker-compose.prod.yml exec -T db psql -U dwrms_user -d dwrms < /tmp/restore/database.sql
 
 # 4. Restore file storage:
 cp -r /tmp/restore/storage/. /var/dwrms/storage/

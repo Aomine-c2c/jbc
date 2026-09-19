@@ -143,7 +143,7 @@ ops health --timeout 30
 ```
 
 Tests millisecond round-trip latencies for:
-- Database connection (PostgreSQL/MySQL)
+- Database connection (PostgreSQL 16)
 - Redis broker ping
 - Storage write access
 - API gateway responsiveness

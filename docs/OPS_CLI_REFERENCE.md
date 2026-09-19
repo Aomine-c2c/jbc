@@ -12,7 +12,7 @@ Installed globally on Ubuntu Server at `/usr/local/bin/ops` (or accessible via `
 ops [OPTIONS] COMMAND [ARGS]...
 
 Options:
-  --version     Show platform version (v2.2.0)
+  --version     Show platform version (v2.10.0)
   -h, --help    Show help message and exit
 ```
 
@@ -47,7 +47,7 @@ Launches the structured 8-stage server setup and configuration process:
 
 1. **STEP 1 — Platform Configuration**: Organization name, installation/mine site name, server node identifier, environment (`production`/`staging`/`development`), timezone.
 2. **STEP 2 — Network Configuration**: Primary server URL, domain name, local LAN IP, HTTPS/TLS encryption mode, trusted CORS origins (no fixed public IP required).
-3. **STEP 3 — Database Pre-Flight & Credentials**: Engine (`postgresql`/`mysql`/`sqlite`), Host, Port, Name, Username, Password with **live async connection testing before proceeding**.
+3. **STEP 3 — Database Pre-Flight & Credentials**: Engine (`postgresql`/`sqlite`), Host, Port, Name, Username, Password with **live async connection testing before proceeding**.
 4. **STEP 4 — Initial Administrator Account**: Email, Name, Department, and Password with complexity validation.
 5. **STEP 5 — File Storage Subsystem**: Attachment storage path, permissions probe, and disk capacity verification.
 6. **STEP 6 — Backups & Disaster Recovery**: Backup location, frequency (daily/weekly/hourly), retention policy (days).
@@ -81,7 +81,7 @@ ops status
 ======================================================================
 Platform Identity
   Platform:        Bikita Minerals DWRMS
-  Version:         v2.0.0
+   Version:         v2.10.0
   Environment:     production
   Host Node:       masvingo-srv-01 (Linux 5.15.0-105-generic)
   Authoritative:   https://dwrms.bikita.com
@@ -274,8 +274,11 @@ ops server reload
 # Check running container processes:
 ops server ps
 
-# Upgrade platform: pull repo, build containers, run migrations, and reload:
-ops update
+# Upgrade platform (8-step controlled pipeline):
+ops update matrix
+ops update check
+ops update apply
+ops update rollback
 ```
 
 ---
@@ -293,9 +296,9 @@ ops version
   BIKITA MINERALS DWRMS -- PLATFORM VERSION
 ======================================================================
   Application:       Bikita Minerals DWRMS
-  Platform Version:  v2.2.0
+   Platform Version:  v2.10.0
   API Version:       v1
-  Database Engine:   MYSQL
+  Database Engine:   PostgreSQL 16
   Database Schema:   2026.08.28.01
   Environment:       PRODUCTION
   Release Channel:   enterprise_lts
@@ -307,5 +310,5 @@ ops version
 ## 4. Security & Remote Administration Guidelines
 
 1. **Least Privilege**: `ops install`, `ops server start/stop`, and `ops restore` require appropriate host permissions (`sudo`).
-2. **Credential Redaction**: `ops configure list` and `ops diagnostics` redact sensitive secrets (`SECRET_KEY`, `DB_PASSWORD`, `POSTGRES_PASSWORD`, `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD`, `JWT_SECRET`).
+2. **Credential Redaction**: `ops configure list` and `ops diagnostics` redact sensitive secrets (`SECRET_KEY`, `DB_PASSWORD`, `POSTGRES_PASSWORD`, `JWT_SECRET`).
 3. **SSH Remote Administration**: All commands format output using clean ASCII tables that render across PuTTY, OpenSSH, and Windows Terminal.

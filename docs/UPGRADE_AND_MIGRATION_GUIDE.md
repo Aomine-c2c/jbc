@@ -106,7 +106,7 @@ ops update apply --skip-backup
 
 Database schema changes are managed by **Alembic** and live in [`backend/alembic/versions/`](../backend/alembic/versions). The platform follows an **additive-only migration** policy — migrations never delete columns or tables, ensuring reversibility.
 
-Current migration chain (12 revisions):
+Current migration chain (9 revisions):
 
 ```
 48bcca2bf4fe_init
@@ -116,7 +116,7 @@ Current migration chain (12 revisions):
                 → 415d1feb1cc1_migrate_requisition_statuses
                     → 415d1feb1cc2_v1_5_scheduling
                         → 74bd076d72cc_add_jobcard_extended_completion_fields
-                            → de bd9a6a4bcd_add_work_packages_and_collaborators
+                                → debd9a6a4bcd_add_work_packages_and_collaborators
                                 → ea5c866570ed_add_businessauditlog_table
                                     → (latest) 2026.08.28.01
 ```

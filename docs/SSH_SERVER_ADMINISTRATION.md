@@ -1,7 +1,7 @@
 # SSH Server Administration and Operations Guide
 
 > **Bikita Minerals Industrial Operations and Work Management Platform (DWRMS)**  
-> **Version 2.5 — Server-First Platform Operations**  
+> **Version v2.10.0 — Server-First Platform Operations**  
 > **Authoritative Node**: Ubuntu Server 22.04 LTS / 24.04 LTS (`masvingo-srv-01`)
 
 ---
@@ -187,7 +187,7 @@ ops backup create --note "Pre-maintenance snapshot"
 ops backup list
 
 # 7. Check platform updates and migration state
-ops update
+ops update matrix
 ```
 
 ### 4.3 Non-Interactive Remote Automation
