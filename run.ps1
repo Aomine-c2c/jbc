@@ -177,6 +177,9 @@ BACKEND_URL=http://127.0.0.1:8000
 }
 
 function Start-BackendSilent {
+    # Ensure port 8000 is clear before starting
+    Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
+
     Write-Host "[DWRMS] Starting FastAPI backend (hidden) on http://127.0.0.1:8000 ..." -ForegroundColor Cyan
 
     $logFile = Join-Path $BackendDir "logs\dev-backend.log"
@@ -227,8 +230,11 @@ switch ($Mode.ToLower()) {
         Write-Host "====================================================================`n" -ForegroundColor Cyan
 
         Push-Location $FrontendDir
-        & npm run tauri dev
+        & npm run tauri:window
         Pop-Location
+
+        # Clean up background backend process when Tauri window closes
+        Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
     }
 
     "web" {

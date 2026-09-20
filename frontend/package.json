@@ -13,6 +13,7 @@
     "test": "vitest run",
     "tauri": "tauri",
     "tauri:dev": "concurrently \"npm run dev:backend\" \"npm run dev\" \"tauri dev\"",
+    "tauri:window": "concurrently --names \"next,tauri\" --prefix-colors \"magenta,cyan\" \"next dev\" \"tauri dev\"",
     "tauri:build": "tauri build"
   },
   "dependencies": {

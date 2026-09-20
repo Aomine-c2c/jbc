@@ -1,15 +1,19 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# BIKITA MINERALS DWRMS — AUTHORITATIVE DEVELOPER STACK LAUNCHER
+# BIKITA MINERALS DWRMS — ONE-COMMAND DEVELOPER LAUNCHER
+#
+# Default: Launches the full Tauri Desktop App in developer mode.
+# Automatically installs Rust if missing, runs preflight checks,
+# starts FastAPI backend silently, then opens the Tauri native window.
 #
 # Usage:
-#   ./run.sh                  Interactive selection menu
-#   ./run.sh all              Launch full stack (FastAPI Backend + Next.js Frontend)
-#   ./run.sh backend          Launch Backend API only (FastAPI with hot reload)
-#   ./run.sh frontend         Launch Frontend Web only (Next.js dev server)
-#   ./run.sh tauri            Launch Desktop environment (FastAPI + Tauri)
-#   ./run.sh deps             Verify and install all dependencies & init DB
-#   ./run.sh help             Display usage instructions
+#   ./run.sh                  Default: Tauri desktop dev mode (auto-installs Rust)
+#   ./run.sh tauri            Same as default
+#   ./run.sh web              Full web stack (FastAPI + Next.js in browser)
+#   ./run.sh backend          FastAPI backend only
+#   ./run.sh frontend         Next.js frontend only
+#   ./run.sh deps             Setup/verify all dependencies & init DB
+#   ./run.sh help             Show help
 # ==============================================================================
 
 set -uo pipefail
@@ -93,6 +97,45 @@ cleanup() {
 }
 
 trap cleanup INT TERM EXIT
+
+# ── Ensure Rust/Cargo is Available (auto-install if missing) ──────────────────
+ensure_rust() {
+    if command -v cargo >/dev/null 2>&1; then
+        log_info "Rust/Cargo: $(cargo --version) (${GREEN}OK${NC})"
+        return 0
+    fi
+
+    # Also try ~/.cargo/bin in case it was installed but not in PATH yet
+    if [[ -x "${HOME}/.cargo/bin/cargo" ]]; then
+        export PATH="${HOME}/.cargo/bin:${PATH}"
+        log_info "Rust/Cargo found at ~/.cargo/bin (${GREEN}OK${NC})"
+        return 0
+    fi
+
+    log_warn "Rust/Cargo not found — required for Tauri Desktop mode."
+    log_info "Auto-installing Rust via rustup.rs..."
+
+    if ! command -v curl >/dev/null 2>&1; then
+        log_error "curl is required to install Rust. Install curl first: sudo apt install curl"
+        exit 1
+    fi
+
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+    if [[ $? -ne 0 ]]; then
+        log_error "Rust installation failed. Install manually from https://rustup.rs/"
+        exit 1
+    fi
+
+    # Source cargo env for this session
+    # shellcheck disable=SC1091
+    source "${HOME}/.cargo/env" 2>/dev/null || export PATH="${HOME}/.cargo/bin:${PATH}"
+
+    if ! command -v cargo >/dev/null 2>&1; then
+        log_error "Rust installed but cargo still not found. Please close and reopen your terminal."
+        exit 1
+    fi
+    log_success "Rust installed: $(cargo --version)"
+}
 
 # ── Port Conflict Resolution ──────────────────────────────────────────────────
 resolve_port() {
@@ -310,6 +353,35 @@ run_preflight_checks() {
 
 # ── Launch Execution Functions ────────────────────────────────────────────────
 
+# ── Launch Backend Silently in Background ─────────────────────────────────────
+start_backend_bg() {
+    local log_file="${BACKEND_DIR}/logs/dev-backend.log"
+    log_info "Starting FastAPI backend (background) on ${BOLD}http://127.0.0.1:8000${NC} ..."
+    log_info "Backend log: ${DIM}${log_file}${NC}"
+    mkdir -p "${BACKEND_DIR}/logs"
+    (
+        cd "$BACKEND_DIR"
+        "$VENV_UVICORN" app.main:app --host 127.0.0.1 --port 8000 --reload \
+            >> "$log_file" 2>&1
+    ) &
+    local backend_pid=$!
+    CHILD_PIDS+=("$backend_pid")
+
+    # Poll for readiness (up to 20s)
+    log_info "Waiting for backend to initialize..."
+    local retries=0
+    while [[ $retries -lt 10 ]]; do
+        sleep 2
+        if curl -sf "http://127.0.0.1:8000/api/v1/health" >/dev/null 2>&1; then
+            log_success "Backend is online at http://127.0.0.1:8000"
+            return 0
+        fi
+        retries=$((retries + 1))
+    done
+    log_warn "Backend did not respond yet — Tauri will connect once it starts."
+    log_info "Check log: ${DIM}${log_file}${NC}"
+}
+
 start_backend() {
     resolve_port 8000 "FastAPI Backend"
     log_info "Starting FastAPI Backend with live reload on ${BOLD}http://127.0.0.1:8000${NC} ..."
@@ -363,75 +435,62 @@ start_full_stack() {
 }
 
 start_tauri_desktop() {
+    ensure_rust
     resolve_port 8000 "FastAPI Backend"
-    resolve_port 3000 "Next.js Frontend"
+    resolve_port 3000 "Next.js / Tauri Dev Server"
 
-    if ! command -v cargo >/dev/null 2>&1; then
-        log_warn "Rust/Cargo not found in PATH. Tauri requires Rust."
-        log_info "If installed in ~/.cargo/bin, ensuring PATH includes it..."
-        export PATH="${HOME}/.cargo/bin:${PATH}"
-        if ! command -v cargo >/dev/null 2>&1; then
-            log_error "Cargo is still not found. Please install Rust via: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
-            exit 1
-        fi
-    fi
-
-    log_info "Starting Backend & Tauri Desktop Development Environment..."
-    log_info "Press ${BOLD}Ctrl+C${NC} to stop."
+    log_info "Starting Bikita Minerals DWRMS — Tauri Desktop Dev Mode"
+    log_info "• FastAPI Backend: ${BOLD}http://127.0.0.1:8000${NC} (silent background)"
+    log_info "• Tauri window will open with Next.js hot reload"
+    log_info "Press ${BOLD}Ctrl+C${NC} or close the Tauri window to stop."
     echo ""
 
-    (
-        cd "$BACKEND_DIR"
-        "$VENV_UVICORN" app.main:app --host 127.0.0.1 --port 8000 --reload 2>&1 | while IFS= read -r line; do
-            echo -e "${CYAN}${BOLD}[BACKEND]${NC}  $line"
-        done
-    ) &
-    local backend_pid=$!
-    CHILD_PIDS+=("$backend_pid")
+    start_backend_bg
 
     (
         cd "$FRONTEND_DIR"
-        npm run tauri:dev 2>&1 | while IFS= read -r line; do
+        npm run tauri:window 2>&1 | while IFS= read -r line; do
             echo -e "${MAGENTA}${BOLD}[TAURI]${NC}    $line"
         done
     ) &
     local tauri_pid=$!
     CHILD_PIDS+=("$tauri_pid")
 
-    wait "$backend_pid" "$tauri_pid" 2>/dev/null || true
+    wait "$tauri_pid" 2>/dev/null || true
 }
+
 
 show_menu() {
     banner
     echo -e "${BOLD}Select execution mode:${NC}\n"
-    echo -e "  ${CYAN}[1]${NC} ${BOLD}Full Stack${NC}         - Run FastAPI Backend & Next.js Frontend together"
-    echo -e "  ${CYAN}[2]${NC} ${BOLD}Backend Only${NC}       - Run FastAPI API server with live reload (:8000)"
-    echo -e "  ${CYAN}[3]${NC} ${BOLD}Frontend Only${NC}      - Run Next.js web application dev server (:3000)"
-    echo -e "  ${CYAN}[4]${NC} ${BOLD}Tauri Desktop${NC}      - Run Backend & Tauri Desktop App"
+    echo -e "  ${CYAN}[1]${NC} ${BOLD}Tauri Desktop${NC}      - Native desktop app (hot reload) ${GREEN}[DEFAULT]${NC}"
+    echo -e "  ${CYAN}[2]${NC} ${BOLD}Web Stack${NC}          - FastAPI + Next.js in browser"
+    echo -e "  ${CYAN}[3]${NC} ${BOLD}Backend Only${NC}       - FastAPI API server (:8000)"
+    echo -e "  ${CYAN}[4]${NC} ${BOLD}Frontend Only${NC}      - Next.js browser app (:3000)"
     echo -e "  ${CYAN}[5]${NC} ${BOLD}Setup / Deps${NC}       - Verify & install all dependencies & init DB"
     echo -e "  ${CYAN}[6]${NC} ${BOLD}Exit${NC}\n"
-    read -r -p "Enter choice [1-6] (default: 1): " choice
+    read -r -p "Enter choice [1-6] (default: 1 = Tauri): " choice
     choice="${choice:-1}"
     case "$choice" in
         1)
             run_preflight_checks
-            start_full_stack
+            start_tauri_desktop
             ;;
         2)
             run_preflight_checks
-            start_backend
+            start_full_stack
             ;;
         3)
             run_preflight_checks
-            start_frontend
+            start_backend
             ;;
         4)
             run_preflight_checks
-            start_tauri_desktop
+            start_frontend
             ;;
         5)
             run_preflight_checks
-            log_success "Environment ready. You can now run: ./run.sh all"
+            log_success "Environment ready. You can now run: ./run.sh"
             ;;
         6|q|Q)
             echo "Exiting."
@@ -448,23 +507,30 @@ show_help() {
     banner
     echo -e "Usage: ${BOLD}./run.sh${NC} [COMMAND]\n"
     echo -e "Commands:"
-    echo -e "  ${CYAN}all, dev, stack${NC}    Start full stack (FastAPI Backend + Next.js Frontend)"
-    echo -e "  ${CYAN}backend, api${NC}       Start FastAPI backend server on :8000"
-    echo -e "  ${CYAN}frontend, web${NC}      Start Next.js frontend server on :3000"
-    echo -e "  ${CYAN}tauri, desktop${NC}     Start Tauri desktop application environment"
+    echo -e "  ${CYAN}(default)${NC}           Tauri desktop dev mode (auto-installs Rust if needed)"
+    echo -e "  ${CYAN}tauri, desktop${NC}     Tauri desktop application (default)"
+    echo -e "  ${CYAN}web, all, stack${NC}    Web stack: FastAPI Backend + Next.js in browser"
+    echo -e "  ${CYAN}backend, api${NC}       FastAPI backend server on :8000"
+    echo -e "  ${CYAN}frontend${NC}           Next.js frontend server on :3000"
     echo -e "  ${CYAN}deps, setup${NC}        Verify & install dependencies and initialize database"
     echo -e "  ${CYAN}help, -h, --help${NC}   Show this help message\n"
-    echo -e "If no command is provided, an interactive selection menu is shown."
+    echo -e "Default credentials (testing mode):"
+    echo -e "  ${CYAN}admin@bikita.com${NC}       / password123"
+    echo -e "  ${CYAN}tech@bikita.com${NC}        / password123"
+    echo -e "  ${CYAN}supervisor@bikita.com${NC}  / password123"
 }
 
 # ── Main Entry Point ──────────────────────────────────────────────────────────
 main() {
     local cmd="${1:-}"
     case "$cmd" in
-        ""|menu)
-            show_menu
+        ""|tauri|desktop)
+            # Default: Tauri desktop dev mode
+            banner
+            run_preflight_checks
+            start_tauri_desktop
             ;;
-        all|dev|stack)
+        web|all|dev|stack)
             banner
             run_preflight_checks
             start_full_stack
@@ -474,20 +540,19 @@ main() {
             run_preflight_checks
             start_backend
             ;;
-        frontend|web)
+        frontend)
             banner
             run_preflight_checks
             start_frontend
-            ;;
-        tauri|desktop)
-            banner
-            run_preflight_checks
-            start_tauri_desktop
             ;;
         deps|setup|install)
             banner
             run_preflight_checks
             log_success "Setup complete."
+            ;;
+        menu)
+            banner
+            show_menu
             ;;
         help|-h|--help)
             show_help

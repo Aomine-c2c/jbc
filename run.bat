@@ -216,6 +216,8 @@ REM ============================================================================
 REM LAUNCH BACKEND SILENTLY IN BACKGROUND
 REM ==============================================================================
 :launch_backend_bg
+REM Ensure port 8000 is clear before starting
+powershell -Command "Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }" >nul 2>&1
 echo [DWRMS] Starting FastAPI backend (hidden) on http://127.0.0.1:8000 ...
 REM Start backend in a minimized hidden window — developers won't see it
 start /min "" cmd /c "cd /d "%BACKEND_DIR%" && "%VENV_PYTHON%" -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload > "%BACKEND_DIR%\logs\dev-backend.log" 2>&1"
@@ -258,7 +260,7 @@ echo  * Close the Tauri window to exit
 echo ====================================================================
 echo.
 cd /d "%FRONTEND_DIR%"
-call npm run tauri dev
+call npm run tauri:window
 cd /d "%SCRIPT_DIR%"
 goto do_exit
 
@@ -323,4 +325,6 @@ echo.
 goto do_exit
 
 :do_exit
+REM Terminate any running backend process on port 8000 when launcher exits
+powershell -Command "Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }" >nul 2>&1
 exit /b 0
