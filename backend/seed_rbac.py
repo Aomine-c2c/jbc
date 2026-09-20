@@ -138,6 +138,7 @@ PERMISSION_DESCRIPTIONS = {
     "global_override": "Global superuser authorization override",
     "cross_department_access": "Access records across all operational departments",
     "safety:clear": "Grant HSE safety clearance and LOTO sign-off on job cards",
+    "work_item:create": "Create operational work items and tasks",
     "job_card:read": "View job cards",
     "job_card:create": "Create a new job card",
     "job_card:update": "Edit an existing job card",

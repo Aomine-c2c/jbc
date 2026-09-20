@@ -171,14 +171,26 @@ run.bat deps
 - **Docker** + Docker Compose plugin (for containerized dev)
 - **Rust** (optional, for Tauri desktop builds)
 
-### Manual Service Execution
+### Manual Service Execution (Web Mode — No Rust Required)
+
+```bash
+# Terminal 1: FastAPI backend
+cd backend
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+
+# Terminal 2: Next.js frontend
+cd frontend
+npm run dev
+```
+
+### Desktop Native App Execution (Optional — Requires Rust & Cargo)
 
 ```powershell
 cd frontend
 npm run tauri:dev
 ```
 
-*Starts the FastAPI backend daemon (`http://localhost:8000`), Next.js App Router (`http://localhost:3000`), and native Tauri Desktop window.*
+*Note: Running `npm run tauri:dev` launches Tauri's native desktop shell, which requires the [Rust toolchain](https://rustup.rs/) and C++ build tools. If you do not have Rust installed, use `run.bat all` or the Web Mode above.*
 
 ### Run Production Build & Lint Verification
 

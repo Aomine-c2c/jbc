@@ -234,8 +234,10 @@ setup_database() {
     (
         cd "$BACKEND_DIR"
         "$VENV_PYTHON" init_db_all.py
+        "$VENV_PYTHON" seed_rbac.py
+        "$VENV_PYTHON" seed.py
     )
-    log_success "Database schema verified (${GREEN}OK${NC})"
+    log_success "Database schema and seed data verified (${GREEN}OK${NC})"
 }
 
 setup_frontend_dependencies() {
