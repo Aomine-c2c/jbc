@@ -176,10 +176,37 @@ setup_environment_files() {
             log_error "Neither .env nor .env.example found in project root."
             exit 1
         fi
-    else
-        log_info "Root .env file is present (${GREEN}OK${NC})"
     fi
 
+    # ── Critical: Ensure ENVIRONMENT is set to 'testing' for local dev ───────
+    # Without this, the demo password fallback in auth_provider.py is disabled
+    # and all login attempts will return "Incorrect email or password".
+    local env_value
+    env_value=$(grep -E '^ENVIRONMENT=' "$ROOT_ENV" | head -1 | cut -d'=' -f2 | tr -d '"' | tr -d "'" | tr -d '[:space:]' || true)
+    if [[ "$env_value" == "production" ]]; then
+        log_warn "ENVIRONMENT is set to 'production' — overriding to 'testing' for local developer mode."
+        log_warn "(In production deployments, remove this override and set ENVIRONMENT=production manually.)"
+        sed -i 's/^ENVIRONMENT=.*/ENVIRONMENT="testing"/' "$ROOT_ENV"
+    elif [[ -z "$env_value" ]]; then
+        log_warn "ENVIRONMENT not set in .env — defaulting to 'testing' for local dev."
+        echo 'ENVIRONMENT="testing"' >> "$ROOT_ENV"
+    fi
+
+    # ── Ensure SECRET_KEY is populated ────────────────────────────────────────
+    local secret_val
+    secret_val=$(grep -E '^SECRET_KEY=' "$ROOT_ENV" | head -1 | cut -d'=' -f2 | tr -d '"' | tr -d "'" | tr -d '[:space:]' || true)
+    if [[ -z "$secret_val" ]] || [[ "$secret_val" == "dev-changeme-please-set-a-real-secret-in-production" ]]; then
+        local new_secret
+        new_secret=$(python3 -c "import secrets; print(secrets.token_hex(32))" 2>/dev/null || head -c 32 /dev/urandom | base64 | head -c 64)
+        if grep -qE '^SECRET_KEY=' "$ROOT_ENV"; then
+            sed -i "s|^SECRET_KEY=.*|SECRET_KEY=\"${new_secret}\"|" "$ROOT_ENV"
+        else
+            echo "SECRET_KEY=\"${new_secret}\"" >> "$ROOT_ENV"
+        fi
+        log_success "Generated and saved a secure SECRET_KEY to .env."
+    fi
+
+    log_info "Root .env file is configured (${GREEN}OK${NC})"
     # Ensure required runtime directories
     mkdir -p "${BACKEND_DIR}/storage" "${BACKEND_DIR}/backups" "${BACKEND_DIR}/logs"
 

@@ -63,7 +63,29 @@ function Run-Preflight {
         if (Test-Path $envExample) {
             Write-Host "[DWRMS] Initializing .env from .env.example..." -ForegroundColor Yellow
             Copy-Item $envExample $envPath
+            Write-Host "[SUCCESS] Created .env configuration file." -ForegroundColor Green
         }
+    }
+
+    # Critical: Ensure ENVIRONMENT is NOT 'production' for local dev
+    # Without this, demo password fallback is disabled causing "Incorrect email or password".
+    $envContent = Get-Content $envPath -Raw
+    if ($envContent -match 'ENVIRONMENT="production"') {
+        Write-Host "[WARNING] ENVIRONMENT=production detected -- overriding to 'testing' for dev mode." -ForegroundColor Yellow
+        $envContent = $envContent -replace 'ENVIRONMENT="production"', 'ENVIRONMENT="testing"'
+        Set-Content -Path $envPath -Value $envContent
+    }
+
+    # Ensure SECRET_KEY is populated
+    if ($envContent -match 'SECRET_KEY=\s*$' -or $envContent -match 'SECRET_KEY=dev-changeme') {
+        if (Get-Command python -ErrorAction SilentlyContinue) {
+            $newSecret = & python -c "import secrets; print(secrets.token_hex(32))"
+        } else {
+            $newSecret = & py -3 -c "import secrets; print(secrets.token_hex(32))"
+        }
+        $envContent = $envContent -replace 'SECRET_KEY=.*', "SECRET_KEY=`"$newSecret`""
+        Set-Content -Path $envPath -Value $envContent
+        Write-Host "[SUCCESS] Generated a secure SECRET_KEY in .env." -ForegroundColor Green
     }
 
     # Directories

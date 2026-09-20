@@ -107,12 +107,36 @@ if not exist "%SCRIPT_DIR%.env" (
     if exist "%SCRIPT_DIR%.env.example" (
         echo [DWRMS] Initializing .env from .env.example...
         copy "%SCRIPT_DIR%.env.example" "%SCRIPT_DIR%.env" >nul
+        echo [SUCCESS] Created .env configuration file.
     )
+)
+
+REM Critical: Ensure ENVIRONMENT is NOT set to 'production' for local dev
+REM Without this, demo password fallback is disabled causing login failures.
+findstr /i "ENVIRONMENT=\"production\"" "%SCRIPT_DIR%.env" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [WARNING] ENVIRONMENT=production detected -- overriding to 'testing' for dev mode.
+    powershell -Command "(Get-Content '%SCRIPT_DIR%.env') -replace 'ENVIRONMENT=\"production\"', 'ENVIRONMENT=\"testing\"' | Set-Content '%SCRIPT_DIR%.env'"
+)
+
+REM Ensure SECRET_KEY is set (generate one if missing or placeholder)
+findstr /i "SECRET_KEY=dev-changeme" "%SCRIPT_DIR%.env" >nul 2>&1
+if %errorlevel% equ 0 (
+    for /f "delims=" %%k in ('%PY_CMD% -c "import secrets; print(secrets.token_hex(32))"') do set NEW_SECRET=%%k
+    powershell -Command "(Get-Content '%SCRIPT_DIR%.env') -replace 'SECRET_KEY=dev-changeme.*', 'SECRET_KEY=\"!NEW_SECRET!\"' | Set-Content '%SCRIPT_DIR%.env'"
+    echo [SUCCESS] Generated a secure SECRET_KEY.
+)
+findstr /i "^SECRET_KEY=$" "%SCRIPT_DIR%.env" >nul 2>&1
+if %errorlevel% equ 0 (
+    for /f "delims=" %%k in ('%PY_CMD% -c "import secrets; print(secrets.token_hex(32))"') do set NEW_SECRET=%%k
+    powershell -Command "(Get-Content '%SCRIPT_DIR%.env') -replace '^SECRET_KEY=$', 'SECRET_KEY=\"!NEW_SECRET!\"' | Set-Content '%SCRIPT_DIR%.env'"
+    echo [SUCCESS] Generated a secure SECRET_KEY.
 )
 
 if not exist "%BACKEND_DIR%\storage" mkdir "%BACKEND_DIR%\storage"
 if not exist "%BACKEND_DIR%\backups" mkdir "%BACKEND_DIR%\backups"
 if not exist "%BACKEND_DIR%\logs" mkdir "%BACKEND_DIR%\logs"
+
 
 echo.
 echo [2/3] Backend & Database Verification...
