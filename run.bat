@@ -1,17 +1,19 @@
 @echo off
 setlocal enabledelayedexpansion
-
 REM ==============================================================================
-REM BIKITA MINERALS DWRMS — AUTHORITATIVE WINDOWS DEVELOPER STACK LAUNCHER
+REM BIKITA MINERALS DWRMS — ONE-COMMAND DEVELOPER LAUNCHER (Windows)
+REM
+REM Double-click this file or run from Command Prompt.
+REM Default: Launches full Tauri Desktop App in developer mode.
 REM
 REM Usage:
-REM   run.bat                  Interactive selection menu
-REM   run.bat all              Launch full stack (FastAPI Backend + Next.js Frontend)
-REM   run.bat backend          Launch Backend API only (FastAPI with reload)
-REM   run.bat frontend         Launch Frontend Web only (Next.js dev server)
-REM   run.bat tauri            Launch Desktop environment (Tauri + Backend - Requires Rust)
-REM   run.bat deps             Verify and install dependencies & init DB
-REM   run.bat help             Display usage instructions
+REM   run.bat              Default: Tauri desktop dev mode (auto-installs Rust)
+REM   run.bat tauri        Same as default
+REM   run.bat web          Web only: FastAPI backend + Next.js browser mode
+REM   run.bat backend      FastAPI API server only
+REM   run.bat frontend     Next.js web frontend only
+REM   run.bat deps         Setup/verify dependencies and init database only
+REM   run.bat help         Show this help message
 REM ==============================================================================
 
 set "SCRIPT_DIR=%~dp0"
@@ -21,134 +23,167 @@ set "VENV_DIR=%BACKEND_DIR%\.venv"
 set "VENV_PYTHON=%VENV_DIR%\Scripts\python.exe"
 set "VENV_PIP=%VENV_DIR%\Scripts\pip.exe"
 
-title Bikita Minerals DWRMS Launcher
+title Bikita Minerals DWRMS — Developer Launcher
 
-if "%1"=="help" goto show_help
-if "%1"=="--help" goto show_help
-if "%1"=="-h" goto show_help
-if "%1"=="deps" goto run_deps_only
-if "%1"=="backend" goto run_backend_direct
-if "%1"=="frontend" goto run_frontend_direct
-if "%1"=="tauri" goto run_tauri_direct
-if "%1"=="all" goto run_all_direct
+REM Route to appropriate command
+if /i "%1"=="help" goto show_help
+if /i "%1"=="--help" goto show_help
+if /i "%1"=="-h" goto show_help
+if /i "%1"=="deps" goto run_deps_only
+if /i "%1"=="backend" goto run_backend_direct
+if /i "%1"=="frontend" goto run_frontend_direct
+if /i "%1"=="web" goto run_web_direct
+if /i "%1"=="tauri" goto run_tauri_direct
+REM Default: Tauri desktop dev mode
+goto run_tauri_direct
 
-:show_menu
-cls
-echo ======================================================================
-echo    BIKITA MINERALS DWRMS -- WINDOWS DEVELOPER LAUNCHER
-echo    Authoritative Operations and Mining Resource Management
-echo ======================================================================
-echo.
-echo Select execution mode:
-echo.
-echo   [1] Full Stack (Web) - FastAPI Backend + Next.js Frontend (RECOMMENDED)
-echo                          *No Rust required! Only Python and Node.js.
-echo.
-echo   [2] Backend Only     - FastAPI API server with live reload (:8000)
-echo   [3] Frontend Only    - Next.js web application dev server (:3000)
-echo   [4] Tauri Desktop    - Run Native Desktop App (*Requires Rust / Cargo*)
-echo   [5] Setup / Deps     - Verify/install dependencies and initialize database
-echo   [6] Exit
-echo.
-set /p "CHOICE=Enter choice [1-6] (default: 1): "
-if "%CHOICE%"=="" set "CHOICE=1"
-
-if "%CHOICE%"=="1" goto run_all
-if "%CHOICE%"=="2" goto run_backend
-if "%CHOICE%"=="3" goto run_frontend
-if "%CHOICE%"=="4" goto run_tauri
-if "%CHOICE%"=="5" goto run_deps_only
-if "%CHOICE%"=="6" goto do_exit
-if /i "%CHOICE%"=="q" goto do_exit
-
-echo [ERROR] Invalid selection.
-pause
-goto show_menu
-
+REM ==============================================================================
+REM FIND PYTHON HELPER
+REM ==============================================================================
 :find_python
-REM Detect python executable (either 'python' or 'py -3')
 set "PY_CMD="
 where python >nul 2>&1
 if %errorlevel% equ 0 (
     set "PY_CMD=python"
-    goto :eof
+    exit /b 0
 )
 where py >nul 2>&1
 if %errorlevel% equ 0 (
     set "PY_CMD=py -3"
-    goto :eof
+    exit /b 0
 )
-echo [ERROR] Python is not found in PATH. Please install Python 3.10+ from python.org
-echo (Make sure to check 'Add python.exe to PATH' during installation).
+echo.
+echo ====================================================================
+echo  [ERROR] Python 3 not found in PATH.
+echo  Please install Python 3.10+ from https://python.org
+echo  During installation, ensure "Add python.exe to PATH" is CHECKED.
+echo ====================================================================
 pause
 exit /b 1
 
+REM ==============================================================================
+REM INSTALL RUST IF MISSING
+REM ==============================================================================
+:ensure_rust
+where cargo >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [OK] Rust/Cargo found.
+    exit /b 0
+)
+echo.
+echo ====================================================================
+echo  [DWRMS] Rust not found — required for Tauri Desktop mode.
+echo  Auto-installing Rust via rustup.rs...
+echo ====================================================================
+REM Download and run rustup-init.exe silently
+powershell -Command "& { $ProgressPreference='SilentlyContinue'; Invoke-WebRequest -Uri 'https://win.rustup.rs' -OutFile '%TEMP%\rustup-init.exe' -UseBasicParsing }"
+if %errorlevel% neq 0 (
+    echo [ERROR] Failed to download rustup. Check your internet connection.
+    echo  Manual install: https://rustup.rs/
+    pause
+    exit /b 1
+)
+echo [DWRMS] Running Rust installer (default toolchain, no interaction needed)...
+"%TEMP%\rustup-init.exe" -y --default-toolchain stable --default-host x86_64-pc-windows-msvc
+if %errorlevel% neq 0 (
+    echo [ERROR] Rust installation failed. Please install manually from https://rustup.rs/
+    pause
+    exit /b 1
+)
+REM Update PATH for this session to include newly installed cargo
+set "PATH=%USERPROFILE%\.cargo\bin;%PATH%"
+where cargo >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Rust installed but cargo not found in PATH.
+    echo  Please CLOSE and REOPEN this terminal, then run run.bat again.
+    pause
+    exit /b 1
+)
+echo [SUCCESS] Rust installed successfully!
+exit /b 0
+
+REM ==============================================================================
+REM PREFLIGHT: ENV, VENV, DB, FRONTEND DEPS
+REM ==============================================================================
 :preflight
 echo.
-echo [1/3] System & Environment Verification...
+echo ====================================================================
+echo    BIKITA MINERALS DWRMS — DEVELOPER ENVIRONMENT SETUP
+echo ====================================================================
+echo.
+echo [1/4] System ^& Environment Checks...
+
+REM Check Python
 call :find_python
 if %errorlevel% neq 0 exit /b 1
 
+REM Check Node.js
 where node >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] Node.js is not installed or not in PATH. Please install Node.js 18+.
+    echo [ERROR] Node.js not found. Install from https://nodejs.org (v18+)
     pause
     exit /b 1
 )
+echo [OK] Node.js found.
 
+REM Check npm
 where npm >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] npm is not installed or not in PATH.
+    echo [ERROR] npm not found.
     pause
     exit /b 1
 )
+echo [OK] npm found.
 
+REM Create .env if missing
 if not exist "%SCRIPT_DIR%.env" (
     if exist "%SCRIPT_DIR%.env.example" (
-        echo [DWRMS] Initializing .env from .env.example...
+        echo [DWRMS] Creating .env from .env.example...
         copy "%SCRIPT_DIR%.env.example" "%SCRIPT_DIR%.env" >nul
-        echo [SUCCESS] Created .env configuration file.
+        echo [OK] .env created.
     )
 )
 
-REM Critical: Ensure ENVIRONMENT is NOT set to 'production' for local dev
-REM Without this, demo password fallback is disabled causing login failures.
+REM Critical: Ensure ENVIRONMENT is NOT production (disables demo password fallback)
 findstr /i "ENVIRONMENT=\"production\"" "%SCRIPT_DIR%.env" >nul 2>&1
 if %errorlevel% equ 0 (
-    echo [WARNING] ENVIRONMENT=production detected -- overriding to 'testing' for dev mode.
+    echo [FIX] Overriding ENVIRONMENT=production to 'testing' for dev mode...
     powershell -Command "(Get-Content '%SCRIPT_DIR%.env') -replace 'ENVIRONMENT=\"production\"', 'ENVIRONMENT=\"testing\"' | Set-Content '%SCRIPT_DIR%.env'"
 )
 
-REM Ensure SECRET_KEY is set (generate one if missing or placeholder)
-findstr /i "SECRET_KEY=dev-changeme" "%SCRIPT_DIR%.env" >nul 2>&1
+REM Ensure SECRET_KEY is populated
+findstr /i "^SECRET_KEY=dev-changeme" "%SCRIPT_DIR%.env" >nul 2>&1
 if %errorlevel% equ 0 (
-    for /f "delims=" %%k in ('%PY_CMD% -c "import secrets; print(secrets.token_hex(32))"') do set NEW_SECRET=%%k
-    powershell -Command "(Get-Content '%SCRIPT_DIR%.env') -replace 'SECRET_KEY=dev-changeme.*', 'SECRET_KEY=\"!NEW_SECRET!\"' | Set-Content '%SCRIPT_DIR%.env'"
-    echo [SUCCESS] Generated a secure SECRET_KEY.
-)
-findstr /i "^SECRET_KEY=$" "%SCRIPT_DIR%.env" >nul 2>&1
-if %errorlevel% equ 0 (
-    for /f "delims=" %%k in ('%PY_CMD% -c "import secrets; print(secrets.token_hex(32))"') do set NEW_SECRET=%%k
-    powershell -Command "(Get-Content '%SCRIPT_DIR%.env') -replace '^SECRET_KEY=$', 'SECRET_KEY=\"!NEW_SECRET!\"' | Set-Content '%SCRIPT_DIR%.env'"
-    echo [SUCCESS] Generated a secure SECRET_KEY.
+    for /f "delims=" %%k in ('%PY_CMD% -c "import secrets; print(secrets.token_hex(32))"') do set "NEWKEY=%%k"
+    powershell -Command "(Get-Content '%SCRIPT_DIR%.env') | ForEach-Object { $_ -replace '^SECRET_KEY=.*', 'SECRET_KEY=""!NEWKEY!""' } | Set-Content '%SCRIPT_DIR%.env'"
+    echo [OK] SECRET_KEY generated.
 )
 
+REM Ensure required directories
 if not exist "%BACKEND_DIR%\storage" mkdir "%BACKEND_DIR%\storage"
 if not exist "%BACKEND_DIR%\backups" mkdir "%BACKEND_DIR%\backups"
 if not exist "%BACKEND_DIR%\logs" mkdir "%BACKEND_DIR%\logs"
 
-
 echo.
-echo [2/3] Backend & Database Verification...
+echo [2/4] Backend Virtual Environment ^& Dependencies...
 if not exist "%VENV_PYTHON%" (
-    echo [DWRMS] Creating Python virtual environment in %VENV_DIR%...
+    echo [DWRMS] Creating Python virtualenv...
     %PY_CMD% -m venv "%VENV_DIR%"
     echo [DWRMS] Installing backend dependencies...
-    "%VENV_PIP%" install --upgrade pip
+    "%VENV_PIP%" install --upgrade pip >nul 2>&1
     "%VENV_PIP%" install -r "%BACKEND_DIR%\requirements.txt"
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to install backend dependencies.
+        pause
+        exit /b 1
+    )
+    echo [OK] Backend dependencies installed.
+) else (
+    echo [OK] Backend virtualenv ready.
 )
 
-echo [DWRMS] Initializing database schema and seed data...
+echo.
+echo [3/4] Database Schema ^& Seed Data...
 cd /d "%BACKEND_DIR%"
 "%VENV_PYTHON%" init_db_all.py
 "%VENV_PYTHON%" seed_rbac.py
@@ -156,105 +191,136 @@ cd /d "%BACKEND_DIR%"
 cd /d "%SCRIPT_DIR%"
 
 echo.
-echo [3/3] Frontend Dependencies Verification...
+echo [4/4] Frontend Dependencies...
 if not exist "%FRONTEND_DIR%\node_modules" (
-    echo [DWRMS] Installing frontend dependencies via npm...
+    echo [DWRMS] Installing npm packages...
     cd /d "%FRONTEND_DIR%"
     call npm install
+    if %errorlevel% neq 0 (
+        echo [ERROR] npm install failed.
+        pause
+        exit /b 1
+    )
     cd /d "%SCRIPT_DIR%"
+    echo [OK] Frontend dependencies installed.
+) else (
+    echo [OK] Frontend node_modules ready.
 )
 
-echo [SUCCESS] Dependencies and environment are verified!
+echo.
+echo [SUCCESS] Environment ready!
 echo.
 exit /b 0
 
-:run_all_direct
-:run_all
-call :preflight
-echo [DWRMS] Launching FastAPI Backend on http://127.0.0.1:8000 ...
-cd /d "%BACKEND_DIR%"
-start "DWRMS Backend API (Port 8000)" cmd /k ""%VENV_PYTHON%" -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
-
+REM ==============================================================================
+REM LAUNCH BACKEND SILENTLY IN BACKGROUND
+REM ==============================================================================
+:launch_backend_bg
+echo [DWRMS] Starting FastAPI backend (hidden) on http://127.0.0.1:8000 ...
+REM Start backend in a minimized hidden window — developers won't see it
+start /min "" cmd /c "cd /d "%BACKEND_DIR%" && "%VENV_PYTHON%" -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload > "%BACKEND_DIR%\logs\dev-backend.log" 2>&1"
+REM Wait for backend to be ready (poll up to 20s)
+echo [DWRMS] Waiting for backend to initialize...
+set RETRIES=0
+:wait_backend
 timeout /t 2 /nobreak >nul
+powershell -Command "try { Invoke-RestMethod http://127.0.0.1:8000/api/v1/health -TimeoutSec 2 | Out-Null; exit 0 } catch { exit 1 }" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [OK] Backend is online at http://127.0.0.1:8000
+    exit /b 0
+)
+set /a RETRIES+=1
+if %RETRIES% lss 10 goto wait_backend
+echo [WARN] Backend did not respond in time — Tauri will connect once it's ready.
+exit /b 0
 
-echo [DWRMS] Launching Next.js Frontend on http://localhost:3000 ...
+REM ==============================================================================
+REM MODES
+REM ==============================================================================
+
+:run_tauri_direct
+:run_tauri
+call :preflight
+if %errorlevel% neq 0 exit /b 1
+
+echo [DWRMS] Ensuring Rust/Cargo is available...
+call :ensure_rust
+if %errorlevel% neq 0 exit /b 1
+
+call :launch_backend_bg
+
+echo.
+echo ====================================================================
+echo  Launching Tauri Desktop App in Developer Mode
+echo  * Next.js hot reload is active
+echo  * Backend log: %BACKEND_DIR%\logs\dev-backend.log
+echo  * Close the Tauri window to exit
+echo ====================================================================
+echo.
+cd /d "%FRONTEND_DIR%"
+call npm run tauri dev
+cd /d "%SCRIPT_DIR%"
+goto do_exit
+
+:run_web_direct
+call :preflight
+if %errorlevel% neq 0 exit /b 1
+
+echo [DWRMS] Starting FastAPI Backend on http://127.0.0.1:8000 ...
+cd /d "%BACKEND_DIR%"
+start "DWRMS Backend (Port 8000)" cmd /k ""%VENV_PYTHON%" -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
+timeout /t 2 /nobreak >nul
+echo [DWRMS] Starting Next.js Frontend on http://localhost:3000 ...
 cd /d "%FRONTEND_DIR%"
 call npm run dev
 goto do_exit
 
 :run_backend_direct
-:run_backend
 call :preflight
-echo [DWRMS] Launching FastAPI Backend with hot reload on http://127.0.0.1:8000 ...
+if %errorlevel% neq 0 exit /b 1
+echo [DWRMS] Starting FastAPI backend only...
 cd /d "%BACKEND_DIR%"
 "%VENV_PYTHON%" -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 goto do_exit
 
 :run_frontend_direct
-:run_frontend
 call :preflight
-echo [DWRMS] Launching Next.js Frontend on http://localhost:3000 ...
+if %errorlevel% neq 0 exit /b 1
+echo [DWRMS] Starting Next.js frontend only...
 cd /d "%FRONTEND_DIR%"
 call npm run dev
 goto do_exit
 
-:run_tauri_direct
-:run_tauri
-call :preflight
-
-REM Tauri requires Rust and Cargo
-where cargo >nul 2>&1
-if %errorlevel% neq 0 (
-    echo.
-    echo ======================================================================
-    echo [ERROR] Rust / Cargo was not found on this computer!
-    echo ======================================================================
-    echo Tauri Desktop mode requires the Rust compiler.
-    echo.
-    echo  Option A (Recommended):
-    echo    Run the web version instead! Select Option [1] (Full Stack Web).
-    echo    The web version has all the exact same features and requires NO RUST.
-    echo.
-    echo  Option B:
-    echo    If you really want to build the native Windows desktop shell,
-    echo    install Rust from https://rustup.rs/ and restart your terminal.
-    echo ======================================================================
-    echo.
-    pause
-    goto show_menu
-)
-
-echo [DWRMS] Launching Backend for Tauri...
-cd /d "%BACKEND_DIR%"
-start "DWRMS Backend API" cmd /k ""%VENV_PYTHON%" -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
-timeout /t 2 /nobreak >nul
-echo [DWRMS] Launching Tauri Desktop Dev Application...
-cd /d "%FRONTEND_DIR%"
-call npm run tauri dev
-goto do_exit
-
 :run_deps_only
 call :preflight
-echo [SUCCESS] Setup and dependency checks completed.
+if %errorlevel% neq 0 exit /b 1
+echo.
+echo [SUCCESS] All dependencies verified and database initialized.
+echo Run 'run.bat' again to launch the application.
 pause
 goto do_exit
 
 :show_help
-echo ======================================================================
-echo    BIKITA MINERALS DWRMS -- WINDOWS LAUNCHER HELP
-echo ======================================================================
+echo ====================================================================
+echo    DWRMS Developer Launcher — Help
+echo ====================================================================
 echo Usage: run.bat [COMMAND]
 echo.
 echo Commands:
-echo   all        Start full stack (FastAPI Backend + Next.js Frontend) - NO Rust required
-echo   backend    Start FastAPI backend server on :8000
-echo   frontend   Start Next.js frontend server on :3000
-echo   tauri      Start Tauri desktop application environment (Requires Rust)
-echo   deps       Verify and install dependencies and initialize database
-echo   help       Show this help message
+echo   (default)    Launch Tauri Desktop App in dev mode (auto-installs Rust)
+echo   tauri        Same as default
+echo   web          Web mode: FastAPI Backend + Next.js browser app
+echo   backend      FastAPI backend server only (port 8000)
+echo   frontend     Next.js frontend only (port 3000)
+echo   deps         Setup/verify environment and database only
+echo   help         Show this message
 echo.
-echo If no command is provided, an interactive menu is displayed.
-exit /b 0
+echo Default credentials for testing/staging:
+echo   admin@bikita.com    / password123
+echo   tech@bikita.com     / password123
+echo   supervisor@bikita.com / password123
+echo.
+goto do_exit
 
 :do_exit
 exit /b 0
