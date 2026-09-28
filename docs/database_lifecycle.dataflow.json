@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Bikita Minerals DWRMS Database Lifecycle",
+    "output": "docs/database_lifecycle_archify.html",
+    "viewBox": [1080, 520],
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "operational-lifecycle",
+        "label": "Operational lifecycle",
+        "focus": ["users", "jobs", "approvals", "labour", "reports"],
+        "note": "Trace maintenance work orders from field breakdown to engineering sign-off."
+      },
+      {
+        "id": "fleet-allocation",
+        "label": "Heavy fleet requisition",
+        "focus": ["machines", "requests", "approvals", "reservations"],
+        "note": "Follow heavy equipment booking, approval tiers, and calendar schedule locks."
+      },
+      {
+        "id": "audit-governance",
+        "label": "Audit and governance trail",
+        "focus": ["approvals", "labour", "reports", "audit"],
+        "note": "Verify immutable compliance logs, state diffs, and sign-off accountability."
+      }
+    ]
+  },
+  "stages": [
+    { "label": "Foundations" },
+    { "label": "Intake Demand" },
+    { "label": "Governance" },
+    { "label": "Execution" },
+    { "label": "Closeout" }
+  ],
+  "nodes": [
+    { "id": "users", "type": "frontend", "label": "Users & Identity", "sublabel": "RBAC & permissions", "stage": 0, "row": 0, "tag": "13 accounts" },
+    { "id": "machines", "type": "database", "label": "Fleet & Assets", "sublabel": "heavy machinery", "stage": 0, "row": 2, "tag": "26 units" },
+    { "id": "requests", "type": "cloud", "label": "Fleet Requisitions", "sublabel": "machine bookings", "stage": 1, "row": 0, "tag": "demand" },
+    { "id": "jobs", "type": "backend", "label": "Job Cards", "sublabel": "work orders & tasks", "stage": 1, "row": 2, "tag": "work items" },
+    { "id": "approvals", "type": "security", "label": "Approval Engine", "sublabel": "multi-tier SLA policies", "stage": 2, "row": 1, "tag": "governance" },
+    { "id": "reservations", "type": "database", "label": "Fleet Reservations", "sublabel": "calendar dispatch", "stage": 3, "row": 0, "tag": "scheduled" },
+    { "id": "labour", "type": "messagebus", "label": "Labour & Spares", "sublabel": "artisan wrench hours", "stage": 3, "row": 2, "tag": "telemetry" },
+    { "id": "reports", "type": "backend", "label": "Job Reports", "sublabel": "root-cause analysis", "stage": 4, "row": 0, "tag": "QA sign-off" },
+    { "id": "audit", "type": "security", "label": "Audit Logs", "sublabel": "immutable system trace", "stage": 4, "row": 2, "tag": "6,627 rows" }
+  ],
+  "flows": [
+    { "id": "user-req", "from": "users", "to": "requests", "label": "submits requisition", "classification": "user demand", "variant": "default", "route": "straight" },
+    { "id": "fleet-job", "from": "machines", "to": "jobs", "label": "defect diagnosis", "classification": "asset telemetry", "variant": "emphasis", "route": "straight" },
+    { "id": "req-approval", "from": "requests", "to": "approvals", "label": "HSE & cost review", "classification": "governance", "variant": "security", "fromSide": "right", "toSide": "left", "via": [[430, 157], [430, 271]], "labelAt": [440, 200] },
+    { "id": "job-approval", "from": "jobs", "to": "approvals", "label": "safety clearance", "classification": "gate check", "variant": "security", "fromSide": "right", "toSide": "left", "via": [[430, 385], [430, 271]], "labelAt": [440, 340] },
+    { "id": "approved-booking", "from": "approvals", "to": "reservations", "label": "authorizes booking", "classification": "authorized", "variant": "emphasis", "fromSide": "right", "toSide": "left", "via": [[648, 271], [648, 157]], "labelAt": [648, 200] },
+    { "id": "approved-work", "from": "approvals", "to": "labour", "label": "releases job card", "classification": "authorized", "variant": "emphasis", "fromSide": "right", "toSide": "left", "via": [[648, 271], [648, 385]], "labelAt": [648, 340] },
+    { "id": "exec-report", "from": "labour", "to": "reports", "label": "work summary", "classification": "engineering", "variant": "default", "fromSide": "right", "toSide": "left", "via": [[856, 385], [856, 157]], "labelAt": [870, 270] },
+    { "id": "exec-audit", "from": "labour", "to": "audit", "label": "spares & wrench logs", "classification": "telemetry", "variant": "dashed", "route": "straight", "labelAt": [853, 428] },
+    { "id": "report-audit", "from": "reports", "to": "audit", "label": "closeout seal", "classification": "compliance", "variant": "security", "fromSide": "bottom", "toSide": "top", "route": "straight", "labelAt": [960, 271] }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Operational Flow",
+      "items": [
+        "Breakdown tickets originate from fleet machine defects and route into job cards",
+        "Field staff submit heavy machine requisitions for upcoming shifts",
+        "Execution logs artisan wrench hours and consumed catalog parts"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Governance & Safety Gate",
+      "items": [
+        "Multi-tier approval policies evaluate cost limits and HSE risk ratings",
+        "SLA trackers monitor response deadlines with automated escalation timers",
+        "Unapproved work orders remain locked in PENDING_APPROVAL status"
+      ]
+    },
+    {
+      "dot": "orange",
+      "title": "Audit & Compliance Trail",
+      "items": [
+        "Completed work requires lead artisan sign-off and root cause diagnostics",
+        "Domain mutations are recorded in business_audit_logs with full payload diffs",
+        "6,600+ immutable audit_logs ensure traceability across the enterprise"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <div id="c"></div>
+  <script>
+    mermaid.initialize({ startOnLoad: false });
+    const code = `
+flowchart LR
+    subgraph S1 [1. Master Config]
+        direction TB
+        ORG[organizations] --> SITE[sites] --> DEPT[departments] --> USERS[users]
+        USERS -.-> ROLES[roles & permissions]
+        SITE --> FLEET[machines]
+        CATALOG[material_catalog]
+    end
+
+    subgraph S2 [2. Demand Intake]
+        direction TB
+        REQ[operational_requests]
+        M_REQ[machine_requisitions]
+        WORK_ITEM[work_items] --> JOB_CARD[job_cards]
+    end
+
+    subgraph S3 [3. Governance & SLA]
+        direction TB
+        WF[workflow_defs] --> STEPS[approval_steps]
+        APP[approval_requests] --> STEPS
+        STEPS --> SLA[sla_trackers]
+    end
+
+    subgraph S4 [4. Allocation & Staging]
+        direction TB
+        RES[machine_reservations]
+        MAT[material_requirements]
+        WP[work_packages]
+    end
+
+    subgraph S5 [5. Execution]
+        direction TB
+        LABOUR[job_card_labour]
+        PARTS[job_card_parts]
+        EVENTS[job_card_execution_events]
+    end
+
+    subgraph S6 [6. Audit & Sign-off]
+        direction TB
+        REPORT[job_reports]
+        AUDIT[audit_logs]
+    end
+
+    S1 ==> S2 ==> S3 ==> S4 ==> S5 ==> S6
+    `;
+    mermaid.render('test-svg', code).then(({svg}) => {
+      document.getElementById('c').innerHTML = svg;
+    });
+  </script>
+</body>
+</html>

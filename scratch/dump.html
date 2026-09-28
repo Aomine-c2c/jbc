@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bikita Minerals DWRMS — Database Lifecycle Flowchart</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #080c14;
+      --panel-bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-blue: #38bdf8;
+      --accent-emerald: #34d399;
+      --accent-amber: #fbbf24;
+      --accent-purple: #c084fc;
+      --accent-indigo: #818cf8;
+      --header-height: 60px;
+      --sidebar-width: 380px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+    }
+
+    /* Top Navigation Header */
+    header {
+      height: var(--header-height);
+      width: 100%;
+      background: #0f172a;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 1.5rem;
+      z-index: 100;
+      user-select: none;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .brand-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: rgba(56, 189, 248, 0.12);
+      color: var(--accent-blue);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      letter-spacing: 0.05em;
+    }
+
+    .brand-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .brand-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Toolbar Controls */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .zoom-indicator {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--accent-blue);
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--card-border);
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      min-width: 62px;
+      text-align: center;
+    }
+
+    .btn {
+      background: #1e293b;
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+      padding: 0.38rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      background: #283548;
+      border-color: var(--accent-blue);
+      color: #fff;
+    }
+
+    .btn-primary {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: rgba(56, 189, 248, 0.4);
+      color: var(--accent-blue);
+      font-weight: 600;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-blue);
+      color: #080c14;
+    }
+
+    .divider {
+      width: 1px;
+      height: 24px;
+      background: var(--card-border);
+      margin: 0 0.25rem;
+    }
+
+    /* Layout Wrapper */
+    .app-body {
+      display: flex;
+      width: 100%;
+      height: calc(100vh - var(--header-height));
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Viewport Area */
+    .viewport {
+      flex: 1;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+      background: 
+        radial-gradient(circle at 50% 50%, #111a2e 0%, #080c14 100%);
+      cursor: grab;
+    }
+
+    .viewport.is-dragging {
+      cursor: grabbing;
+    }
+
+    /* Canvas that gets transformed */
+    #canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform-origin: 0 0;
+      will-change: transform;
+      padding: 40px;
+    }
+
+    #mermaid-container {
+      display: inline-block;
+    }
+
+    #mermaid-container svg {
+      display: block !important;
+      max-width: none !important;
+      height: auto !important;
+    }
+
+    /* HUD Overlay Controls */
+    .hud-overlay {
+      position: absolute;
+      bottom: 1.25rem;
+      left: 1.25rem;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 0.65rem 1rem;
+      display: flex;
+      gap: 1.25rem;
+      z-index: 10;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
+      pointer-events: auto;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: color 0.15s ease;
+    }
+
+    .legend-item:hover {
+      color: #fff;
+    }
+
+    .legend-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+    }
+
+    .dot-1 { background: #64748b; }
+    .dot-2 { background: #10b981; }
+    .dot-3 { background: #f59e0b; }
+    .dot-4 { background: #818cf8; }
+    .dot-5 { background: #3b82f6; }
+    .dot-6 { background: #c084fc; }
+
+    /* Collapsible Details Sidebar */
+    .sidebar {
+      width: var(--sidebar-width);
+      height: 100%;
+      background: var(--panel-bg);
+      border-left: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      z-index: 20;
+      transition: margin-right 0.25s ease;
+    }
+
+    .sidebar.is-collapsed {
+      margin-right: calc(-1 * var(--sidebar-width));
+    }
+
+    .sidebar-header {
+      padding: 1.1rem 1.25rem;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .sidebar-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .sidebar-desc {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+    }
+
+    .sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .stage-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      overflow: hidden;
+      transition: border-color 0.2s ease;
+    }
+
+    .stage-card:hover {
+      border-color: var(--accent-blue);
+    }
+
+    .stage-card-header {
+      padding: 0.75rem 0.9rem;
+      font-size: 0.825rem;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.4);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .stage-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .badge-master { background: rgba(100, 116, 139, 0.25); color: #cbd5e1; }
+    .badge-intake { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .badge-approval { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .badge-alloc { background: rgba(129, 140, 248, 0.2); color: #a5b4fc; }
+    .badge-exec { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+    .badge-audit { background: rgba(192, 132, 252, 0.2); color: #e9d5ff; }
+
+    .stage-card-body {
+      padding: 0.75rem 0.9rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .table-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-top: 0.5rem;
+    }
+
+    .table-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      color: #e2e8f0;
+    }
+
+    /* Loading Spinner */
+    #loader {
+      position: absolute;
+      inset: 0;
+      background: var(--bg-dark);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+      z-index: 50;
+      transition: opacity 0.3s ease;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(56, 189, 248, 0.2);
+      border-top-color: var(--accent-blue);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <span class="brand-badge">DWRMS</span>
+      <div>
+        <div class="brand-title">Database Lifecycle Flowchart</div>
+        <div class="brand-subtitle">Visual record journey across 74 relational tables</div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <span class="zoom-indicator" id="zoom-val">100%</span>
+      <button class="btn" id="btn-zoom-out" title="Zoom Out (Wheel Down)">−</button>
+      <button class="btn" id="btn-zoom-in" title="Zoom In (Wheel Up)">+</button>
+      <button class="btn btn-primary" id="btn-fit" title="Fit Entire Diagram to Screen">Fit Screen</button>
+      <button class="btn" id="btn-actual" title="Actual 1:1 Scale">100%</button>
+      <div class="divider"></div>
+      <button class="btn" id="btn-toggle-sidebar" title="Toggle Detail Sidebar">Sidebar ☰</button>
+    </div>
+  </header>
+
+  <div class="app-body">
+    <!-- Viewport with Pan-Zoom Canvas -->
+    <div class="viewport" id="viewport">
+      <div id="loader" style="opacity: 0;">
+        <div class="spinner"></div>
+        <div style="font-size: 0.85rem; color: var(--text-muted);">Rendering lifecycle flowchart...</div>
+      </div>
+
+      <div id="canvas">
+        <div id="mermaid-container"><svg aria-roledescription="flowchart-v2" role="graphics-document document" viewBox="-8 -8 5067.953125 2189" style="max-width: 5067.953125px;" xmlns="http://www.w3.org/2000/svg" width="100%" id="lifecycle-svg"><style>#lifecycle-svg{font-family:Inter,sans-serif;font-size:13px;fill:#ccc;}#lifecycle-svg .error-icon{fill:#a44141;}#lifecycle-svg .error-text{fill:#ddd;stroke:#ddd;}#lifecycle-svg .edge-thickness-normal{stroke-width:2px;}#lifecycle-svg .edge-thickness-thick{stroke-width:3.5px;}#lifecycle-svg .edge-pattern-solid{stroke-dasharray:0;}#lifecycle-svg .edge-pattern-dashed{stroke-dasharray:3;}#lifecycle-svg .edge-pattern-dotted{stroke-dasharray:2;}#lifecycle-svg .marker{fill:#64748b;stroke:#64748b;}#lifecycle-svg .marker.cross{stroke:#64748b;}#lifecycle-svg svg{font-family:Inter,sans-serif;font-size:13px;}#lifecycle-svg .label{font-family:Inter,sans-serif;color:#ccc;}#lifecycle-svg .cluster-label text{fill:#F9FFFE;}#lifecycle-svg .cluster-label span,#lifecycle-svg p{color:#F9FFFE;}#lifecycle-svg .label text,#lifecycle-svg span,#lifecycle-svg p{fill:#ccc;color:#ccc;}#lifecycle-svg .node rect,#lifecycle-svg .node circle,#lifecycle-svg .node ellipse,#lifecycle-svg .node polygon,#lifecycle-svg .node path{fill:#1f2020;stroke:#81B1DB;stroke-width:1px;}#lifecycle-svg .flowchart-label text{text-anchor:middle;}#lifecycle-svg .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#lifecycle-svg .node .label{text-align:center;}#lifecycle-svg .node.clickable{cursor:pointer;}#lifecycle-svg .arrowheadPath{fill:lightgrey;}#lifecycle-svg .edgePath .path{stroke:#64748b;stroke-width:2.0px;}#lifecycle-svg .flowchart-link{stroke:#64748b;fill:none;}#lifecycle-svg .edgeLabel{background-color:hsl(0, 0%, 34.4117647059%);text-align:center;}#lifecycle-svg .edgeLabel rect{opacity:0.5;background-color:hsl(0, 0%, 34.4117647059%);fill:hsl(0, 0%, 34.4117647059%);}#lifecycle-svg .labelBkg{background-color:rgba(87.75, 87.75, 87.75, 0.5);}#lifecycle-svg .cluster rect{fill:hsl(180, 1.5873015873%, 28.3529411765%);stroke:rgba(255, 255, 255, 0.25);stroke-width:1px;}#lifecycle-svg .cluster text{fill:#F9FFFE;}#lifecycle-svg .cluster span,#lifecycle-svg p{color:#F9FFFE;}#lifecycle-svg div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-family:Inter,sans-serif;font-size:12px;background:hsl(20, 1.5873015873%, 12.3529411765%);border:1px solid rgba(255, 255, 255, 0.25);border-radius:2px;pointer-events:none;z-index:100;}#lifecycle-svg .flowchartTitleText{text-anchor:middle;font-size:18px;fill:#ccc;}#lifecycle-svg :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}#lifecycle-svg .phase&gt;*{fill:#0c1322!important;stroke:#38bdf8!important;stroke-width:2px!important;stroke-dasharray:4 4!important;color:#38bdf8!important;}#lifecycle-svg .phase span{fill:#0c1322!important;stroke:#38bdf8!important;stroke-width:2px!important;stroke-dasharray:4 4!important;color:#38bdf8!important;}#lifecycle-svg .phase tspan{fill:#38bdf8!important;}#lifecycle-svg .master&gt;*{fill:#1e293b!important;stroke:#64748b!important;stroke-width:1.5px!important;color:#f8fafc!important;}#lifecycle-svg .master span{fill:#1e293b!important;stroke:#64748b!important;stroke-width:1.5px!important;color:#f8fafc!important;}#lifecycle-svg .master tspan{fill:#f8fafc!important;}#lifecycle-svg .intake&gt;*{fill:#064e3b!important;stroke:#10b981!important;stroke-width:1.5px!important;color:#f8fafc!important;}#lifecycle-svg .intake span{fill:#064e3b!important;stroke:#10b981!important;stroke-width:1.5px!important;color:#f8fafc!important;}#lifecycle-svg .intake tspan{fill:#f8fafc!important;}#lifecycle-svg .approval&gt;*{fill:#78350f!important;stroke:#f59e0b!important;stroke-width:1.5px!important;color:#f8fafc!important;}#lifecycle-svg .approval span{fill:#78350f!important;stroke:#f59e0b!important;stroke-width:1.5px!important;color:#f8fafc!important;}#lifecycle-svg .approval tspan{fill:#f8fafc!important;}#lifecycle-svg .alloc&gt;*{fill:#2e1065!important;stroke:#818cf8!important;stroke-width:1.5px!important;color:#f8fafc!important;}#lifecycle-svg .alloc span{fill:#2e1065!important;stroke:#818cf8!important;stroke-width:1.5px!important;color:#f8fafc!important;}#lifecycle-svg .alloc tspan{fill:#f8fafc!important;}#lifecycle-svg .exec&gt;*{fill:#1e3a8a!important;stroke:#3b82f6!important;stroke-width:1.5px!important;color:#f8fafc!important;}#lifecycle-svg .exec span{fill:#1e3a8a!important;stroke:#3b82f6!important;stroke-width:1.5px!important;color:#f8fafc!important;}#lifecycle-svg .exec tspan{fill:#f8fafc!important;}#lifecycle-svg .audit&gt;*{fill:#4c1d95!important;stroke:#c084fc!important;stroke-width:1.5px!important;color:#f8fafc!important;}#lifecycle-svg .audit span{fill:#4c1d95!important;stroke:#c084fc!important;stroke-width:1.5px!important;color:#f8fafc!important;}#lifecycle-svg .audit tspan{fill:#f8fafc!important;}</style><g><marker orient="auto" markerHeight="12" markerWidth="12" markerUnits="userSpaceOnUse" refY="5" refX="6" viewBox="0 0 10 10" class="marker flowchart" id="lifecycle-svg_flowchart-pointEnd"><path style="stroke-width: 1; stroke-dasharray: 1, 0;" class="arrowMarkerPath" d="M 0 0 L 10 5 L 0 10 z"></path></marker><marker orient="auto" markerHeight="12" markerWidth="12" markerUnits="userSpaceOnUse" refY="5" refX="4.5" viewBox="0 0 10 10" class="marker flowchart" id="lifecycle-svg_flowchart-pointStart"><path style="stroke-width: 1; stroke-dasharray: 1, 0;" class="arrowMarkerPath" d="M 0 5 L 10 10 L 10 0 z"></path></marker><marker orient="auto" markerHeight="11" markerWidth="11" markerUnits="userSpaceOnUse" refY="5" refX="11" viewBox="0 0 10 10" class="marker flowchart" id="lifecycle-svg_flowchart-circleEnd"><circle style="stroke-width: 1; stroke-dasharray: 1, 0;" class="arrowMarkerPath" r="5" cy="5" cx="5"></circle></marker><marker orient="auto" markerHeight="11" markerWidth="11" markerUnits="userSpaceOnUse" refY="5" refX="-1" viewBox="0 0 10 10" class="marker flowchart" id="lifecycle-svg_flowchart-circleStart"><circle style="stroke-width: 1; stroke-dasharray: 1, 0;" class="arrowMarkerPath" r="5" cy="5" cx="5"></circle></marker><marker orient="auto" markerHeight="11" markerWidth="11" markerUnits="userSpaceOnUse" refY="5.2" refX="12" viewBox="0 0 11 11" class="marker cross flowchart" id="lifecycle-svg_flowchart-crossEnd"><path style="stroke-width: 2; stroke-dasharray: 1, 0;" class="arrowMarkerPath" d="M 1,1 l 9,9 M 10,1 l -9,9"></path></marker><marker orient="auto" markerHeight="11" markerWidth="11" markerUnits="userSpaceOnUse" refY="5.2" refX="-1" viewBox="0 0 11 11" class="marker cross flowchart" id="lifecycle-svg_flowchart-crossStart"><path style="stroke-width: 2; stroke-dasharray: 1, 0;" class="arrowMarkerPath" d="M 1,1 l 9,9 M 10,1 l -9,9"></path></marker><g class="root"><g class="clusters"><g id="Row3" class="cluster default flowchart-label"><rect height="518" width="4461.24609375" y="1655" x="0" ry="0" rx="0" style=""></rect><g transform="translate(2230.623046875, 1655)" class="cluster-label"><foreignObject height="0" width="0"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel"></span></div></foreignObject></g></g><g id="Row2" class="cluster default flowchart-label"><rect height="704" width="1898.59375" y="806" x="304.73828125" ry="0" rx="0" style=""></rect><g transform="translate(1254.03515625, 806)" class="cluster-label"><foreignObject height="0" width="0"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel"></span></div></foreignObject></g></g><g id="Row1" class="cluster default flowchart-label"><rect height="1323" width="2828.62109375" y="0" x="2223.33203125" ry="0" rx="0" style=""></rect><g transform="translate(3637.642578125, 0)" class="cluster-label"><foreignObject height="0" width="0"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel"></span></div></foreignObject></g></g><g id="S5" class="cluster default flowchart-label"><rect height="209" width="2214.51953125" y="1680" x="2226.7265625" ry="0" rx="0" style=""></rect><g transform="translate(3234.158203125, 1680)" class="cluster-label"><foreignObject height="15" width="199.65625"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">5. Execution &amp; Real-Time Tracking</span></div></foreignObject></g></g><g id="S6" class="cluster default flowchart-label"><rect height="209" width="2706.3125" y="1939" x="20" ry="0" rx="0" style=""></rect><g transform="translate(1257.2890625, 1939)" class="cluster-label"><foreignObject height="15" width="231.734375"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">6. Sign-off, Reporting &amp; System Auditing</span></div></foreignObject></g></g><g id="S3" class="cluster default flowchart-label"><rect height="467" width="1026.51171875" y="831" x="324.73828125" ry="0" rx="0" style=""></rect><g transform="translate(730.212890625, 831)" class="cluster-label"><foreignObject height="15" width="215.5625"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">3. Multi-Tier Governance &amp; Approvals</span></div></foreignObject></g></g><g id="S4" class="cluster default flowchart-label"><rect height="97" width="1387.625" y="1388" x="795.70703125" ry="0" rx="0" style=""></rect><g transform="translate(1388.69921875, 1388)" class="cluster-label"><foreignObject height="15" width="201.640625"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">4. Allocation, Scheduling &amp; Staging</span></div></foreignObject></g></g><g id="S1" class="cluster default flowchart-label"><rect height="587" width="1377.26171875" y="25" x="3336.05078125" ry="0" rx="0" style=""></rect><g transform="translate(3902.572265625, 25)" class="cluster-label"><foreignObject height="15" width="244.21875"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">1. Master Data &amp; Organizational Hierarchy</span></div></foreignObject></g></g><g id="S2" class="cluster default flowchart-label"><rect height="800" width="759.203125" y="498" x="2556.84765625" ry="0" rx="0" style=""></rect><g transform="translate(2843.58203125, 498)" class="cluster-label"><foreignObject height="15" width="185.734375"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">2. Intake &amp; Operational Demand</span></div></foreignObject></g></g></g><g class="edgePaths"><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-ORG LE-SITE" id="L-ORG-SITE-0" d="M3818.238,90.951L3841.102,97.376C3863.966,103.801,3909.694,116.65,3932.558,127.608C3955.422,138.567,3955.422,147.633,3955.422,152.167L3955.422,156.7"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-SITE LE-DEPT" id="L-SITE-DEPT-0" d="M3910.296,209L3899.894,214.417C3889.493,219.833,3868.69,230.667,3858.288,240.617C3847.887,250.567,3847.887,259.633,3847.887,264.167L3847.887,268.7"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-DEPT LE-USERS" id="L-DEPT-USERS-0" d="M3847.887,321L3847.887,326.417C3847.887,331.833,3847.887,342.667,3847.887,352.617C3847.887,362.567,3847.887,371.633,3847.887,376.167L3847.887,380.7"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;stroke-width:2px;stroke-dasharray:3;" class="edge-thickness-normal edge-pattern-dotted flowchart-link LS-USERS LE-ROLES" id="L-USERS-ROLES-0" d="M3738.98,431.228L3710.35,436.94C3681.719,442.652,3624.457,454.076,3595.826,465.205C3567.195,476.333,3567.195,487.167,3567.195,497.283C3567.195,507.4,3567.195,516.8,3567.195,521.5L3567.195,526.2"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;stroke-width:2px;stroke-dasharray:3;" class="edge-thickness-normal edge-pattern-dotted flowchart-link LS-SITE LE-FLEET_REG" id="L-SITE-FLEET_REG-0" d="M4060.43,200.647L4107.633,207.456C4154.836,214.265,4249.242,227.882,4296.445,244.024C4343.648,260.167,4343.648,278.833,4343.648,297.5C4343.648,316.167,4343.648,334.833,4343.648,353.5C4343.648,372.167,4343.648,390.833,4343.648,409.5C4343.648,428.167,4343.648,446.833,4343.648,461.583C4343.648,476.333,4343.648,487.167,4343.648,497.283C4343.648,507.4,4343.648,516.8,4343.648,521.5L4343.648,526.2"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-USERS LE-REQ" id="L-USERS-REQ-0" d="M3738.98,422.664L3679.917,429.803C3620.854,436.943,3502.728,451.221,3443.665,463.777C3384.602,476.333,3384.602,487.167,3288.359,500.56C3192.116,513.953,2999.631,529.906,2903.388,537.883L2807.145,545.859"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-USERS LE-M_REQ" id="L-USERS-M_REQ-0" d="M3956.793,431.228L3985.424,436.94C4014.055,442.652,4071.316,454.076,4099.947,465.205C4128.578,476.333,4128.578,487.167,4128.578,502.083C4128.578,517,4128.578,536,4128.578,555C4128.578,574,4128.578,593,3910.692,607.917C3692.806,622.833,3257.034,633.667,3047.164,644.036C2837.295,654.405,2853.328,664.31,2861.344,669.262L2869.361,674.214"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-USERS LE-WORK_ITEM" id="L-USERS-WORK_ITEM-0" d="M3956.793,418.752L4048.503,426.543C4140.214,434.335,4323.634,449.917,4415.344,463.125C4507.055,476.333,4507.055,487.167,4507.055,502.083C4507.055,517,4507.055,536,4507.055,555C4507.055,574,4507.055,593,4270.725,607.917C4034.395,622.833,3561.734,633.667,3325.404,649.833C3089.074,666,3089.074,687.5,3089.074,709C3089.074,730.5,3089.074,752,3089.074,768.167C3089.074,784.333,3089.074,795.167,3089.074,804.75C3089.074,814.333,3089.074,822.667,3089.074,834.917C3089.074,847.167,3089.074,863.333,3089.074,880.75C3089.074,898.167,3089.074,916.833,3089.074,935.5C3089.074,954.167,3089.074,972.833,3089.074,991.5C3089.074,1010.167,3089.074,1028.833,3089.074,1042.7C3089.074,1056.567,3089.074,1065.633,3089.074,1070.167L3089.074,1074.7"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-WORK_ITEM LE-JOB_CARD" id="L-WORK_ITEM-JOB_CARD-0" d="M3089.074,1144L3089.074,1149.417C3089.074,1154.833,3089.074,1165.667,3089.074,1175.617C3089.074,1185.567,3089.074,1194.633,3089.074,1199.167L3089.074,1203.7"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-FLEET_REG LE-JOB_CARD" id="L-FLEET_REG-JOB_CARD-0" d="M4419.263,578.5L4437.229,584.083C4455.194,589.667,4491.124,600.833,4297.96,611.833C4104.796,622.833,3682.536,633.667,3471.407,649.833C3260.277,666,3260.277,687.5,3260.277,709C3260.277,730.5,3260.277,752,3260.277,768.167C3260.277,784.333,3260.277,795.167,3260.277,804.75C3260.277,814.333,3260.277,822.667,3260.277,834.917C3260.277,847.167,3260.277,863.333,3260.277,880.75C3260.277,898.167,3260.277,916.833,3260.277,935.5C3260.277,954.167,3260.277,972.833,3260.277,991.5C3260.277,1010.167,3260.277,1028.833,3260.277,1048.917C3260.277,1069,3260.277,1090.5,3260.277,1112C3260.277,1133.5,3260.277,1155,3246.726,1170.855C3233.176,1186.71,3206.074,1196.921,3192.523,1202.026L3178.972,1207.131"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-FLEET_REG LE-M_REQ" id="L-FLEET_REG-M_REQ-0" d="M4343.648,578.5L4343.648,584.083C4343.648,589.667,4343.648,600.833,4115.333,611.833C3887.018,622.833,3430.388,633.667,3198.562,643.792C2966.737,653.917,2959.716,663.334,2956.205,668.043L2952.694,672.751"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-WF_DEF LE-WF_STEP_DEF" id="L-WF_DEF-WF_STEP_DEF-0" d="M638.58,903L612.858,908.417C587.136,913.833,535.691,924.667,509.968,934.617C484.246,944.567,484.246,953.633,484.246,958.167L484.246,962.7"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;stroke-width:2px;stroke-dasharray:3;" class="edge-thickness-normal edge-pattern-dotted flowchart-link LS-JOB_CARD LE-APP_REQ" id="L-JOB_CARD-APP_REQ-0" d="M2948.973,1236.068L2666.93,1226.14C2384.888,1216.212,1820.803,1196.356,1538.761,1175.678C1256.719,1155,1256.719,1133.5,1256.719,1112C1256.719,1090.5,1256.719,1069,1199.438,1051.475C1142.157,1033.95,1027.595,1020.399,970.314,1013.624L913.033,1006.849"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;stroke-width:2px;stroke-dasharray:3;" class="edge-thickness-normal edge-pattern-dotted flowchart-link LS-M_REQ LE-APP_REQ" id="L-M_REQ-APP_REQ-0" d="M2925.668,741L2925.668,746.417C2925.668,751.833,2925.668,762.667,2925.668,773.5C2925.668,784.333,2925.668,795.167,2925.668,804.75C2925.668,814.333,2925.668,822.667,2925.668,834.917C2925.668,847.167,2925.668,863.333,2925.668,880.75C2925.668,898.167,2925.668,916.833,2590.235,934.935C2254.801,953.036,1583.934,970.571,1248.501,979.339L913.068,988.107"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-WF_DEF LE-APP_REQ" id="L-WF_DEF-APP_REQ-0" d="M764.06,903L767.26,908.417C770.461,913.833,776.861,924.667,780.061,934.617C783.262,944.567,783.262,953.633,783.262,958.167L783.262,962.7"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-APP_REQ LE-APP_STEP" id="L-APP_REQ-APP_STEP-0" d="M783.262,1015L783.262,1020.417C783.262,1025.833,783.262,1036.667,783.262,1046.617C783.262,1056.567,783.262,1065.633,783.262,1070.167L783.262,1074.7"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-APP_STEP LE-SLA" id="L-APP_STEP-SLA-0" d="M706.184,1144L693.137,1149.417C680.09,1154.833,653.996,1165.667,640.949,1177.033C627.902,1188.4,627.902,1200.3,627.902,1206.25L627.902,1212.2"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-USERS LE-APP_STEP" id="L-USERS-APP_STEP-0" d="M3806.852,433L3797.393,438.417C3787.935,443.833,3769.018,454.667,3759.56,465.5C3750.102,476.333,3750.102,487.167,3750.102,502.083C3750.102,517,3750.102,536,3750.102,555C3750.102,574,3750.102,593,3505.939,607.917C3261.777,622.833,2773.453,633.667,2529.291,649.833C2285.129,666,2285.129,687.5,2285.129,709C2285.129,730.5,2285.129,752,2285.129,768.167C2285.129,784.333,2285.129,795.167,2285.129,804.75C2285.129,814.333,2285.129,822.667,2285.129,834.917C2285.129,847.167,2285.129,863.333,2285.129,880.75C2285.129,898.167,2285.129,916.833,2285.129,935.5C2285.129,954.167,2285.129,972.833,2285.129,991.5C2285.129,1010.167,2285.129,1028.833,2060.351,1047.82C1835.574,1066.807,1386.018,1086.114,1161.241,1095.767L936.463,1105.421"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-APP_STEP LE-M_RES" id="L-APP_STEP-M_RES-0" d="M858.3,1144L871.002,1149.417C883.704,1154.833,909.108,1165.667,921.81,1181.833C934.512,1198,934.512,1219.5,934.512,1239.75C934.512,1260,934.512,1279,934.512,1292.667C934.512,1306.333,934.512,1314.667,934.512,1324.25C934.512,1333.833,934.512,1344.667,934.512,1355.5C934.512,1366.333,934.512,1377.167,938.325,1386.147C942.138,1395.127,949.765,1402.254,953.578,1405.818L957.391,1409.381"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-APP_STEP LE-JOB_CARD" id="L-APP_STEP-JOB_CARD-0" d="M931.168,1136.394L971.697,1143.078C1012.227,1149.762,1093.285,1163.131,1428.703,1179.749C1764.121,1196.367,2353.898,1216.235,2648.787,1226.168L2943.676,1236.102"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-CATALOG LE-MAT_REQ" id="L-CATALOG-MAT_REQ-0" d="M3913.508,578.5L3913.508,584.083C3913.508,589.667,3913.508,600.833,3676.298,611.833C3439.087,622.833,2964.667,633.667,2727.456,649.833C2490.246,666,2490.246,687.5,2490.246,709C2490.246,730.5,2490.246,752,2490.246,768.167C2490.246,784.333,2490.246,795.167,2490.246,804.75C2490.246,814.333,2490.246,822.667,2490.246,834.917C2490.246,847.167,2490.246,863.333,2490.246,880.75C2490.246,898.167,2490.246,916.833,2490.246,935.5C2490.246,954.167,2490.246,972.833,2490.246,991.5C2490.246,1010.167,2490.246,1028.833,2490.246,1048.917C2490.246,1069,2490.246,1090.5,2490.246,1112C2490.246,1133.5,2490.246,1155,2490.246,1176.5C2490.246,1198,2490.246,1219.5,2490.246,1239.75C2490.246,1260,2490.246,1279,2541.456,1292.667C2592.665,1306.333,2695.085,1314.667,2490.531,1324.25C2285.977,1333.833,1774.449,1344.667,1518.686,1355.5C1262.922,1366.333,1262.922,1377.167,1267.83,1386.224C1272.739,1395.281,1282.556,1402.562,1287.465,1406.202L1292.373,1409.843"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-JOB_CARD LE-MAT_REQ" id="L-JOB_CARD-MAT_REQ-0" d="M2992.162,1273L2979.543,1277.167C2966.924,1281.333,2941.687,1289.667,2929.068,1298C2916.449,1306.333,2916.449,1314.667,2668.742,1324.25C2421.034,1333.833,1925.618,1344.667,1677.911,1355.5C1430.203,1366.333,1430.203,1377.167,1422.248,1386.37C1414.292,1395.574,1398.381,1403.148,1390.425,1406.935L1382.47,1410.722"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-JOB_CARD LE-WP" id="L-JOB_CARD-WP-0" d="M3003.39,1273L2992.233,1277.167C2981.076,1281.333,2958.763,1289.667,2947.606,1298C2936.449,1306.333,2936.449,1314.667,2722.161,1324.25C2507.874,1333.833,2079.298,1344.667,1865.01,1355.5C1650.723,1366.333,1650.723,1377.167,1650.723,1385.867C1650.723,1394.567,1650.723,1401.133,1650.723,1404.417L1650.723,1407.7"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-JOB_CARD LE-CONTRACTOR" id="L-JOB_CARD-CONTRACTOR-0" d="M3014.618,1273L3004.923,1277.167C2995.228,1281.333,2975.839,1289.667,2966.144,1298C2956.449,1306.333,2956.449,1314.667,2795.813,1324.25C2635.176,1333.833,2313.902,1344.667,2153.266,1355.5C1992.629,1366.333,1992.629,1377.167,1992.629,1385.867C1992.629,1394.567,1992.629,1401.133,1992.629,1404.417L1992.629,1407.7"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-FLEET_REG LE-M_RES" id="L-FLEET_REG-M_RES-0" d="M4215.242,569.3L4151.336,576.416C4087.43,583.533,3959.617,597.767,3651.141,610.3C3342.665,622.833,2853.526,633.667,2608.956,649.833C2364.387,666,2364.387,687.5,2364.387,709C2364.387,730.5,2364.387,752,2364.387,768.167C2364.387,784.333,2364.387,795.167,2364.387,804.75C2364.387,814.333,2364.387,822.667,2364.387,834.917C2364.387,847.167,2364.387,863.333,2364.387,880.75C2364.387,898.167,2364.387,916.833,2364.387,935.5C2364.387,954.167,2364.387,972.833,2364.387,991.5C2364.387,1010.167,2364.387,1028.833,2364.387,1048.917C2364.387,1069,2364.387,1090.5,2364.387,1112C2364.387,1133.5,2364.387,1155,2364.387,1176.5C2364.387,1198,2364.387,1219.5,2364.387,1239.75C2364.387,1260,2364.387,1279,2415.596,1292.667C2466.806,1306.333,2569.225,1314.667,2339.563,1324.25C2109.9,1333.833,1548.155,1344.667,1267.283,1355.5C986.41,1366.333,986.41,1377.167,986.41,1385.867C986.41,1394.567,986.41,1401.133,986.41,1404.417L986.41,1407.7"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-JOB_CARD LE-LABOUR" id="L-JOB_CARD-LABOUR-0" d="M3031.46,1273L3023.958,1277.167C3016.457,1281.333,3001.453,1289.667,3103.864,1298C3206.275,1306.333,3426.1,1314.667,3536.013,1324.25C3645.926,1333.833,3645.926,1344.667,3645.926,1355.5C3645.926,1366.333,3645.926,1377.167,3645.926,1390.667C3645.926,1404.167,3645.926,1420.333,3645.926,1436.5C3645.926,1452.667,3645.926,1468.833,3645.926,1481.083C3645.926,1493.333,3645.926,1501.667,3430.906,1511.25C3215.885,1520.833,2785.845,1531.667,2570.825,1543.75C2355.805,1555.833,2355.805,1569.167,2355.805,1582.5C2355.805,1595.833,2355.805,1609.167,2355.805,1621.25C2355.805,1633.333,2355.805,1644.167,2355.805,1653.75C2355.805,1663.333,2355.805,1671.667,2367.829,1679.728C2379.853,1687.789,2403.901,1695.578,2415.925,1699.472L2427.949,1703.367"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-JOB_CARD LE-PARTS" id="L-JOB_CARD-PARTS-0" d="M3048.302,1273L3042.993,1277.167C3037.685,1281.333,3027.067,1289.667,3182.154,1298C3337.241,1306.333,3658.033,1314.667,3818.428,1324.25C3978.824,1333.833,3978.824,1344.667,3978.824,1355.5C3978.824,1366.333,3978.824,1377.167,3978.824,1390.667C3978.824,1404.167,3978.824,1420.333,3978.824,1436.5C3978.824,1452.667,3978.824,1468.833,3978.824,1481.083C3978.824,1493.333,3978.824,1501.667,3978.824,1511.25C3978.824,1520.833,3978.824,1531.667,3978.824,1543.75C3978.824,1555.833,3978.824,1569.167,3978.824,1582.5C3978.824,1595.833,3978.824,1609.167,3978.824,1621.25C3978.824,1633.333,3978.824,1644.167,3978.824,1653.75C3978.824,1663.333,3978.824,1671.667,3978.824,1679.117C3978.824,1686.567,3978.824,1693.133,3978.824,1696.417L3978.824,1699.7"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-USERS LE-LABOUR" id="L-USERS-LABOUR-0" d="M3956.793,416.714L4079.546,424.845C4202.299,432.976,4447.806,449.238,4570.559,462.786C4693.313,476.333,4693.313,487.167,4693.313,502.083C4693.313,517,4693.313,536,4693.313,555C4693.313,574,4693.313,593,4693.313,607.917C4693.313,622.833,4693.313,633.667,4693.313,649.833C4693.313,666,4693.313,687.5,4693.313,709C4693.313,730.5,4693.313,752,4693.313,768.167C4693.313,784.333,4693.313,795.167,4693.313,804.75C4693.313,814.333,4693.313,822.667,4693.313,834.917C4693.313,847.167,4693.313,863.333,4693.313,880.75C4693.313,898.167,4693.313,916.833,4693.313,935.5C4693.313,954.167,4693.313,972.833,4693.313,991.5C4693.313,1010.167,4693.313,1028.833,4693.313,1048.917C4693.313,1069,4693.313,1090.5,4693.313,1112C4693.313,1133.5,4693.313,1155,4693.313,1176.5C4693.313,1198,4693.313,1219.5,4693.313,1239.75C4693.313,1260,4693.313,1279,4528.352,1292.667C4363.392,1306.333,4033.471,1314.667,3868.511,1324.25C3703.551,1333.833,3703.551,1344.667,3703.551,1355.5C3703.551,1366.333,3703.551,1377.167,3703.551,1390.667C3703.551,1404.167,3703.551,1420.333,3703.551,1436.5C3703.551,1452.667,3703.551,1468.833,3703.551,1481.083C3703.551,1493.333,3703.551,1501.667,3514.576,1511.25C3325.6,1520.833,2947.65,1531.667,2758.674,1543.75C2569.699,1555.833,2569.699,1569.167,2569.699,1582.5C2569.699,1595.833,2569.699,1609.167,2569.699,1621.25C2569.699,1633.333,2569.699,1644.167,2569.699,1653.75C2569.699,1663.333,2569.699,1671.667,2564.892,1679.467C2560.086,1687.268,2550.472,1694.536,2545.666,1698.17L2540.859,1701.804"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-LABOUR LE-EXEC_EVENTS" id="L-LABOUR-EXEC_EVENTS-0" d="M2461.206,1752L2450.985,1757.417C2440.765,1762.833,2420.324,1773.667,2410.103,1783.617C2399.883,1793.567,2399.883,1802.633,2399.883,1807.167L2399.883,1811.7"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-JOB_CARD LE-METER_UPD" id="L-JOB_CARD-METER_UPD-0" d="M3147.173,1273L3154.738,1277.167C3162.303,1281.333,3177.433,1289.667,3366.527,1298C3555.621,1306.333,3918.68,1314.667,4100.209,1324.25C4281.738,1333.833,4281.738,1344.667,4281.738,1355.5C4281.738,1366.333,4281.738,1377.167,4281.738,1390.667C4281.738,1404.167,4281.738,1420.333,4281.738,1436.5C4281.738,1452.667,4281.738,1468.833,4281.738,1481.083C4281.738,1493.333,4281.738,1501.667,4281.738,1511.25C4281.738,1520.833,4281.738,1531.667,4281.738,1543.75C4281.738,1555.833,4281.738,1569.167,4281.738,1582.5C4281.738,1595.833,4281.738,1609.167,4281.738,1621.25C4281.738,1633.333,4281.738,1644.167,4281.738,1653.75C4281.738,1663.333,4281.738,1671.667,4281.738,1679.117C4281.738,1686.567,4281.738,1693.133,4281.738,1696.417L4281.738,1699.7"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-JOB_CARD LE-REPORT" id="L-JOB_CARD-REPORT-0" d="M2969.706,1273L2954.163,1277.167C2938.62,1281.333,2907.535,1289.667,2849.437,1298C2791.339,1306.333,2706.228,1314.667,2261.965,1324.25C1817.703,1333.833,1014.289,1344.667,612.582,1355.5C210.875,1366.333,210.875,1377.167,210.875,1390.667C210.875,1404.167,210.875,1420.333,210.875,1436.5C210.875,1452.667,210.875,1468.833,210.875,1481.083C210.875,1493.333,210.875,1501.667,274.402,1511.25C337.928,1520.833,464.982,1531.667,528.508,1543.75C592.035,1555.833,592.035,1569.167,592.035,1582.5C592.035,1595.833,592.035,1609.167,592.035,1621.25C592.035,1633.333,592.035,1644.167,592.035,1653.75C592.035,1663.333,592.035,1671.667,592.035,1683.917C592.035,1696.167,592.035,1712.333,592.035,1729.75C592.035,1747.167,592.035,1765.833,592.035,1784.5C592.035,1803.167,592.035,1821.833,592.035,1839.25C592.035,1856.667,592.035,1872.833,592.035,1885.083C592.035,1897.333,592.035,1905.667,592.035,1914C592.035,1922.333,592.035,1930.667,856.566,1942.091C1121.097,1953.516,1650.159,1968.032,1914.69,1975.29L2179.222,1982.548"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;" class="edge-thickness-normal edge-pattern-solid flowchart-link LS-USERS LE-REPORT" id="L-USERS-REPORT-0" d="M3956.793,418.223L4055.17,426.102C4153.547,433.982,4350.301,449.741,4448.678,463.037C4547.055,476.333,4547.055,487.167,4547.055,502.083C4547.055,517,4547.055,536,4547.055,555C4547.055,574,4547.055,593,4547.055,607.917C4547.055,622.833,4547.055,633.667,4547.055,649.833C4547.055,666,4547.055,687.5,4547.055,709C4547.055,730.5,4547.055,752,4547.055,768.167C4547.055,784.333,4547.055,795.167,4547.055,804.75C4547.055,814.333,4547.055,822.667,4547.055,834.917C4547.055,847.167,4547.055,863.333,4547.055,880.75C4547.055,898.167,4547.055,916.833,4547.055,935.5C4547.055,954.167,4547.055,972.833,4547.055,991.5C4547.055,1010.167,4547.055,1028.833,4547.055,1048.917C4547.055,1069,4547.055,1090.5,4547.055,1112C4547.055,1133.5,4547.055,1155,4547.055,1176.5C4547.055,1198,4547.055,1219.5,4547.055,1239.75C4547.055,1260,4547.055,1279,4387.262,1292.667C4227.47,1306.333,3907.885,1314.667,3748.093,1324.25C3588.301,1333.833,3588.301,1344.667,3588.301,1355.5C3588.301,1366.333,3588.301,1377.167,3588.301,1390.667C3588.301,1404.167,3588.301,1420.333,3588.301,1436.5C3588.301,1452.667,3588.301,1468.833,3588.301,1481.083C3588.301,1493.333,3588.301,1501.667,3358.038,1511.25C3127.776,1520.833,2667.251,1531.667,2436.989,1543.75C2206.727,1555.833,2206.727,1569.167,2206.727,1582.5C2206.727,1595.833,2206.727,1609.167,2206.727,1621.25C2206.727,1633.333,2206.727,1644.167,2206.727,1653.75C2206.727,1663.333,2206.727,1671.667,2206.727,1683.917C2206.727,1696.167,2206.727,1712.333,2206.727,1729.75C2206.727,1747.167,2206.727,1765.833,2206.727,1784.5C2206.727,1803.167,2206.727,1821.833,2206.727,1839.25C2206.727,1856.667,2206.727,1872.833,2206.727,1885.083C2206.727,1897.333,2206.727,1905.667,2206.727,1914C2206.727,1922.333,2206.727,1930.667,2219.029,1938.733C2231.33,1946.799,2255.934,1954.599,2268.236,1958.499L2280.538,1962.398"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;stroke-width:2px;stroke-dasharray:3;" class="edge-thickness-normal edge-pattern-dotted flowchart-link LS-APP_STEP LE-SYS_AUDIT" id="L-APP_STEP-SYS_AUDIT-0" d="M779.514,1144L778.879,1149.417C778.245,1154.833,776.976,1165.667,776.341,1181.833C775.707,1198,775.707,1219.5,775.707,1239.75C775.707,1260,775.707,1279,775.707,1292.667C775.707,1306.333,775.707,1314.667,775.707,1324.25C775.707,1333.833,775.707,1344.667,775.707,1355.5C775.707,1366.333,775.707,1377.167,775.707,1390.667C775.707,1404.167,775.707,1420.333,775.707,1436.5C775.707,1452.667,775.707,1468.833,775.707,1481.083C775.707,1493.333,775.707,1501.667,670.281,1511.25C564.855,1520.833,354.004,1531.667,248.578,1543.75C143.152,1555.833,143.152,1569.167,143.152,1582.5C143.152,1595.833,143.152,1609.167,143.152,1621.25C143.152,1633.333,143.152,1644.167,143.152,1653.75C143.152,1663.333,143.152,1671.667,143.152,1683.917C143.152,1696.167,143.152,1712.333,143.152,1729.75C143.152,1747.167,143.152,1765.833,143.152,1784.5C143.152,1803.167,143.152,1821.833,143.152,1839.25C143.152,1856.667,143.152,1872.833,143.152,1885.083C143.152,1897.333,143.152,1905.667,143.152,1914C143.152,1922.333,143.152,1930.667,143.152,1942.917C143.152,1955.167,143.152,1971.333,143.152,1988.75C143.152,2006.167,143.152,2024.833,196.727,2040.191C250.302,2055.548,357.451,2067.597,411.026,2073.621L464.6,2079.645"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;stroke-width:2px;stroke-dasharray:3;" class="edge-thickness-normal edge-pattern-dotted flowchart-link LS-JOB_CARD LE-BIZ_AUDIT" id="L-JOB_CARD-BIZ_AUDIT-0" d="M2950.905,1273L2932.915,1277.167C2914.924,1281.333,2878.942,1289.667,2820.644,1298C2762.346,1306.333,2681.732,1314.667,2228.147,1324.25C1774.563,1333.833,948.008,1344.667,534.73,1355.5C121.453,1366.333,121.453,1377.167,121.453,1390.667C121.453,1404.167,121.453,1420.333,121.453,1436.5C121.453,1452.667,121.453,1468.833,121.453,1481.083C121.453,1493.333,121.453,1501.667,155.554,1511.25C189.655,1520.833,257.857,1531.667,291.958,1543.75C326.059,1555.833,326.059,1569.167,326.059,1582.5C326.059,1595.833,326.059,1609.167,326.059,1621.25C326.059,1633.333,326.059,1644.167,326.059,1653.75C326.059,1663.333,326.059,1671.667,326.059,1683.917C326.059,1696.167,326.059,1712.333,326.059,1729.75C326.059,1747.167,326.059,1765.833,326.059,1784.5C326.059,1803.167,326.059,1821.833,326.059,1839.25C326.059,1856.667,326.059,1872.833,326.059,1885.083C326.059,1897.333,326.059,1905.667,326.059,1914C326.059,1922.333,326.059,1930.667,326.059,1938.117C326.059,1945.567,326.059,1952.133,326.059,1955.417L326.059,1958.7"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="fill:none;stroke-width:2px;stroke-dasharray:3;" class="edge-thickness-normal edge-pattern-dotted flowchart-link LS-REPORT LE-SYS_AUDIT" id="L-REPORT-SYS_AUDIT-0" d="M2359.723,2011L2359.723,2016.417C2359.723,2021.833,2359.723,2032.667,2102.731,2046.458C1845.74,2060.248,1331.757,2076.997,1074.765,2085.371L817.774,2093.745"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="stroke-width: 3.5px;fill:none;" class="edge-thickness-thick edge-pattern-solid flowchart-link LS-S1 LE-S2" id="L-S1-S2-0" d="M3336.051,505.155L3318.802,533.552"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="stroke-width: 3.5px;fill:none;" class="edge-thickness-thick edge-pattern-solid flowchart-link LS-S2 LE-S3" id="L-S2-S3-0" d="M2556.848,841.899L1356.55,843.159"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="stroke-width: 3.5px;fill:none;" class="edge-thickness-thick edge-pattern-solid flowchart-link LS-S3 LE-S4" id="L-S3-S4-0" d="M1091.969,1298L1091.969,1302.167C1091.969,1306.333,1091.969,1314.667,1091.969,1324.25C1091.969,1333.833,1091.969,1344.667,1091.969,1354.617C1091.969,1364.567,1091.969,1373.633,1091.969,1378.167L1091.969,1382.7"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="stroke-width: 3.5px;fill:none;" class="edge-thickness-thick edge-pattern-solid flowchart-link LS-S4 LE-S5" id="L-S4-S5-0" d="M986.41,1485L986.41,1489.167C986.41,1493.333,986.41,1501.667,1274.398,1511.25C1562.385,1520.833,2138.361,1531.667,2426.348,1543.75C2714.336,1555.833,2714.336,1569.167,2714.336,1582.5C2714.336,1595.833,2714.336,1609.167,2714.336,1621.25C2714.336,1633.333,2714.336,1644.167,2714.336,1652.867C2714.336,1661.567,2714.336,1668.133,2714.336,1671.417L2714.336,1674.7"></path><path marker-end="url(#lifecycle-svg_flowchart-pointEnd)" style="stroke-width: 3.5px;fill:none;" class="edge-thickness-thick edge-pattern-solid flowchart-link LS-S5 LE-S6" id="L-S5-S6-0" d="M2611.211,1889L2611.211,1893.167C2611.211,1897.333,2611.211,1905.667,2611.211,1913.117C2611.211,1920.567,2611.211,1927.133,2611.211,1930.417L2611.211,1933.7"></path></g><g class="edgeLabels"><g transform="translate(3955.421875, 129.5)" class="edgeLabel"><g transform="translate(-10.1171875, -7.5)" class="label"><foreignObject height="15" width="20.234375"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">1:N</span></div></foreignObject></g></g><g transform="translate(3847.88671875, 241.5)" class="edgeLabel"><g transform="translate(-10.1171875, -7.5)" class="label"><foreignObject height="15" width="20.234375"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">1:N</span></div></foreignObject></g></g><g transform="translate(3847.88671875, 353.5)" class="edgeLabel"><g transform="translate(-10.1171875, -7.5)" class="label"><foreignObject height="15" width="20.234375"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">1:N</span></div></foreignObject></g></g><g transform="translate(3567.1953125, 465.5)" class="edgeLabel"><g transform="translate(-26.7421875, -7.5)" class="label"><foreignObject height="15" width="53.484375"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Assigned</span></div></foreignObject></g></g><g transform="translate(4343.6484375, 353.5)" class="edgeLabel"><g transform="translate(-39.7421875, -7.5)" class="label"><foreignObject height="15" width="79.484375"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Deploys Fleet</span></div></foreignObject></g></g><g transform="translate(3384.6015625, 465.5)" class="edgeLabel"><g transform="translate(-23.484375, -7.5)" class="label"><foreignObject height="15" width="46.96875"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Submits</span></div></foreignObject></g></g><g transform="translate(4128.578125, 555)" class="edgeLabel"><g transform="translate(-51.6640625, -7.5)" class="label"><foreignObject height="15" width="103.328125"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Requisitions Fleet</span></div></foreignObject></g></g><g transform="translate(3089.07421875, 773.5)" class="edgeLabel"><g transform="translate(-48.421875, -7.5)" class="label"><foreignObject height="15" width="96.84375"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Logs Breakdown</span></div></foreignObject></g></g><g transform="translate(3089.07421875, 1176.5)" class="edgeLabel"><g transform="translate(-58.3984375, -7.5)" class="label"><foreignObject height="15" width="116.796875"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Spawns Work Order</span></div></foreignObject></g></g><g transform="translate(3260.27734375, 935.5)" class="edgeLabel"><g transform="translate(-35.7734375, -7.5)" class="label"><foreignObject height="15" width="71.546875"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Target Asset</span></div></foreignObject></g></g><g transform="translate(2973.7578125, 644.5)" class="edgeLabel"><g transform="translate(-47.2265625, -7.5)" class="label"><foreignObject height="15" width="94.453125"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Requested Type</span></div></foreignObject></g></g><g transform="translate(484.24609375, 935.5)" class="edgeLabel"><g transform="translate(-50.953125, -7.5)" class="label"><foreignObject height="15" width="101.90625"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Sequences Steps</span></div></foreignObject></g></g><g transform="translate(1256.71875, 1112)" class="edgeLabel"><g transform="translate(-74.53125, -7.5)" class="label"><foreignObject height="15" width="149.0625"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Triggers Cost/Safety Flow</span></div></foreignObject></g></g><g transform="translate(2925.66796875, 879.5)" class="edgeLabel"><g transform="translate(-73.09375, -7.5)" class="label"><foreignObject height="15" width="146.1875"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Triggers Requisition Flow</span></div></foreignObject></g></g><g transform="translate(783.26171875, 935.5)" class="edgeLabel"><g transform="translate(-88.75, -7.5)" class="label"><foreignObject height="15" width="177.5"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Instantiates Dynamic Workflow</span></div></foreignObject></g></g><g transform="translate(783.26171875, 1047.5)" class="edgeLabel"><g transform="translate(-61.421875, -7.5)" class="label"><foreignObject height="15" width="122.84375"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Generates Tier Steps</span></div></foreignObject></g></g><g transform="translate(627.90234375, 1176.5)" class="edgeLabel"><g transform="translate(-38.296875, -7.5)" class="label"><foreignObject height="15" width="76.59375"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Monitored By</span></div></foreignObject></g></g><g transform="translate(2285.12890625, 773.5)" class="edgeLabel"><g transform="translate(-41.796875, -7.5)" class="label"><foreignObject height="15" width="83.59375"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Signs Off Step</span></div></foreignObject></g></g><g transform="translate(934.51171875, 1241)" class="edgeLabel"><g transform="translate(-56.0078125, -7.5)" class="label"><foreignObject height="15" width="112.015625"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Authorizes Booking</span></div></foreignObject></g></g><g transform="translate(1174.34375, 1176.5)" class="edgeLabel"><g transform="translate(-62.375, -7.5)" class="label"><foreignObject height="15" width="124.75"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Releases Work Order</span></div></foreignObject></g></g><g transform="translate(2490.24609375, 991.5)" class="edgeLabel"><g transform="translate(-46.6015625, -7.5)" class="label"><foreignObject height="15" width="93.203125"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">BOM Reference</span></div></foreignObject></g></g><g transform="translate(1430.203125, 1355.5)" class="edgeLabel"><g transform="translate(-48.78125, -7.5)" class="label"><foreignObject height="15" width="97.5625"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Allocates Spares</span></div></foreignObject></g></g><g transform="translate(1650.72265625, 1355.5)" class="edgeLabel"><g transform="translate(-49.8515625, -7.5)" class="label"><foreignObject height="15" width="99.703125"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Splits Complexity</span></div></foreignObject></g></g><g transform="translate(1992.62890625, 1355.5)" class="edgeLabel"><g transform="translate(-50.09375, -7.5)" class="label"><foreignObject height="15" width="100.1875"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Outsources Work</span></div></foreignObject></g></g><g transform="translate(2364.38671875, 991.5)" class="edgeLabel"><g transform="translate(-59.2578125, -7.5)" class="label"><foreignObject height="15" width="118.515625"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Locks Unit Schedule</span></div></foreignObject></g></g><g transform="translate(2355.8046875, 1542.5)" class="edgeLabel"><g transform="translate(-75.25, -7.5)" class="label"><foreignObject height="15" width="150.5"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">STATUS: IN_PROGRESS</span></div></foreignObject></g></g><g transform="translate(3978.82421875, 1542.5)" class="edgeLabel"><g transform="translate(-48.046875, -7.5)" class="label"><foreignObject height="15" width="96.09375"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Consumes Parts</span></div></foreignObject></g></g><g transform="translate(4693.3125, 1047.5)" class="edgeLabel"><g transform="translate(-48.0546875, -7.5)" class="label"><foreignObject height="15" width="96.109375"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Logs Shift Hours</span></div></foreignObject></g></g><g transform="translate(2399.8828125, 1784.5)" class="edgeLabel"><g transform="translate(-46.1171875, -7.5)" class="label"><foreignObject height="15" width="92.234375"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Emits Telemetry</span></div></foreignObject></g></g><g transform="translate(4281.73828125, 1542.5)" class="edgeLabel"><g transform="translate(-71.78125, -7.5)" class="label"><foreignObject height="15" width="143.5625"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Updates Asset Telemetry</span></div></foreignObject></g></g><g transform="translate(592.03515625, 1622.5)" class="edgeLabel"><g transform="translate(-68.7421875, -7.5)" class="label"><foreignObject height="15" width="137.484375"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">STATUS: COMPLETED</span></div></foreignObject></g></g><g transform="translate(4547.0546875, 1176.5)" class="edgeLabel"><g transform="translate(-69.609375, -7.5)" class="label"><foreignObject height="15" width="139.21875"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">QA / Supervisor Sign-off</span></div></foreignObject></g></g><g transform="translate(143.15234375, 1622.5)" class="edgeLabel"><g transform="translate(-79.859375, -7.5)" class="label"><foreignObject height="15" width="159.71875"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Captures Governance Audit</span></div></foreignObject></g></g><g transform="translate(326.05859375, 1622.5)" class="edgeLabel"><g transform="translate(-70.1015625, -7.5)" class="label"><foreignObject height="15" width="140.203125"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Captures State Mutation</span></div></foreignObject></g></g><g transform="translate(2359.72265625, 2043.5)" class="edgeLabel"><g transform="translate(-65.03125, -7.5)" class="label"><foreignObject height="15" width="130.0625"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Final System Closeout</span></div></foreignObject></g></g><g transform="translate(3326.05078, 521.61823)" class="edgeLabel"><g transform="translate(-42.2734375, -7.5)" class="label"><foreignObject height="15" width="84.546875"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Feeds Context</span></div></foreignObject></g></g><g transform="translate(1954.04883, 842.53199)" class="edgeLabel"><g transform="translate(-65.40625, -7.5)" class="label"><foreignObject height="15" width="130.8125"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Requires Authorization</span></div></foreignObject></g></g><g transform="translate(1091.96875, 1343)" class="edgeLabel"><g transform="translate(-56, -7.5)" class="label"><foreignObject height="15" width="112"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Unlocks Allocations</span></div></foreignObject></g></g><g transform="translate(1906.6131, 1527.3078)" class="edgeLabel"><g transform="translate(-65.0390625, -7.5)" class="label"><foreignObject height="15" width="130.078125"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Proceeds to Execution</span></div></foreignObject></g></g><g transform="translate(2611.2109375, 1914)" class="edgeLabel"><g transform="translate(-47.921875, -7.5)" class="label"><foreignObject height="15" width="95.84375"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel">Completes Work</span></div></foreignObject></g></g></g><g class="nodes"><g transform="translate(2359.72265625, 1987.5)" data-id="REPORT" data-node="true" id="flowchart-REPORT-84" class="node default audit flowchart-label"><rect height="47" width="350.40625" y="-23.5" x="-175.203125" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-167.703125, -16)" style="" class="label"><rect></rect><foreignObject height="32" width="335.40625"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">📑 job_reports<br><code>job_card_id, findings, root_cause, sign_off</code></span></div></foreignObject></g></g><g transform="translate(641.171875, 2099.5)" data-id="SYS_AUDIT" data-node="true" id="flowchart-SYS_AUDIT-85" class="node default audit flowchart-label"><rect height="47" width="342.609375" y="-23.5" x="-171.3046875" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-163.8046875, -16)" style="" class="label"><rect></rect><foreignObject height="32" width="327.609375"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">🛡️ audit_logs<br><code>user_id, action, resource, ip (6,627 rows)</code></span></div></foreignObject></g></g><g transform="translate(326.05859375, 1987.5)" data-id="BIZ_AUDIT" data-node="true" id="flowchart-BIZ_AUDIT-86" class="node default audit flowchart-label"><rect height="47" width="295.8125" y="-23.5" x="-147.90625" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-140.40625, -16)" style="" class="label"><rect></rect><foreignObject height="32" width="280.8125"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">📊 business_audit_logs<br><code>entity_type, entity_id, diff_payload</code></span></div></foreignObject></g></g><g transform="translate(2505.546875, 1728.5)" data-id="LABOUR" data-node="true" id="flowchart-LABOUR-70" class="node default exec flowchart-label"><rect height="47" width="295.8125" y="-23.5" x="-147.90625" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-140.40625, -16)" style="" class="label"><rect></rect><foreignObject height="32" width="280.8125"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">⏱️ job_card_labour<br><code>job_card_id, technician, hours, rate</code></span></div></foreignObject></g></g><g transform="translate(3978.82421875, 1728.5)" data-id="PARTS" data-node="true" id="flowchart-PARTS-71" class="node default exec flowchart-label"><rect height="47" width="256.8125" y="-23.5" x="-128.40625" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-120.90625, -16)" style="" class="label"><rect></rect><foreignObject height="32" width="241.8125"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">🔧 job_card_parts<br><code>job_card_id, part_no, qty, cost</code></span></div></foreignObject></g></g><g transform="translate(2399.8828125, 1840.5)" data-id="EXEC_EVENTS" data-node="true" id="flowchart-EXEC_EVENTS-72" class="node default exec flowchart-label"><rect height="47" width="256.8125" y="-23.5" x="-128.40625" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-120.90625, -16)" style="" class="label"><rect></rect><foreignObject height="32" width="241.8125"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">📡 job_card_execution_events<br><code>event_type, actor_id, timestamp</code></span></div></foreignObject></g></g><g transform="translate(4281.73828125, 1728.5)" data-id="METER_UPD" data-node="true" id="flowchart-METER_UPD-73" class="node default exec flowchart-label"><rect height="47" width="249.015625" y="-23.5" x="-124.5078125" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-117.0078125, -16)" style="" class="label"><rect></rect><foreignObject height="32" width="234.015625"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">🔄 machines.current_hour_meter<br><code>status: IN_SERVICE / AVAILABLE</code></span></div></foreignObject></g></g><g transform="translate(986.41015625, 1436.5)" data-id="M_RES" data-node="true" id="flowchart-M_RES-52" class="node default alloc flowchart-label"><rect height="47" width="311.40625" y="-23.5" x="-155.703125" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-148.203125, -16)" style="" class="label"><rect></rect><foreignObject height="32" width="296.40625"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">📅 machine_reservations<br><code>requisition_id, machine_id, start_time</code></span></div></foreignObject></g></g><g transform="translate(1328.31640625, 1436.5)" data-id="MAT_REQ" data-node="true" id="flowchart-MAT_REQ-53" class="node default alloc flowchart-label"><rect height="47" width="272.40625" y="-23.5" x="-136.203125" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-128.703125, -16)" style="" class="label"><rect></rect><foreignObject height="32" width="257.40625"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">🔩 material_requirements<br><code>job_card_id, catalog_item_id, qty</code></span></div></foreignObject></g></g><g transform="translate(1650.72265625, 1436.5)" data-id="WP" data-node="true" id="flowchart-WP-54" class="node default alloc flowchart-label"><rect height="47" width="272.40625" y="-23.5" x="-136.203125" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-128.703125, -16)" style="" class="label"><rect></rect><foreignObject height="32" width="257.40625"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">📦 work_packages<br><code>job_card_id, package_number, type</code></span></div></foreignObject></g></g><g transform="translate(1992.62890625, 1436.5)" data-id="CONTRACTOR" data-node="true" id="flowchart-CONTRACTOR-55" class="node default alloc flowchart-label"><rect height="47" width="311.40625" y="-23.5" x="-155.703125" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-148.203125, -16)" style="" class="label"><rect></rect><foreignObject height="32" width="296.40625"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">👷 contractor_assignments<br><code>job_card_id, contractor_id, supervisor</code></span></div></foreignObject></g></g><g transform="translate(750.17578125, 879.5)" data-id="WF_DEF" data-node="true" id="flowchart-WF_DEF-33" class="node default approval flowchart-label"><rect height="47" width="225.609375" y="-23.5" x="-112.8046875" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-105.3046875, -16)" style="" class="label"><rect></rect><foreignObject height="32" width="210.609375"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">📜 workflow_definitions<br><code>id, resource_type, min_cost</code></span></div></foreignObject></g></g><g transform="translate(484.24609375, 991.5)" data-id="WF_STEP_DEF" data-node="true" id="flowchart-WF_STEP_DEF-34" class="node default approval flowchart-label"><rect height="47" width="249.015625" y="-23.5" x="-124.5078125" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-117.0078125, -16)" style="" class="label"><rect></rect><foreignObject height="32" width="234.015625"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">🔢 workflow_step_defs<br><code>workflow_id, step_number, role</code></span></div></foreignObject></g></g><g transform="translate(783.26171875, 991.5)" data-id="APP_REQ" data-node="true" id="flowchart-APP_REQ-35" class="node default approval flowchart-label"><rect height="47" width="249.015625" y="-23.5" x="-124.5078125" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-117.0078125, -16)" style="" class="label"><rect></rect><foreignObject height="32" width="234.015625"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">⚡ approval_requests<br><code>id, resource_id, workflow_type</code></span></div></foreignObject></g></g><g transform="translate(783.26171875, 1112)" data-id="APP_STEP" data-node="true" id="flowchart-APP_STEP-36" class="node default approval flowchart-label"><rect height="64" width="295.8125" y="-32" x="-147.90625" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-140.40625, -24.5)" style="" class="label"><rect></rect><foreignObject height="49" width="280.8125"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">✅ approval_steps<br><code>id, request_id, step_no, approver_id<br>[STATUS: APPROVED / REJECTED]</code></span></div></foreignObject></g></g><g transform="translate(627.90234375, 1241)" data-id="SLA" data-node="true" id="flowchart-SLA-37" class="node default approval flowchart-label"><rect height="47" width="225.609375" y="-23.5" x="-112.8046875" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-105.3046875, -16)" style="" class="label"><rect></rect><foreignObject height="32" width="210.609375"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">⏱️ sla_trackers &amp; escalation<br><code>due_at, is_breached, timers</code></span></div></foreignObject></g></g><g transform="translate(2696.85546875, 555)" data-id="REQ" data-node="true" id="flowchart-REQ-17" class="node default intake flowchart-label"><rect height="64" width="210.015625" y="-32" x="-105.0078125" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-97.5078125, -24.5)" style="" class="label"><rect></rect><foreignObject height="49" width="195.015625"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">📝 operational_requests<br><code>id, requester_id, dept_id<br>[STATUS: PENDING]</code></span></div></foreignObject></g></g><g transform="translate(2925.66796875, 709)" data-id="M_REQ" data-node="true" id="flowchart-M_REQ-18" class="node default intake flowchart-label"><rect height="64" width="256.8125" y="-32" x="-128.40625" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-120.90625, -24.5)" style="" class="label"><rect></rect><foreignObject height="49" width="241.8125"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">🚜 machine_requisitions<br><code>id, req_number, machine_type_id<br>[STATUS: REQUESTED]</code></span></div></foreignObject></g></g><g transform="translate(3089.07421875, 1112)" data-id="WORK_ITEM" data-node="true" id="flowchart-WORK_ITEM-19" class="node default intake flowchart-label"><rect height="64" width="272.40625" y="-32" x="-136.203125" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-128.703125, -24.5)" style="" class="label"><rect></rect><foreignObject height="49" width="257.40625"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">📋 work_items<br><code>id, ref_no, work_type, machine_id<br>[STATUS: OPEN]</code></span></div></foreignObject></g></g><g transform="translate(3089.07421875, 1241)" data-id="JOB_CARD" data-node="true" id="flowchart-JOB_CARD-20" class="node default intake flowchart-label"><rect height="64" width="280.203125" y="-32" x="-140.1015625" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-132.6015625, -24.5)" style="" class="label"><rect></rect><foreignObject height="49" width="265.203125"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">🛠️ job_cards<br><code>id, job_number, machine_id<br>[STATUS: DRAFT / PENDING_APPROVAL]</code></span></div></foreignObject></g></g><g transform="translate(3756.13671875, 73.5)" data-id="ORG" data-node="true" id="flowchart-ORG-0" class="node default master flowchart-label"><rect height="47" width="124.203125" y="-23.5" x="-62.1015625" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-54.6015625, -16)" style="" class="label"><rect></rect><foreignObject height="32" width="109.203125"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">🏢 organizations<br><code>id, code, name</code></span></div></foreignObject></g></g><g transform="translate(3955.421875, 185.5)" data-id="SITE" data-node="true" id="flowchart-SITE-1" class="node default master flowchart-label"><rect height="47" width="210.015625" y="-23.5" x="-105.0078125" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-97.5078125, -16)" style="" class="label"><rect></rect><foreignObject height="32" width="195.015625"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">📍 sites<br><code>id, organization_id, code</code></span></div></foreignObject></g></g><g transform="translate(3847.88671875, 297.5)" data-id="DEPT" data-node="true" id="flowchart-DEPT-2" class="node default master flowchart-label"><rect height="47" width="210.015625" y="-23.5" x="-105.0078125" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-97.5078125, -16)" style="" class="label"><rect></rect><foreignObject height="32" width="195.015625"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">🏬 departments<br><code>id, site_id, code, hod_id</code></span></div></foreignObject></g></g><g transform="translate(3847.88671875, 409.5)" data-id="USERS" data-node="true" id="flowchart-USERS-3" class="node default master flowchart-label"><rect height="47" width="217.8125" y="-23.5" x="-108.90625" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-101.40625, -16)" style="" class="label"><rect></rect><foreignObject height="32" width="202.8125"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">👤 users<br><code>id, dept_id, site_id, role</code></span></div></foreignObject></g></g><g transform="translate(3567.1953125, 555)" data-id="ROLES" data-node="true" id="flowchart-ROLES-4" class="node default master flowchart-label"><rect height="47" width="295.8125" y="-23.5" x="-147.90625" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-140.40625, -16)" style="" class="label"><rect></rect><foreignObject height="32" width="280.8125"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">🔑 roles &amp; permissions<br><code>roles, permissions, role_permissions</code></span></div></foreignObject></g></g><g transform="translate(4343.6484375, 555)" data-id="FLEET_REG" data-node="true" id="flowchart-FLEET_REG-5" class="node default master flowchart-label"><rect height="47" width="256.8125" y="-23.5" x="-128.40625" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-120.90625, -16)" style="" class="label"><rect></rect><foreignObject height="32" width="241.8125"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">🚜 machines &amp; types<br><code>id, type_id, identifier, status</code></span></div></foreignObject></g></g><g transform="translate(3913.5078125, 555)" data-id="CATALOG" data-node="true" id="flowchart-CATALOG-6" class="node default master flowchart-label"><rect height="47" width="256.8125" y="-23.5" x="-128.40625" ry="0" rx="0" style="" class="basic label-container"></rect><g transform="translate(-120.90625, -16)" style="" class="label"><rect></rect><foreignObject height="32" width="241.8125"><div style="display: inline-block; white-space: nowrap;" xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">📦 material_catalog<br><code>id, part_number, name, category</code></span></div></foreignObject></g></g></g></g></g></svg></div>
+      </div>
+
+      <!-- Bottom HUD Legend -->
+      <div class="hud-overlay">
+        <div class="legend-item" data-stage="S1"><span class="legend-dot dot-1"></span> 1. Master Config</div>
+        <div class="legend-item" data-stage="S2"><span class="legend-dot dot-2"></span> 2. Intake Demand</div>
+        <div class="legend-item" data-stage="S3"><span class="legend-dot dot-3"></span> 3. Governance / SLA</div>
+        <div class="legend-item" data-stage="S4"><span class="legend-dot dot-4"></span> 4. Allocation</div>
+        <div class="legend-item" data-stage="S5"><span class="legend-dot dot-5"></span> 5. Execution</div>
+        <div class="legend-item" data-stage="S6"><span class="legend-dot dot-6"></span> 6. Audit &amp; Sign-off</div>
+      </div>
+    </div>
+
+    <!-- Sidebar Details -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div>
+          <div class="sidebar-title">Pipeline Architecture</div>
+          <div class="sidebar-desc">Stages &amp; Relational Key Bindings</div>
+        </div>
+      </div>
+
+      <div class="sidebar-content">
+        <!-- Stage 1 -->
+        <div class="stage-card">
+          <div class="stage-card-header">
+            <span>1. Master Data &amp; Hierarchy</span>
+            <span class="stage-badge badge-master">Config</span>
+          </div>
+          <div class="stage-card-body">
+            Foundational organizational structure, site boundaries, machine inventory, and user security roles.
+            <div class="table-pills">
+              <span class="table-pill">organizations</span>
+              <span class="table-pill">sites</span>
+              <span class="table-pill">departments</span>
+              <span class="table-pill">users</span>
+              <span class="table-pill">roles</span>
+              <span class="table-pill">machines</span>
+              <span class="table-pill">material_catalog</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stage 2 -->
+        <div class="stage-card">
+          <div class="stage-card-header">
+            <span>2. Intake &amp; Operational Demand</span>
+            <span class="stage-badge badge-intake">Intake</span>
+          </div>
+          <div class="stage-card-body">
+            Captures field breakdown requests, heavy fleet requisitions, and initial work item decomposition.
+            <div class="table-pills">
+              <span class="table-pill">operational_requests</span>
+              <span class="table-pill">machine_requisitions</span>
+              <span class="table-pill">work_items</span>
+              <span class="table-pill">job_cards</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stage 3 -->
+        <div class="stage-card">
+          <div class="stage-card-header">
+            <span>3. Multi-Tier Governance &amp; SLA</span>
+            <span class="stage-badge badge-approval">Gatekeeper</span>
+          </div>
+          <div class="stage-card-body">
+            Evaluates cost thresholds, safety risk levels, and generates tiered sign-off steps governed by SLA timers.
+            <div class="table-pills">
+              <span class="table-pill">workflow_definitions</span>
+              <span class="table-pill">workflow_step_defs</span>
+              <span class="table-pill">approval_requests</span>
+              <span class="table-pill">approval_steps</span>
+              <span class="table-pill">sla_trackers</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stage 4 -->
+        <div class="stage-card">
+          <div class="stage-card-header">
+            <span>4. Allocation &amp; Scheduling</span>
+            <span class="stage-badge badge-alloc">Staging</span>
+          </div>
+          <div class="stage-card-body">
+            Locks heavy equipment schedules, allocates spare parts from catalog, and assigns specialized contractors.
+            <div class="table-pills">
+              <span class="table-pill">machine_reservations</span>
+              <span class="table-pill">material_requirements</span>
+              <span class="table-pill">work_packages</span>
+              <span class="table-pill">contractor_assignments</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stage 5 -->
+        <div class="stage-card">
+          <div class="stage-card-header">
+            <span>5. Maintenance Execution</span>
+            <span class="stage-badge badge-exec">Active</span>
+          </div>
+          <div class="stage-card-body">
+            Wrench time logging, consumed inventory tracking, live progress telemetry, and machine hour meter updates.
+            <div class="table-pills">
+              <span class="table-pill">job_card_labour</span>
+              <span class="table-pill">job_card_parts</span>
+              <span class="table-pill">job_card_execution_events</span>
+              <span class="table-pill">machines (hours)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stage 6 -->
+        <div class="stage-card">
+          <div class="stage-card-header">
+            <span>6. Sign-off, Reporting &amp; Audit</span>
+            <span class="stage-badge badge-audit">Audit</span>
+          </div>
+          <div class="stage-card-body">
+            Final QA sign-off, diagnostic findings, immutable business mutation diffs, and security audit log streams.
+            <div class="table-pills">
+              <span class="table-pill">job_reports</span>
+              <span class="table-pill">business_audit_logs</span>
+              <span class="table-pill">audit_logs</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    const diagramDefinition = `
+flowchart TB
+    %% Class Styles
+    classDef phase fill:#0c1322,stroke:#38bdf8,stroke-width:2px,stroke-dasharray: 4 4,color:#38bdf8;
+    classDef master fill:#1e293b,stroke:#64748b,stroke-width:1.5px,color:#f8fafc;
+    classDef intake fill:#064e3b,stroke:#10b981,stroke-width:1.5px,color:#f8fafc;
+    classDef approval fill:#78350f,stroke:#f59e0b,stroke-width:1.5px,color:#f8fafc;
+    classDef alloc fill:#2e1065,stroke:#818cf8,stroke-width:1.5px,color:#f8fafc;
+    classDef exec fill:#1e3a8a,stroke:#3b82f6,stroke-width:1.5px,color:#f8fafc;
+    classDef audit fill:#4c1d95,stroke:#c084fc,stroke-width:1.5px,color:#f8fafc;
+
+    subgraph Row1 [" "]
+        direction LR
+        subgraph S1 ["1. Master Data & Organizational Hierarchy"]
+            direction TB
+            ORG["🏢 organizations<br/><code>id, code, name</code>"]:::master
+            SITE["📍 sites<br/><code>id, organization_id, code</code>"]:::master
+            DEPT["🏬 departments<br/><code>id, site_id, code, hod_id</code>"]:::master
+            USERS["👤 users<br/><code>id, dept_id, site_id, role</code>"]:::master
+            ROLES["🔑 roles & permissions<br/><code>roles, permissions, role_permissions</code>"]:::master
+            FLEET_REG["🚜 machines & types<br/><code>id, type_id, identifier, status</code>"]:::master
+            CATALOG["📦 material_catalog<br/><code>id, part_number, name, category</code>"]:::master
+
+            ORG -->|1:N| SITE
+            SITE -->|1:N| DEPT
+            DEPT -->|1:N| USERS
+            USERS -.->|Assigned| ROLES
+            SITE -.->|Deploys Fleet| FLEET_REG
+        end
+
+        subgraph S2 ["2. Intake & Operational Demand"]
+            direction TB
+            REQ["📝 operational_requests<br/><code>id, requester_id, dept_id<br/>[STATUS: PENDING]</code>"]:::intake
+            M_REQ["🚜 machine_requisitions<br/><code>id, req_number, machine_type_id<br/>[STATUS: REQUESTED]</code>"]:::intake
+            WORK_ITEM["📋 work_items<br/><code>id, ref_no, work_type, machine_id<br/>[STATUS: OPEN]</code>"]:::intake
+            JOB_CARD["🛠️ job_cards<br/><code>id, job_number, machine_id<br/>[STATUS: DRAFT / PENDING_APPROVAL]</code>"]:::intake
+
+            USERS -->|Submits| REQ
+            USERS -->|Requisitions Fleet| M_REQ
+            USERS -->|Logs Breakdown| WORK_ITEM
+            WORK_ITEM -->|Spawns Work Order| JOB_CARD
+            FLEET_REG -->|Target Asset| JOB_CARD
+            FLEET_REG -->|Requested Type| M_REQ
+        end
+    end
+
+    subgraph Row2 [" "]
+        direction LR
+        subgraph S3 ["3. Multi-Tier Governance & Approvals"]
+            direction TB
+            WF_DEF["📜 workflow_definitions<br/><code>id, resource_type, min_cost</code>"]:::approval
+            WF_STEP_DEF["🔢 workflow_step_defs<br/><code>workflow_id, step_number, role</code>"]:::approval
+            APP_REQ["⚡ approval_requests<br/><code>id, resource_id, workflow_type</code>"]:::approval
+            APP_STEP["✅ approval_steps<br/><code>id, request_id, step_no, approver_id<br/>[STATUS: APPROVED / REJECTED]</code>"]:::approval
+            SLA["⏱️ sla_trackers & escalation<br/><code>due_at, is_breached, timers</code>"]:::approval
+
+            WF_DEF -->|Sequences Steps| WF_STEP_DEF
+            JOB_CARD -.->|Triggers Cost/Safety Flow| APP_REQ
+            M_REQ -.->|Triggers Requisition Flow| APP_REQ
+            WF_DEF -->|Instantiates Dynamic Workflow| APP_REQ
+            APP_REQ -->|Generates Tier Steps| APP_STEP
+            APP_STEP -->|Monitored By| SLA
+            USERS -->|Signs Off Step| APP_STEP
+        end
+
+        subgraph S4 ["4. Allocation, Scheduling & Staging"]
+            direction TB
+            M_RES["📅 machine_reservations<br/><code>requisition_id, machine_id, start_time</code>"]:::alloc
+            MAT_REQ["🔩 material_requirements<br/><code>job_card_id, catalog_item_id, qty</code>"]:::alloc
+            WP["📦 work_packages<br/><code>job_card_id, package_number, type</code>"]:::alloc
+            CONTRACTOR["👷 contractor_assignments<br/><code>job_card_id, contractor_id, supervisor</code>"]:::alloc
+
+            APP_STEP -->|Authorizes Booking| M_RES
+            APP_STEP -->|Releases Work Order| JOB_CARD
+            CATALOG -->|BOM Reference| MAT_REQ
+            JOB_CARD -->|Allocates Spares| MAT_REQ
+            JOB_CARD -->|Splits Complexity| WP
+            JOB_CARD -->|Outsources Work| CONTRACTOR
+            FLEET_REG -->|Locks Unit Schedule| M_RES
+        end
+    end
+
+    subgraph Row3 [" "]
+        direction LR
+        subgraph S5 ["5. Execution & Real-Time Tracking"]
+            direction TB
+            LABOUR["⏱️ job_card_labour<br/><code>job_card_id, technician, hours, rate</code>"]:::exec
+            PARTS["🔧 job_card_parts<br/><code>job_card_id, part_no, qty, cost</code>"]:::exec
+            EXEC_EVENTS["📡 job_card_execution_events<br/><code>event_type, actor_id, timestamp</code>"]:::exec
+            METER_UPD["🔄 machines.current_hour_meter<br/><code>status: IN_SERVICE / AVAILABLE</code>"]:::exec
+
+            JOB_CARD -->|STATUS: IN_PROGRESS| LABOUR
+            JOB_CARD -->|Consumes Parts| PARTS
+            USERS -->|Logs Shift Hours| LABOUR
+            LABOUR -->|Emits Telemetry| EXEC_EVENTS
+            JOB_CARD -->|Updates Asset Telemetry| METER_UPD
+        end
+
+        subgraph S6 ["6. Sign-off, Reporting & System Auditing"]
+            direction TB
+            REPORT["📑 job_reports<br/><code>job_card_id, findings, root_cause, sign_off</code>"]:::audit
+            SYS_AUDIT["🛡️ audit_logs<br/><code>user_id, action, resource, ip (6,627 rows)</code>"]:::audit
+            BIZ_AUDIT["📊 business_audit_logs<br/><code>entity_type, entity_id, diff_payload</code>"]:::audit
+
+            JOB_CARD -->|STATUS: COMPLETED| REPORT
+            USERS -->|QA / Supervisor Sign-off| REPORT
+            APP_STEP -.->|Captures Governance Audit| SYS_AUDIT
+            JOB_CARD -.->|Captures State Mutation| BIZ_AUDIT
+            REPORT -.->|Final System Closeout| SYS_AUDIT
+        end
+    end
+
+    %% Cross-Phase Major Transitions
+    S1 ===>|Feeds Context| S2
+    S2 ===>|Requires Authorization| S3
+    S3 ===>|Unlocks Allocations| S4
+    S4 ===>|Proceeds to Execution| S5
+    S5 ===>|Completes Work| S6
+`;
+
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: 'transparent',
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '13px',
+        lineColor: '#64748b'
+      },
+      flowchart: {
+        curve: 'basis',
+        htmlLabels: true
+      }
+    });
+
+    // Pan-Zoom Engine State
+    const viewport = document.getElementById('viewport');
+    const canvas = document.getElementById('canvas');
+    const zoomVal = document.getElementById('zoom-val');
+    const loader = document.getElementById('loader');
+
+    let scale = 1;
+    let pointX = 0;
+    let pointY = 0;
+    let startX = 0;
+    let startY = 0;
+    let isDragging = false;
+
+    function applyTransform() {
+      canvas.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+      zoomVal.textContent = `${Math.round(scale * 100)}%`;
+    }
+
+    function fitToScreen() {
+      const svg = document.querySelector('#mermaid-container svg');
+      if (!svg) return;
+
+      svg.removeAttribute('style');
+      svg.style.display = 'block';
+
+      const bbox = svg.getBBox ? svg.getBBox() : svg.getBoundingClientRect();
+      const vWidth = viewport.clientWidth;
+      const vHeight = viewport.clientHeight;
+
+      const cWidth = bbox.width || 1700;
+      const cHeight = bbox.height || 1400;
+
+      const padding = 50;
+      const scaleX = (vWidth - padding * 2) / cWidth;
+      const scaleY = (vHeight - padding * 2) / cHeight;
+
+      scale = Math.min(scaleX, scaleY, 1.25);
+      scale = Math.max(scale, 0.25);
+
+      pointX = (vWidth - cWidth * scale) / 2;
+      pointY = Math.max((vHeight - cHeight * scale) / 2, padding);
+
+      applyTransform();
+    }
+
+    // Zoom Controls
+    function zoomBy(factor) {
+      const vWidth = viewport.clientWidth;
+      const vHeight = viewport.clientHeight;
+      const centerX = vWidth / 2;
+      const centerY = vHeight / 2;
+
+      const xs = (centerX - pointX) / scale;
+      const ys = (centerY - pointY) / scale;
+
+      const newScale = Math.min(Math.max(scale * factor, 0.15), 4.0);
+      pointX = centerX - xs * newScale;
+      pointY = centerY - ys * newScale;
+      scale = newScale;
+
+      applyTransform();
+    }
+
+    document.getElementById('btn-zoom-in').addEventListener('click', () => zoomBy(1.2));
+    document.getElementById('btn-zoom-out').addEventListener('click', () => zoomBy(0.8));
+    document.getElementById('btn-fit').addEventListener('click', fitToScreen);
+    document.getElementById('btn-actual').addEventListener('click', () => {
+      scale = 1;
+      const svg = document.querySelector('#mermaid-container svg');
+      const cWidth = svg ? (svg.getBBox().width || 1700) : 1700;
+      pointX = Math.max((viewport.clientWidth - cWidth) / 2, 40);
+      pointY = 60;
+      applyTransform();
+    });
+
+    // Sidebar Toggle
+    document.getElementById('btn-toggle-sidebar').addEventListener('click', () => {
+      const sidebar = document.getElementById('sidebar');
+      sidebar.classList.toggle('is-collapsed');
+      setTimeout(fitToScreen, 260);
+    });
+
+    // Mouse Pan Controls
+    viewport.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.hud-overlay') || e.target.closest('button')) return;
+      isDragging = true;
+      startX = e.clientX - pointX;
+      startY = e.clientY - pointY;
+      viewport.classList.add('is-dragging');
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      pointX = e.clientX - startX;
+      pointY = e.clientY - startY;
+      applyTransform();
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        viewport.classList.remove('is-dragging');
+      }
+    });
+
+    // Mouse Wheel Zoom (Towards pointer)
+    viewport.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const rect = viewport.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const xs = (mouseX - pointX) / scale;
+      const ys = (mouseY - pointY) / scale;
+
+      const factor = e.deltaY < 0 ? 1.14 : 0.88;
+      const newScale = Math.min(Math.max(scale * factor, 0.15), 4.0);
+
+      pointX = mouseX - xs * newScale;
+      pointY = mouseY - ys * newScale;
+      scale = newScale;
+
+      applyTransform();
+    }, { passive: false });
+
+    // Render Mermaid Diagram
+    async function init() {
+      try {
+        const { svg } = await mermaid.render('lifecycle-svg', diagramDefinition);
+        const container = document.getElementById('mermaid-container');
+        container.innerHTML = svg;
+
+        // Hide loader & fit
+        loader.style.opacity = '0';
+        setTimeout(() => {
+          loader.style.display = 'none';
+          fitToScreen();
+        }, 200);
+      } catch (err) {
+        console.error('Mermaid rendering failed:', err);
+        loader.innerHTML = `<div style="color:#f87171; font-weight:600;">Failed to render diagram: ${err.message}</div>`;
+      }
+    }
+
+    // Auto-fit on window resize
+    window.addEventListener('resize', () => {
+      fitToScreen();
+    });
+
+    init();
+  </script>
+
+
+</body></html>

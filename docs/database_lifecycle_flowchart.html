@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>Bikita Minerals DWRMS — Database Lifecycle Flowchart</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #080c14;
+      --panel-bg: #0f172a;
+      --card-bg: #141c2e;
+      --card-hover: #1c273e;
+      --card-border: #243049;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --accent-blue: #38bdf8;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-purple: #c084fc;
+      --accent-indigo: #818cf8;
+      --sidebar-width: 380px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      min-height: 100%;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-main);
+    }
+
+    /* Header */
+    header {
+      height: 60px;
+      background: var(--panel-bg);
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 1.5rem;
+      user-select: none;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand { display: flex; align-items: center; gap: 0.85rem; }
+    .brand-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-blue);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+    }
+    .brand-title { font-size: 1.05rem; font-weight: 700; color: #fff; }
+    .brand-subtitle { font-size: 0.75rem; color: var(--text-muted); }
+
+    .toolbar { display: flex; align-items: center; gap: 0.6rem; }
+    .btn {
+      background: var(--card-bg);
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+      padding: 0.38rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      text-decoration: none;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .btn:hover { background: #22304d; border-color: var(--accent-blue); color: #fff; }
+    .btn-primary {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: rgba(56, 189, 248, 0.4);
+      color: var(--accent-blue);
+      font-weight: 600;
+    }
+    .btn-primary:hover { background: var(--accent-blue); color: #070a12; }
+
+    .search-box {
+      position: relative;
+    }
+    .search-box input {
+      background: #090e1a;
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 0.38rem 0.75rem 0.38rem 2rem;
+      color: #fff;
+      font-size: 0.8rem;
+      width: 180px;
+      outline: none;
+      transition: width 0.2s ease, border-color 0.2s ease;
+    }
+    .search-box input:focus {
+      border-color: var(--accent-blue);
+      width: 230px;
+    }
+    .search-icon {
+      position: absolute;
+      left: 0.65rem;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+
+    /* Main Area with Natural Layout */
+    .app-body {
+      display: flex;
+      width: 100%;
+      min-height: calc(100vh - 60px);
+      position: relative;
+    }
+
+    .viewport {
+      flex: 1;
+      padding: 2rem;
+      overflow-y: auto;
+      background: #080c14;
+    }
+
+    .container {
+      max-width: 1360px;
+      margin: 0 auto;
+    }
+
+    /* Grid layout for stages */
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    @media (max-width: 1300px) {
+      .grid-container {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 850px) {
+      .grid-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Stage Column Box */
+    .stage-box {
+      background: #0d1424;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    .stage-header {
+      padding: 0.85rem 1.1rem;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #111a2f;
+    }
+    .stage-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .stage-tag {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .tag-1 { background: rgba(100, 116, 139, 0.25); color: #cbd5e1; border: 1px solid rgba(100, 116, 139, 0.35); }
+    .tag-2 { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); }
+    .tag-3 { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35); }
+    .tag-4 { background: rgba(129, 140, 248, 0.2); color: #a5b4fc; border: 1px solid rgba(129, 140, 248, 0.35); }
+    .tag-5 { background: rgba(56, 189, 248, 0.2); color: #67e8f9; border: 1px solid rgba(56, 189, 248, 0.35); }
+    .tag-6 { background: rgba(192, 132, 252, 0.2); color: #e9d5ff; border: 1px solid rgba(192, 132, 252, 0.35); }
+
+    .stage-body {
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    /* Table Entity Cards */
+    .table-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 0.75rem 0.9rem;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .table-card:hover {
+      background: var(--card-hover);
+      border-color: var(--accent-blue);
+    }
+    .table-card.selected {
+      border-color: var(--accent-blue);
+      background: #182339;
+    }
+    .table-card.dimmed {
+      opacity: 0.2;
+    }
+    .table-card.connected-highlight {
+      border-color: var(--accent-emerald);
+      background: #112826;
+    }
+
+    .table-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.4rem;
+    }
+    .table-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .table-count {
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+    }
+
+    .table-cols {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .col-pk { color: var(--accent-amber); font-weight: 600; }
+    .col-fk { color: var(--accent-blue); }
+    .col-status {
+      display: inline-block;
+      font-size: 0.62rem;
+      font-weight: 700;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      margin-top: 0.3rem;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+    }
+
+    /* Details Sidebar */
+    .sidebar {
+      width: var(--sidebar-width);
+      min-height: 100%;
+      background: var(--panel-bg);
+      border-left: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      position: sticky;
+      top: 60px;
+      height: calc(100vh - 60px);
+    }
+    .sidebar.is-collapsed { display: none; }
+    .sidebar-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .sidebar-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    .sidebar-card h4 {
+      font-size: 0.85rem;
+      color: var(--accent-blue);
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .schema-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.3rem 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+    }
+    .schema-col-name { color: #fff; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <span class="brand-badge">DWRMS</span>
+      <div>
+        <div class="brand-title">Database Lifecycle Flowchart</div>
+        <div class="brand-subtitle">74 Relational Tables • Sequential Data Journey • Bikita Minerals SQLite</div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <a href="database_lifecycle_diagram.png" target="_blank" class="btn" title="Open Full Image View">🖼️ View PNG Image</a>
+
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="table-search" placeholder="Filter tables..." autocomplete="off" />
+      </div>
+
+      <button class="btn" id="btn-toggle-sidebar" title="Toggle Sidebar">Details ☰</button>
+    </div>
+  </header>
+
+  <div class="app-body">
+    <!-- Viewport Area -->
+    <div class="viewport">
+      <div class="container">
+        <div class="grid-container" id="pipeline-grid">
+
+          <!-- STAGE 1: Master Config -->
+          <div class="stage-box" data-stage="1" id="stage-1">
+            <div class="stage-header">
+              <div class="stage-title"><span>🏢</span> 1. Master Configuration</div>
+              <span class="stage-tag tag-1">Foundational</span>
+            </div>
+            <div class="stage-body">
+              <div class="table-card" data-table="organizations" id="card-organizations">
+                <div class="table-top">
+                  <span class="table-name">organizations</span>
+                  <span class="table-count">1 row</span>
+                </div>
+                <div class="table-cols">
+                  <div><span class="col-pk">id</span> (UUID), code, name</div>
+                  <div style="color: var(--text-dim);">Mining enterprise root tenant</div>
+                </div>
+              </div>
+
+              <div class="table-card" data-table="sites" id="card-sites">
+                <div class="table-top">
+                  <span class="table-name">sites</span>
+                  <span class="table-count">1 row</span>
+                </div>
+                <div class="table-cols">
+                  <div><span class="col-pk">id</span>, <span class="col-fk">organization_id</span>, code, name</div>
+                  <div style="color: var(--text-dim);">Masvingo Main Plant facility</div>
+                </div>
+              </div>
+
+              <div class="table-card" data-table="departments" id="card-departments">
+                <div class="table-top">
+                  <span class="table-name">departments</span>
+                  <span class="table-count">15 rows</span>
+                </div>
+                <div class="table-cols">
+                  <div><span class="col-pk">id</span>, <span class="col-fk">site_id</span>, code, name, hod_id</div>
+                  <div style="color: var(--text-dim);">Mining, Processing, Maintenance</div>
+                </div>
+              </div>
+
+              <div class="table-card" data-table="users" id="card-users">
+                <div class="table-top">
+                  <span class="table-name">users & roles</span>
+                  <span class="table-count">13 users</span>
+                </div>
+                <div class="table-cols">
+                  <div><span class="col-pk">id</span>, email, <span class="col-fk">department_id</span>, supervisor</div>
+                  <div>11 roles • 51 permissions • 106 bindings</div>
+                </div>
+              </div>
+
+              <div class="table-card" data-table="machines" id="card-machines">
+                <div class="table-top">
+                  <span class="table-name">machines & catalog</span>
+                  <span class="table-count">26 fleet</span>
+                </div>
+                <div class="table-cols">
+                  <div>CAT 777D, Komatsu PC1250, Belaz</div>
+                  <div>12 items in material_catalog</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STAGE 2: Demand Intake -->
+          <div class="stage-box" data-stage="2" id="stage-2">
+            <div class="stage-header">
+              <div class="stage-title"><span>📝</span> 2. Operational Demand</div>
+              <span class="stage-tag tag-2">Intake</span>
+            </div>
+            <div class="stage-body">
+              <div class="table-card" data-table="operational_requests" id="card-operational_requests">
+                <div class="table-top">
+                  <span class="table-name">operational_requests</span>
+                  <span class="table-count">10 rows</span>
+                </div>
+                <div class="table-cols">
+                  <div><span class="col-pk">id</span>, <span class="col-fk">requester_id</span>, department_id</div>
+                  <span class="col-status">PENDING / APPROVED</span>
+                </div>
+              </div>
+
+              <div class="table-card" data-table="machine_requisitions" id="card-machine_requisitions">
+                <div class="table-top">
+                  <span class="table-name">machine_requisitions</span>
+                  <span class="table-count">6 rows</span>
+                </div>
+                <div class="table-cols">
+                  <div><span class="col-pk">id</span>, req_number, <span class="col-fk">machine_type_id</span></div>
+                  <div>Heavy equipment rental / shift booking</div>
+                </div>
+              </div>
+
+              <div class="table-card" data-table="work_items" id="card-work_items">
+                <div class="table-top">
+                  <span class="table-name">work_items</span>
+                  <span class="table-count">10 rows</span>
+                </div>
+                <div class="table-cols">
+                  <div><span class="col-pk">id</span>, reference_number, work_type</div>
+                  <div style="color: var(--text-dim);">Logged breakdown ticket or preventive PM</div>
+                </div>
+              </div>
+
+              <div class="table-card" data-table="job_cards" id="card-job_cards">
+                <div class="table-top">
+                  <span class="table-name">job_cards</span>
+                  <span class="table-count">10 rows</span>
+                </div>
+                <div class="table-cols">
+                  <div><span class="col-pk">id</span>, job_number, <span class="col-fk">machine_id</span>, supervisor</div>
+                  <span class="col-status">DRAFT / PENDING_APPROVAL</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STAGE 3: Governance & SLA -->
+          <div class="stage-box" data-stage="3" id="stage-3">
+            <div class="stage-header">
+              <div class="stage-title"><span>⚖️</span> 3. Governance &amp; SLA</div>
+              <span class="stage-tag tag-3">Gatekeeper</span>
+            </div>
+            <div class="stage-body">
+              <div class="table-card" data-table="workflow_definitions" id="card-workflow_definitions">
+                <div class="table-top">
+                  <span class="table-name">workflow_definitions</span>
+                  <span class="table-count">4 rules</span>
+                </div>
+                <div class="table-cols">
+                  <div>Emergency, HSE, High-Value Requisition</div>
+                  <div style="color: var(--text-dim);">7 workflow_step_defs role levels</div>
+                </div>
+              </div>
+
+              <div class="table-card" data-table="approval_requests" id="card-approval_requests">
+                <div class="table-top">
+                  <span class="table-name">approval_requests</span>
+                  <span class="table-count">7 active</span>
+                </div>
+                <div class="table-cols">
+                  <div><span class="col-pk">id</span>, resource_type, <span class="col-fk">resource_id</span></div>
+                  <div>Priority: Emergency (3), High (2), Std (1)</div>
+                </div>
+              </div>
+
+              <div class="table-card" data-table="approval_steps" id="card-approval_steps">
+                <div class="table-top">
+                  <span class="table-name">approval_steps</span>
+                  <span class="table-count">7 steps</span>
+                </div>
+                <div class="table-cols">
+                  <div><span class="col-pk">id</span>, step_number, authority_role</div>
+                  <span class="col-status">PENDING / APPROVED</span>
+                </div>
+              </div>
+
+              <div class="table-card" data-table="sla_trackers" id="card-sla_trackers">
+                <div class="table-top">
+                  <span class="table-name">sla_trackers & timers</span>
+                  <span class="table-count">4 timers</span>
+                </div>
+                <div class="table-cols">
+                  <div>Target response deadlines, breach alerts</div>
+                  <div style="color: var(--text-dim);">Auto-escalation to Dept Manager</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STAGE 4: Allocation & Staging -->
+          <div class="stage-box" data-stage="4" id="stage-4">
+            <div class="stage-header">
+              <div class="stage-title"><span>📦</span> 4. Allocation &amp; Dispatch</div>
+              <span class="stage-tag tag-4">Staging</span>
+            </div>
+            <div class="stage-body">
+              <div class="table-card" data-table="machine_reservations" id="card-machine_reservations">
+                <div class="table-top">
+                  <span class="table-name">machine_reservations</span>
+                  <span class="table-count">6 slots</span>
+                </div>
+                <div class="table-cols">
+                  <div><span class="col-pk">id</span>, <span class="col-fk">requisition_id</span>, machine_id</div>
+                  <div>Locks specific unit on mining calendar</div>
+                </div>
+              </div>
+
+              <div class="table-card" data-table="material_requirements" id="card-material_requirements">
+                <div class="table-top">
+                  <span class="table-name">material_requirements</span>
+                  <span class="table-count">12 spares</span>
+                </div>
+                <div class="table-cols">
+                  <div><span class="col-pk">id</span>, <span class="col-fk">job_card_id</span>, catalog_item_id</div>
+                  <span class="col-status">ALLOCATED / RESERVED</span>
+                </div>
+              </div>
+
+              <div class="table-card" data-table="work_packages" id="card-work_packages">
+                <div class="table-top">
+                  <span class="table-name">work_packages</span>
+                  <span class="table-count">10 packages</span>
+                </div>
+                <div class="table-cols">
+                  <div><span class="col-pk">id</span>, <span class="col-fk">job_card_id</span>, package_number</div>
+                  <div style="color: var(--text-dim);">Splits work into discrete shift tasks</div>
+                </div>
+              </div>
+
+              <div class="table-card" data-table="contractor_assignments" id="card-contractor_assignments">
+                <div class="table-top">
+                  <span class="table-name">contractor_assignments</span>
+                  <span class="table-count">4 firms</span>
+                </div>
+                <div class="table-cols">
+                  <div>Specialized rigging, vulcanizing, welding</div>
+                  <div style="color: var(--text-dim);">Tied to certified contractor workers</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STAGE 5: Execution & Tracking -->
+          <div class="stage-box" data-stage="5" id="stage-5">
+            <div class="stage-header">
+              <div class="stage-title"><span>🛠️</span> 5. Maintenance Execution</div>
+              <span class="stage-tag tag-5">Active</span>
+            </div>
+            <div class="stage-body">
+              <div class="table-card" data-table="job_card_labour" id="card-job_card_labour">
+                <div class="table-top">
+                  <span class="table-name">job_card_labour</span>
+                  <span class="table-count">10 entries</span>
+                </div>
+                <div class="table-cols">
+                  <div><span class="col-pk">id</span>, <span class="col-fk">job_card_id</span>, technician, hours</div>
+                  <div>Logs mechanic & artisan wrench hours</div>
+                </div>
+              </div>
+
+              <div class="table-card" data-table="job_card_parts" id="card-job_card_parts">
+                <div class="table-top">
+                  <span class="table-name">job_card_parts</span>
+                  <span class="table-count">12 consumed</span>
+                </div>
+                <div class="table-cols">
+                  <div><span class="col-pk">id</span>, part_name, quantity, unit_cost</div>
+                  <div style="color: var(--text-dim);">Consumes inventory from stockroom</div>
+                </div>
+              </div>
+
+              <div class="table-card" data-table="job_card_execution_events" id="card-job_card_execution_events">
+                <div class="table-top">
+                  <span class="table-name">execution_events</span>
+                  <span class="table-count">Telemetry</span>
+                </div>
+                <div class="table-cols">
+                  <div>Start, pause, safety clearance, resume</div>
+                  <div style="color: var(--text-dim);">Real-time shift activity trace</div>
+                </div>
+              </div>
+
+              <div class="table-card" data-table="machine_meter_updates" id="card-machine_meter_updates">
+                <div class="table-top">
+                  <span class="table-name">machines.hour_meter</span>
+                  <span class="table-count">Telemetry</span>
+                </div>
+                <div class="table-cols">
+                  <div>Updates operating hours & maintenance date</div>
+                  <span class="col-status">IN_SERVICE / AVAILABLE</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STAGE 6: Sign-off & Audit -->
+          <div class="stage-box" data-stage="6" id="stage-6">
+            <div class="stage-header">
+              <div class="stage-title"><span>🛡️</span> 6. Sign-off &amp; Audit</div>
+              <span class="stage-tag tag-6">Permanent</span>
+            </div>
+            <div class="stage-body">
+              <div class="table-card" data-table="job_reports" id="card-job_reports">
+                <div class="table-top">
+                  <span class="table-name">job_reports</span>
+                  <span class="table-count">10 reports</span>
+                </div>
+                <div class="table-cols">
+                  <div><span class="col-pk">id</span>, <span class="col-fk">job_card_id</span>, root_cause</div>
+                  <span class="col-status">COMPLETED / SIGNED_OFF</span>
+                </div>
+              </div>
+
+              <div class="table-card" data-table="business_audit_logs" id="card-business_audit_logs">
+                <div class="table-top">
+                  <span class="table-name">business_audit_logs</span>
+                  <span class="table-count">5 mutations</span>
+                </div>
+                <div class="table-cols">
+                  <div>entity_type, entity_id, change_diff</div>
+                  <div style="color: var(--text-dim);">Domain level mutation records</div>
+                </div>
+              </div>
+
+              <div class="table-card" data-table="audit_logs" id="card-audit_logs">
+                <div class="table-top">
+                  <span class="table-name">audit_logs</span>
+                  <span class="table-count">6,627 logs</span>
+                </div>
+                <div class="table-cols">
+                  <div><span class="col-pk">id</span>, <span class="col-fk">user_id</span>, action, ip_address</div>
+                  <div style="color: var(--text-dim);">Immutable system compliance trace</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Details Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div>
+          <div style="font-size: 0.95rem; font-weight: 700; color: #fff;">Table Inspector</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">Click any table card to view details</div>
+        </div>
+      </div>
+      <div class="sidebar-content" id="sidebar-details">
+        <div class="sidebar-card">
+          <h4>💡 Quick Navigation</h4>
+          <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;">
+            Click on any table in the lifecycle grid to inspect its columns, foreign key links, and data role.
+          </p>
+        </div>
+
+        <div class="sidebar-card">
+          <h4>📊 Database Overview</h4>
+          <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.4rem;">
+            <div>• <b>Engine:</b> SQLite (<code>test_dwrms.db</code>)</div>
+            <div>• <b>Total Tables:</b> 74 Tables</div>
+            <div>• <b>Active Rows:</b> 6,900+ Records</div>
+            <div>• <b>Schema Version:</b> 2026.08.28.01</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    const sidebar = document.getElementById('sidebar');
+    const sidebarDetails = document.getElementById('sidebar-details');
+    const searchInput = document.getElementById('table-search');
+
+    document.getElementById('btn-toggle-sidebar').addEventListener('click', () => {
+      sidebar.classList.toggle('is-collapsed');
+    });
+
+    const tableMetadata = {
+      organizations: { title: "organizations", desc: "Top-level corporate mining entity record.", pks: ["id (UUID)"], fks: [], fields: ["code", "name", "description", "industry_type", "country"], linksTo: ["sites"] },
+      sites: { title: "sites", desc: "Physical mining site and complex boundary.", pks: ["id (UUID)"], fks: ["organization_id -> organizations.id"], fields: ["code", "name", "site_type", "address"], linksTo: ["departments", "machines"] },
+      departments: { title: "departments", desc: "Functional operational divisions.", pks: ["id (UUID)"], fks: ["site_id -> sites.id"], fields: ["code", "name", "description", "hod_id (User)"], linksTo: ["users", "operational_requests", "workflow_definitions"] },
+      users: { title: "users & roles", desc: "Identity, credentials, and RBAC permission sets.", pks: ["id (UUID)"], fks: ["department_id -> departments.id", "site_id -> sites.id", "supervisor_id -> users.id"], fields: ["email", "employee_number", "first_name", "last_name", "is_active", "is_superuser"], linksTo: ["operational_requests", "approval_steps", "job_card_labour"] },
+      machines: { title: "machines", desc: "Heavy mobile plant equipment registry.", pks: ["id (UUID)"], fks: ["machine_type_id -> machine_types.id", "location_id -> locations.id", "asset_id -> assets.id"], fields: ["identifier", "serial_number", "status", "current_hour_meter", "last_maintenance_date"], linksTo: ["machine_requisitions", "job_cards", "machine_reservations"] },
+      operational_requests: { title: "operational_requests", desc: "Frontline staff operations and assistance requests.", pks: ["id (UUID)"], fks: ["requester_id -> users.id", "department_id -> departments.id"], fields: ["request_number", "title", "status", "priority", "created_at"], linksTo: ["approval_requests"] },
+      machine_requisitions: { title: "machine_requisitions", desc: "Booking requests for heavy dump trucks, excavators, and loaders.", pks: ["id (UUID)"], fks: ["requester_id -> users.id", "machine_type_id -> machine_types.id", "department_id -> departments.id"], fields: ["requisition_number", "purpose", "start_time", "end_time", "status"], linksTo: ["approval_requests", "machine_reservations"] },
+      work_items: { title: "work_items", desc: "Identified machinery defects and preventive maintenance tickets.", pks: ["id (UUID)"], fks: ["machine_id -> machines.id", "department_id -> departments.id", "requester_id -> users.id"], fields: ["reference_number", "work_type", "status", "description"], linksTo: ["job_cards"] },
+      job_cards: { title: "job_cards", desc: "Authoritative engineering work orders.", pks: ["id (UUID)"], fks: ["machine_id -> machines.id", "supervisor_id -> users.id", "creator_id -> users.id", "department_id -> departments.id"], fields: ["job_number", "title", "status", "priority", "target_completion_date"], linksTo: ["approval_requests", "material_requirements", "work_packages", "job_card_labour", "job_card_parts", "job_reports"] },
+      workflow_definitions: { title: "workflow_definitions", desc: "Governance routing policies based on cost and risk.", pks: ["id (UUID)"], fks: ["department_id -> departments.id"], fields: ["name", "resource_type", "min_cost", "description"], linksTo: ["approval_requests"] },
+      approval_requests: { title: "approval_requests", desc: "Active approval instances tied to jobs or requisitions.", pks: ["id (UUID)"], fks: ["resource_id (Polymorphic)", "created_by_id -> users.id"], fields: ["workflow_type", "priority", "risk_level", "status"], linksTo: ["approval_steps"] },
+      approval_steps: { title: "approval_steps", desc: "Tiered sign-off stages required before resource release.", pks: ["id (UUID)"], fks: ["approval_request_id -> approval_requests.id", "approver_id -> users.id"], fields: ["step_number", "authority_role", "status", "signed_at"], linksTo: ["sla_trackers", "machine_reservations", "job_cards"] },
+      sla_trackers: { title: "sla_trackers", desc: "Response deadline tracking and escalation triggers.", pks: ["id (UUID)"], fks: ["target_entity_id"], fields: ["due_at", "is_breached", "escalation_level"], linksTo: [] },
+      machine_reservations: { title: "machine_reservations", desc: "Confirmed fleet schedule allocations.", pks: ["id (UUID)"], fks: ["requisition_id -> machine_requisitions.id", "machine_id -> machines.id"], fields: ["start_time", "end_time", "reservation_type"], linksTo: ["machines"] },
+      material_requirements: { title: "material_requirements", desc: "Spare parts allocations from the catalog for a job card.", pks: ["id (UUID)"], fks: ["job_card_id -> job_cards.id", "catalog_item_id -> material_catalog.id"], fields: ["material_name", "part_number", "quantity", "status"], linksTo: ["job_card_parts"] },
+      work_packages: { title: "work_packages", desc: "Decomposed work order packages for shift tasks.", pks: ["id (UUID)"], fks: ["job_card_id -> job_cards.id"], fields: ["package_number", "title", "package_type"], linksTo: ["job_card_labour"] },
+      contractor_assignments: { title: "contractor_assignments", desc: "External specialist maintenance firms and certified artisans.", pks: ["id (UUID)"], fks: ["job_card_id -> job_cards.id", "contractor_company_id -> contractor_companies.id"], fields: ["supervisor_id", "verified_by_id", "status"], linksTo: ["job_card_labour"] },
+      job_card_labour: { title: "job_card_labour", desc: "Logged artisan and technician wrench hours.", pks: ["id (UUID)"], fks: ["job_card_id -> job_cards.id"], fields: ["technician_name", "trade", "hours_spent", "hourly_rate"], linksTo: ["job_reports"] },
+      job_card_parts: { title: "job_card_parts", desc: "Parts actually installed and consumed during execution.", pks: ["id (UUID)"], fks: ["job_card_id -> job_cards.id"], fields: ["part_name", "part_number", "quantity", "unit_cost"], linksTo: ["job_reports"] },
+      job_card_execution_events: { title: "job_card_execution_events", desc: "Granular start, pause, safety clearance telemetry.", pks: ["id (UUID)"], fks: ["job_card_id -> job_cards.id"], fields: ["event_type", "actor_id", "timestamp", "notes"], linksTo: ["audit_logs"] },
+      machine_meter_updates: { title: "machines (telemetry)", desc: "Equipment meter reading updates post-service.", pks: ["id (UUID)"], fks: [], fields: ["current_hour_meter", "last_maintenance_date", "status (AVAILABLE)"], linksTo: ["business_audit_logs"] },
+      job_reports: { title: "job_reports", desc: "Formal engineering closeout and root cause diagnostics.", pks: ["id (UUID)"], fks: ["job_card_id -> job_cards.id"], fields: ["findings", "root_cause", "recommendations", "signed_off_by_id"], linksTo: ["audit_logs"] },
+      business_audit_logs: { title: "business_audit_logs", desc: "High-level domain state mutation diffs.", pks: ["id (UUID)"], fks: ["actor_id -> users.id"], fields: ["entity_type", "entity_id", "action", "changes_payload"], linksTo: [] },
+      audit_logs: { title: "audit_logs", desc: "Immutable system-wide access and security event audit stream.", pks: ["id (UUID)"], fks: ["user_id -> users.id"], fields: ["action", "resource_type", "resource_id", "ip_address", "created_at"], linksTo: [] }
+    };
+
+    document.querySelectorAll('.table-card').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.table-card').forEach(c => {
+          c.classList.remove('selected');
+          c.classList.remove('connected-highlight');
+        });
+        card.classList.add('selected');
+        
+        const tableKey = card.getAttribute('data-table');
+        const meta = tableMetadata[tableKey] || { title: tableKey, desc: "Database table", pks: ["id"], fks: [], fields: [], linksTo: [] };
+
+        if (meta.linksTo) {
+          meta.linksTo.forEach(targetKey => {
+            const targetCard = document.getElementById(`card-${targetKey}`);
+            if (targetCard) targetCard.classList.add('connected-highlight');
+          });
+        }
+        
+        sidebarDetails.innerHTML = `
+          <div class="sidebar-card">
+            <h4>📋 ${meta.title}</h4>
+            <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 0.75rem;">
+              ${meta.desc}
+            </p>
+            <div style="font-size: 0.75rem; font-weight: 600; color: var(--accent-amber); margin-bottom: 0.3rem;">Primary Key</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #fff; margin-bottom: 0.6rem;">${meta.pks.join(', ')}</div>
+            
+            ${meta.fks.length ? `
+              <div style="font-size: 0.75rem; font-weight: 600; color: var(--accent-blue); margin-bottom: 0.3rem;">Foreign Keys</div>
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #fff; margin-bottom: 0.6rem;">
+                ${meta.fks.map(fk => `<div>• ${fk}</div>`).join('')}
+              </div>
+            ` : ''}
+
+            ${meta.linksTo && meta.linksTo.length ? `
+              <div style="font-size: 0.75rem; font-weight: 600; color: var(--accent-emerald); margin-bottom: 0.3rem;">Downstream Lifecycle Targets</div>
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #fff; margin-bottom: 0.6rem;">
+                ${meta.linksTo.map(t => `<div>➔ ${t}</div>`).join('')}
+              </div>
+            ` : ''}
+
+            <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.3rem;">Core Columns</div>
+            <div>
+              ${meta.fields.map(f => `
+                <div class="schema-row">
+                  <span class="schema-col-name">${f}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+
+        if (sidebar.classList.contains('is-collapsed')) {
+          sidebar.classList.remove('is-collapsed');
+        }
+      });
+    });
+
+    // Search Filter
+    searchInput.addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      document.querySelectorAll('.table-card').forEach(card => {
+        const name = card.getAttribute('data-table').toLowerCase();
+        const text = card.textContent.toLowerCase();
+        if (!q || name.includes(q) || text.includes(q)) {
+          card.classList.remove('dimmed');
+        } else {
+          card.classList.add('dimmed');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
